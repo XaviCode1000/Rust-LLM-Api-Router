@@ -1,0 +1,38 @@
+//! Anthropic provider implementation
+
+use async_trait::async_trait;
+
+use crate::domain::entities::{LlmRequest, LlmResponse};
+use crate::domain::traits::LlmProvider;
+use crate::error::Result;
+use crate::infrastructure::http_client::SharedHttpClient;
+
+pub struct AnthropicProvider {
+    name: String,
+    api_url: String,
+    api_key: String,
+    http_client: SharedHttpClient,
+}
+
+impl AnthropicProvider {
+    pub fn new(api_url: String, api_key: String, http_client: SharedHttpClient) -> Self {
+        Self {
+            name: "anthropic".to_string(),
+            api_url,
+            api_key,
+            http_client,
+        }
+    }
+}
+
+#[async_trait]
+impl LlmProvider for AnthropicProvider {
+    async fn chat(&self, _request: LlmRequest) -> Result<LlmResponse> {
+        // Implementation would go here
+        todo!("Implement Anthropic chat completion")
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+}

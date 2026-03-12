@@ -1,0 +1,59 @@
+[package]
+name = "rust-llm-api-router"
+version = "0.1.0"
+edition = "2021"
+description = "LLM Proxy API Router with Clean Architecture in Rust"
+license = "MIT"
+authors = ["LLM Router Team"]
+rust-version = "1.75"
+
+[dependencies]
+# Web
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# HTTP Client
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+
+# Async
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+
+# Config & Secrets
+config = "0.14"
+envy = "0.4"
+secrecy = "0.8"
+
+# Error Handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Metrics & Observability
+prometheus = "0.13"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI
+clap = { version = "4.4", features = ["derive"] }
+
+[dev-dependencies]
+mockall = "0.12"
+tokio-test = "0.4"
+
+[lib]
+name = "rust_llm_api_router"
+path = "src/lib.rs"
+
+[[bin]]
+name = "llm-router"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
