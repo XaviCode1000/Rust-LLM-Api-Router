@@ -5,6 +5,10 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod account_health;
+
+pub use account_health::AccountHealth;
+
 /// Chat request sent to an LLM provider.
 ///
 /// # Fields

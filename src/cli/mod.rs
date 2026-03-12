@@ -4,8 +4,10 @@
 //!
 //! It uses the `clap` crate to define subcommands and flags.
 
+pub mod account_commands;
 pub mod provider_commands;
 
+use account_commands::AccountCommands;
 use clap::Parser;
 use provider_commands::ProviderCommands;
 
@@ -26,7 +28,7 @@ pub struct Cli {
     #[arg(long, default_value = "info")]
     pub log_level: String,
 
-    /// Provider management commands
+    /// CLI subcommands
     #[command(subcommand)]
     pub commands: Option<CliCommands>,
 }
@@ -36,6 +38,10 @@ pub enum CliCommands {
     /// Provider management commands
     #[command(subcommand)]
     Provider(ProviderCommands),
+
+    /// Account management commands
+    #[command(subcommand)]
+    Account(AccountCommands),
 }
 
 /// Handle CLI commands
@@ -43,6 +49,9 @@ pub async fn handle_command(command: CliCommands) -> crate::error::Result<()> {
     match command {
         CliCommands::Provider(provider_cmd) => {
             provider_commands::handle_provider_command(provider_cmd).await
+        }
+        CliCommands::Account(account_cmd) => {
+            account_commands::handle_account_command(account_cmd).await
         }
     }
 }

@@ -15,4 +15,4 @@ pub mod provider;
 pub use http_client::HttpClient;
 pub use logging::init_logging;
 pub use metrics::Metrics;
-pub use persistence::JsonProviderRepository;
+pub use persistence::{JsonAccountRepository, JsonProviderRepository};
