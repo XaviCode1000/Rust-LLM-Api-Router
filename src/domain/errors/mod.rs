@@ -19,6 +19,8 @@ use thiserror::Error;
 /// * `AuthenticationError` - Invalid or missing API key
 /// * `RateLimited` - Too many requests to the provider
 /// * `ValidationError` - Data validation failed
+/// * `Io` - I/O operation failed
+/// * `Serialization` - Serialization/deserialization failed
 /// * `Internal` - Internal domain error
 #[derive(Debug, Error)]
 pub enum DomainError {
@@ -65,6 +67,14 @@ pub enum DomainError {
     /// Data validation failed
     #[error("validation error: {0}")]
     ValidationError(String),
+
+    /// I/O operation failed
+    #[error("I/O error: {0}")]
+    Io(String),
+
+    /// Serialization/deserialization failed
+    #[error("serialization error: {0}")]
+    Serialization(String),
 
     /// Internal domain error
     #[error("internal error: {0}")]
@@ -125,6 +135,16 @@ impl DomainError {
     /// Creates a `ValidationError` error.
     pub fn validation_error(msg: impl Into<String>) -> Self {
         Self::ValidationError(msg.into())
+    }
+
+    /// Creates an `Io` error.
+    pub fn io(msg: impl Into<String>) -> Self {
+        Self::Io(msg.into())
+    }
+
+    /// Creates a `Serialization` error.
+    pub fn serialization(msg: impl Into<String>) -> Self {
+        Self::Serialization(msg.into())
     }
 
     /// Creates an `Internal` error.

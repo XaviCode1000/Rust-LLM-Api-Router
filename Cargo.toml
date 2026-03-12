@@ -41,9 +41,13 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # CLI
 clap = { version = "4.4", features = ["derive"] }
 
+# Directories
+dirs = "5.0"
+
 [dev-dependencies]
 mockall = "0.12"
 tokio-test = "0.4"
+tempfile = "3.10"
 
 [lib]
 name = "rust_llm_api_router"
@@ -57,3 +61,5 @@ path = "src/main.rs"
 opt-level = 3
 lto = "fat"
 codegen-units = 1
+panic = "abort"
+strip = true
