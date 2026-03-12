@@ -8,9 +8,13 @@ use crate::error::Result;
 use crate::infrastructure::http_client::SharedHttpClient;
 
 pub struct AnthropicProvider {
+    #[allow(dead_code)]
     name: String,
+    #[allow(dead_code)]
     api_url: String,
+    #[allow(dead_code)]
     api_key: String,
+    #[allow(dead_code)]
     http_client: SharedHttpClient,
 }
 

@@ -162,8 +162,8 @@ async fn cmd_list_accounts(repo: &JsonAccountRepository) -> Result<()> {
     }
 
     println!(
-        "{:<20} {:<20} {:<10} {:<8} {}",
-        "ID", "Provider", "Priority", "Status", "API Key"
+        "{:<20} {:<20} {:<10} {:<8} API Key",
+        "ID", "Provider", "Priority", "Status"
     );
     println!("{:-<90}", "");
 

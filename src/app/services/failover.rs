@@ -5,10 +5,10 @@
 use std::sync::Arc;
 
 use crate::domain::traits::AccountRepository;
-use crate::domain::{Account, AccountHealth, ChatRequest, ChatResponse};
+use crate::domain::{Account, AccountHealth};
 use crate::infrastructure::JsonAccountRepository;
 
-use super::account_rotation::{AccountSelector, RotationStrategy};
+use super::account_rotation::AccountSelector;
 
 /// Failover manager for account requests.
 ///

@@ -166,10 +166,7 @@ async fn cmd_list_providers(repo: &JsonProviderRepository) -> Result<()> {
         return Ok(());
     }
 
-    println!(
-        "{:<20} {:<30} {:<40} {}",
-        "ID", "Name", "Base URL", "Status"
-    );
+    println!("{:<20} {:<30} {:<40} Status", "ID", "Name", "Base URL");
     println!("{:-<100}", "");
 
     for provider in providers {

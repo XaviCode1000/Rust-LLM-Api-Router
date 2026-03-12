@@ -16,7 +16,7 @@ use crate::domain::{
     Account, ChatRequest, ChatResponse, Message, OpenAIChatRequest, OpenAIChatResponse,
     OpenAIChoice, OpenAIErrorResponse, OpenAIMessage, OpenAIUsage,
 };
-use crate::infrastructure::{HttpClient, JsonAccountRepository};
+use crate::infrastructure::HttpClient;
 use crate::presentation::AppState;
 use crate::Result;
 
