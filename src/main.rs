@@ -21,6 +21,7 @@
 use clap::Parser;
 use rust_llm_api_router::cli::Cli;
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use rust_llm_api_router::config::Settings;
 use rust_llm_api_router::error::Result;
@@ -53,6 +54,7 @@ async fn main() -> Result<()> {
 
     // Create application state
     let state = AppState::new(settings)?;
+    let state = Arc::new(state);
 
     // Get port before moving state
     let port = state.config.app_port;

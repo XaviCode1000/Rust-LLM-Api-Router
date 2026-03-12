@@ -17,6 +17,7 @@ pub mod config;
 pub mod domain;
 pub mod error;
 pub mod infrastructure;
+pub mod interfaces;
 pub mod presentation;
 
 pub use error::{Error, Result};

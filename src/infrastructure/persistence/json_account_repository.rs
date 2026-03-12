@@ -11,6 +11,7 @@ use tokio::io::AsyncReadExt;
 
 use crate::domain::traits::AccountRepository;
 use crate::domain::{Account, DomainResult};
+use crate::Result;
 
 /// Internal representation for JSON serialization.
 /// API keys are stored encrypted in production, plaintext in dev.
@@ -66,7 +67,7 @@ impl JsonAccountRepository {
     ///
     /// # Returns
     /// A new `JsonAccountRepository` instance
-    pub fn new() -> DomainResult<Self> {
+    pub fn new() -> Result<Self> {
         let config_dir = std::env::var("XDG_CONFIG_HOME")
             .map(PathBuf::from)
             .unwrap_or_else(|_| {
