@@ -2,12 +2,7 @@
 //!
 //! Provides health check endpoints for monitoring.
 
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::Serialize;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -64,13 +59,24 @@ pub async fn health_detail(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<DetailedHealthResponse>, StatusCode> {
     // Get account stats
-    let accounts = state.account_repo.find_all().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let active_accounts = state.account_repo.find_active().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let accounts = state
+        .account_repo
+        .find_all()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let active_accounts = state
+        .account_repo
+        .find_active()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Group accounts by provider
-    let mut provider_map: std::collections::HashMap<String, (usize, usize)> = std::collections::HashMap::new();
+    let mut provider_map: std::collections::HashMap<String, (usize, usize)> =
+        std::collections::HashMap::new();
     for account in &accounts {
-        let entry = provider_map.entry(account.provider_id.clone()).or_insert((0, 0));
+        let entry = provider_map
+            .entry(account.provider_id.clone())
+            .or_insert((0, 0));
         entry.0 += 1; // total accounts for provider
         if account.is_active {
             entry.1 += 1; // active accounts
@@ -83,8 +89,14 @@ pub async fn health_detail(
         version: env!("CARGO_PKG_VERSION").to_string(),
         providers: ProviderHealth {
             total: provider_map.len(),
-            enabled: provider_map.iter().filter(|(_, (_, active))| *active > 0).count(),
-            disabled: provider_map.iter().filter(|(_, (_, active))| *active == 0).count(),
+            enabled: provider_map
+                .iter()
+                .filter(|(_, (_, active))| *active > 0)
+                .count(),
+            disabled: provider_map
+                .iter()
+                .filter(|(_, (_, active))| *active == 0)
+                .count(),
         },
         accounts: AccountHealthSummary {
             total: accounts.len(),
@@ -100,7 +112,11 @@ pub async fn health_detail(
 pub async fn list_accounts(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<AccountInfo>>, StatusCode> {
-    let accounts = state.account_repo.find_all().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let accounts = state
+        .account_repo
+        .find_all()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let account_infos: Vec<AccountInfo> = accounts
         .into_iter()

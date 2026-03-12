@@ -7,7 +7,9 @@ use axum::{
 };
 use std::sync::Arc;
 
-use crate::interfaces::handlers::{chat_completions, health, health_detail, list_accounts, list_models};
+use crate::interfaces::handlers::{
+    chat_completions, health, health_detail, list_accounts, list_models,
+};
 use crate::presentation::AppState;
 
 pub fn routes() -> Router<Arc<AppState>> {

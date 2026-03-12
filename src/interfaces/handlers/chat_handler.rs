@@ -11,11 +11,11 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+use crate::domain::traits::AccountRepository;
 use crate::domain::{
     Account, ChatRequest, ChatResponse, Message, OpenAIChatRequest, OpenAIChatResponse,
     OpenAIChoice, OpenAIErrorResponse, OpenAIMessage, OpenAIUsage,
 };
-use crate::domain::traits::AccountRepository;
 use crate::infrastructure::{HttpClient, JsonAccountRepository};
 use crate::presentation::AppState;
 use crate::Result;
@@ -61,7 +61,10 @@ async fn process_chat_request(
         .map_err(|e| {
             OpenAIErrorResponse::new(
                 "provider_error",
-                format!("Failed to get accounts for provider '{}': {}", provider_id, e),
+                format!(
+                    "Failed to get accounts for provider '{}': {}",
+                    provider_id, e
+                ),
             )
         })?;
 
@@ -119,16 +122,13 @@ fn parse_model(model: &str) -> (String, String) {
 fn select_account(accounts: &[Account], _state: &AppState) -> Account {
     // Simple round-robin using atomic counter
     static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-    
+
     let index = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst) % accounts.len();
     accounts[index].clone()
 }
 
 /// Convert OpenAI request to internal ChatRequest format.
-fn convert_to_chat_request(
-    openai_request: &OpenAIChatRequest,
-    model_name: &str,
-) -> ChatRequest {
+fn convert_to_chat_request(openai_request: &OpenAIChatRequest, model_name: &str) -> ChatRequest {
     let messages: Vec<Message> = openai_request
         .messages
         .iter()
@@ -161,7 +161,7 @@ async fn make_provider_request(
         "openai" => "https://api.openai.com/v1",
         _ => &account.provider_id, // Use as-is if not recognized
     };
-    
+
     let url = format!("{}/chat/completions", base_url);
 
     // Build request body in OpenAI format (what providers expect)
@@ -207,10 +207,7 @@ async fn make_provider_request(
 }
 
 /// Convert internal ChatResponse to OpenAI format.
-fn convert_to_openai_response(
-    chat_response: ChatResponse,
-    model: &str,
-) -> OpenAIChatResponse {
+fn convert_to_openai_response(chat_response: ChatResponse, model: &str) -> OpenAIChatResponse {
     let choices: Vec<OpenAIChoice> = chat_response
         .choices
         .into_iter()
@@ -242,9 +239,7 @@ fn convert_to_openai_response(
 }
 
 /// Handler for GET /v1/models
-pub async fn list_models(
-    State(_state): State<Arc<AppState>>,
-) -> Json<OpenAIModelsResponse> {
+pub async fn list_models(State(_state): State<Arc<AppState>>) -> Json<OpenAIModelsResponse> {
     // TODO: Fetch actual models from providers
     Json(OpenAIModelsResponse {
         object: "list".to_string(),
