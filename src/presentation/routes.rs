@@ -7,19 +7,21 @@ use axum::{
 };
 use std::sync::Arc;
 
-use crate::interfaces::handlers::{chat_completions, list_models};
+use crate::interfaces::handlers::{chat_completions, health, health_detail, list_accounts, list_models};
 use crate::presentation::AppState;
 
 pub fn routes() -> Router<Arc<AppState>> {
     Router::new()
+        // Health checks
         .route("/health", get(health))
+        .route("/health/detail", get(health_detail))
+        // OpenAI-compatible API
         .route("/v1/chat/completions", post(chat_completions))
         .route("/v1/models", get(list_models))
+        // Account management
+        .route("/accounts", get(list_accounts))
+        // Metrics
         .route("/metrics", get(metrics))
-}
-
-async fn health() -> &'static str {
-    "OK"
 }
 
 async fn metrics(State(state): State<Arc<AppState>>) -> axum::response::Result<String> {
