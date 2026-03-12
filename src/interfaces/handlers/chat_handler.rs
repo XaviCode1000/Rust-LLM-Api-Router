@@ -138,6 +138,8 @@ fn convert_to_chat_request(
         })
         .collect();
 
+    // Use the full model string (provider:model) as the model for the provider
+    // The provider will understand its own model names
     ChatRequest::new(model_name, messages)
         .with_temperature(openai_request.temperature.unwrap_or(0.7))
         .with_max_tokens(openai_request.max_tokens.unwrap_or(1024))
@@ -150,15 +152,7 @@ async fn make_provider_request(
     account: &Account,
     chat_request: &ChatRequest,
 ) -> Result<ChatResponse, String> {
-    // We need to get the provider's base_url from the provider repository
-    // For now, construct URL from account info
-    // In a full implementation, we'd fetch the provider by provider_id
-    
     // Build provider URL - use base_url from provider info
-    // Since we don't have provider here, we'll use a convention:
-    // The account's provider_id should match a provider's base_url
-    // For now, assume standard OpenAI-compatible endpoints
-    
     let base_url = match account.provider_id.as_str() {
         "groq" => "https://api.groq.com/openai/v1",
         "openrouter" => "https://openrouter.ai/api/v1",
@@ -170,9 +164,17 @@ async fn make_provider_request(
     
     let url = format!("{}/chat/completions", base_url);
 
-    // Build request body
-    let body = serde_json::to_value(chat_request)
-        .map_err(|e| format!("Failed to serialize request: {}", e))?;
+    // Build request body in OpenAI format (what providers expect)
+    let body = serde_json::json!({
+        "model": chat_request.model,
+        "messages": chat_request.messages.iter().map(|m| serde_json::json!({
+            "role": m.role,
+            "content": m.content
+        })).collect::<Vec<_>>(),
+        "temperature": chat_request.temperature,
+        "max_tokens": chat_request.max_tokens,
+        "stream": chat_request.stream.unwrap_or(false)
+    });
 
     // Make HTTP POST request
     let response = http_client
