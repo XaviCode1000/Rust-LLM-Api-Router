@@ -1,0 +1,45 @@
+# Rust
+/target/
+**/target/
+Cargo.lock
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+*.so
+*.dll
+*.dylib
+*.exe
+
+# Coverage
+*.gcno
+*.gcda
+coverage/
+*.lcov
+
+# Benchmarks
+criterion/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
