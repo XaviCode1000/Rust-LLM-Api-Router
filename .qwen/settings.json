@@ -1,6 +1,5 @@
 {
   "$schema": "https://qwen-code.com/settings.json",
-
   "mcpServers": {
     "github": {
       "type": "remote",
@@ -17,7 +16,6 @@
       "enabled": true
     }
   },
-
   "tools": {
     "github_*": true,
     "context7_*": true,
@@ -34,14 +32,12 @@
     "run_shell_command": true,
     "lsp": true
   },
-
   "permission": {
     "external_directory": {
       "./src/**": "allow",
       "./tests/**": "allow"
     }
   },
-
   "instructions": [
     "This project uses Agent Teams Lite (SDD) workflow",
     "For Rust code, ALWAYS load rust-skills before writing/reviewing code",
@@ -53,16 +49,15 @@
     "For SDD workflow coordination, use @sdd-orchestrator or /sdd-* commands",
     "Use Engram for persistent memory across sessions"
   ],
-
   "model": {
     "maxSessionTurns": -1,
     "chatCompression": {
       "contextPercentageThreshold": 0.7
     }
   },
-
   "general": {
     "enableAutoUpdate": true,
     "gitCoAuthor": true
-  }
+  },
+  "$version": 3
 }

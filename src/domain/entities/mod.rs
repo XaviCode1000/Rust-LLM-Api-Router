@@ -5,6 +5,15 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod account_health;
+pub mod openai_types;
+
+pub use account_health::AccountHealth;
+pub use openai_types::{
+    OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice, OpenAIError, OpenAIErrorResponse,
+    OpenAIMessage, OpenAIUsage,
+};
+
 /// Chat request sent to an LLM provider.
 ///
 /// # Fields

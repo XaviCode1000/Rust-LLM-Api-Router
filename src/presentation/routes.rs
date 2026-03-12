@@ -3,69 +3,28 @@
 use axum::{
     extract::State,
     routing::{get, post},
-    Json, Router,
+    Router,
 };
-use serde::Deserialize;
+use std::sync::Arc;
 
-use crate::domain::entities::{Choice, Message, Usage};
+use crate::interfaces::handlers::{chat_completions, health, health_detail, list_accounts, list_models};
 use crate::presentation::AppState;
 
-pub fn routes() -> Router<AppState> {
+pub fn routes() -> Router<Arc<AppState>> {
     Router::new()
+        // Health checks
         .route("/health", get(health))
+        .route("/health/detail", get(health_detail))
+        // OpenAI-compatible API
         .route("/v1/chat/completions", post(chat_completions))
         .route("/v1/models", get(list_models))
+        // Account management
+        .route("/accounts", get(list_accounts))
+        // Metrics
         .route("/metrics", get(metrics))
 }
 
-async fn health() -> &'static str {
-    "OK"
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ChatRequest {
-    pub model: String,
-    pub messages: Vec<Message>,
-    pub temperature: Option<f32>,
-    pub max_tokens: Option<u32>,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct ChatResponse {
-    pub id: String,
-    pub model: String,
-    pub choices: Vec<Choice>,
-    pub usage: Usage,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct ModelsResponse {
-    pub data: Vec<Model>,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct Model {
-    pub id: String,
-    pub object: String,
-    pub created: u64,
-    pub owned_by: String,
-}
-
-async fn chat_completions(
-    State(_state): State<AppState>,
-    Json(_request): Json<ChatRequest>,
-) -> axum::response::Result<Json<ChatResponse>> {
-    // Route to appropriate LLM provider
-    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Not implemented").into())
-}
-
-async fn list_models(
-    State(_state): State<AppState>,
-) -> axum::response::Result<Json<ModelsResponse>> {
-    Ok(Json(ModelsResponse { data: vec![] }))
-}
-
-async fn metrics(State(state): State<AppState>) -> axum::response::Result<String> {
+async fn metrics(State(state): State<Arc<AppState>>) -> axum::response::Result<String> {
     use prometheus::Encoder;
 
     let encoder = prometheus::TextEncoder::new();

@@ -1,4 +1,7 @@
 //! Error handling with thiserror and anyhow
+//!
+//! This module provides the application-level error type using `thiserror`.
+//! Domain errors are automatically converted to application errors.
 
 use thiserror::Error;
 
@@ -32,6 +35,9 @@ pub enum Error {
 
     #[error("Anyhow error: {0}")]
     Anyhow(#[from] anyhow::Error),
+
+    #[error("Domain error: {0}")]
+    Domain(#[from] crate::domain::errors::DomainError),
 }
 
 impl From<envy::Error> for Error {

@@ -9,14 +9,13 @@ pub mod traits;
 
 // Re-export entities and errors explicitly to avoid ambiguity
 pub use entities::{
-    Account, ChatRequest, ChatResponse, Choice, Message, Model, Provider, Usage,
-    LlmRequest, LlmResponse,
+    Account, AccountHealth, ChatRequest, ChatResponse, Choice, LlmRequest, LlmResponse, Message,
+    Model, OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice, OpenAIError, OpenAIErrorResponse,
+    OpenAIMessage, OpenAIUsage, Provider, Usage,
 };
 
 // Re-export errors explicitly
 pub use errors::{DomainError, DomainResult};
 
 // Re-export traits but exclude DomainResult to avoid ambiguity
-pub use traits::{
-    LlmGateway, LlmProvider, ProviderRepository, AccountRepository,
-};
+pub use traits::{AccountRepository, LlmGateway, LlmProvider, ProviderRepository};

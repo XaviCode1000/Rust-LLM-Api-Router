@@ -6,7 +6,9 @@
 
 use async_trait::async_trait;
 
-use super::{ChatRequest, ChatResponse, DomainError, Model, Provider, Account, LlmRequest, LlmResponse};
+use super::{
+    Account, ChatRequest, ChatResponse, DomainError, LlmRequest, LlmResponse, Model, Provider,
+};
 use crate::error::Result;
 
 /// Result type alias for domain operations.
