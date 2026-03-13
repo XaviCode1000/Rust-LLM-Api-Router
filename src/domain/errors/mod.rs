@@ -76,6 +76,14 @@ pub enum DomainError {
     #[error("serialization error: {0}")]
     Serialization(String),
 
+    /// External service error (provider API failure)
+    #[error("external service error: {0}")]
+    ExternalServiceError(String),
+
+    /// Feature not implemented
+    #[error("not implemented: {0}")]
+    NotImplemented(String),
+
     /// Internal domain error
     #[error("internal error: {0}")]
     Internal(String),
@@ -145,6 +153,16 @@ impl DomainError {
     /// Creates a `Serialization` error.
     pub fn serialization(msg: impl Into<String>) -> Self {
         Self::Serialization(msg.into())
+    }
+
+    /// Creates an `ExternalServiceError` error.
+    pub fn external_service_error(msg: impl Into<String>) -> Self {
+        Self::ExternalServiceError(msg.into())
+    }
+
+    /// Creates a `NotImplemented` error.
+    pub fn not_implemented(msg: impl Into<String>) -> Self {
+        Self::NotImplemented(msg.into())
     }
 
     /// Creates an `Internal` error.
