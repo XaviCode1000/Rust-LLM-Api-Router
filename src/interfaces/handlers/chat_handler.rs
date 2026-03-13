@@ -11,7 +11,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::domain::traits::AccountRepository;
+use crate::domain::traits::LlmGateway;
 use crate::domain::{
     Account, ChatRequest, ChatResponse, Message, OpenAIChatRequest, OpenAIChatResponse,
     OpenAIChoice, OpenAIErrorResponse, OpenAIMessage, OpenAIUsage,
@@ -239,12 +239,63 @@ fn convert_to_openai_response(chat_response: ChatResponse, model: &str) -> OpenA
 }
 
 /// Handler for GET /v1/models
-pub async fn list_models(State(_state): State<Arc<AppState>>) -> Json<OpenAIModelsResponse> {
-    // TODO: Fetch actual models from providers
-    Json(OpenAIModelsResponse {
-        object: "list".to_string(),
-        data: vec![],
-    })
+pub async fn list_models(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<OpenAIModelsResponse>, (StatusCode, Json<OpenAIErrorResponse>)> {
+    // Use the first available API key from active accounts
+    let api_key = match get_api_key_for_models(&state).await {
+        Some(key) => key,
+        None => {
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(OpenAIErrorResponse::new(
+                    "no_api_key",
+                    "No API keys configured for any provider".to_string(),
+                )),
+            ));
+        }
+    };
+
+    match state.llm_gateway.list_models(&api_key).await {
+        Ok(models) => {
+            let now = chrono::Utc::now().timestamp() as u64;
+            let data: Vec<OpenAIModelInfo> = models
+                .into_iter()
+                .map(|m| OpenAIModelInfo {
+                    id: format!("{}:{}", m.provider_id, m.id),
+                    object: "model".to_string(),
+                    created: now,
+                    owned_by: m.provider_id,
+                })
+                .collect();
+
+            Ok(Json(OpenAIModelsResponse {
+                object: "list".to_string(),
+                data,
+            }))
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch models: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(OpenAIErrorResponse::new(
+                    "models_error",
+                    format!("Failed to fetch models: {}", e),
+                )),
+            ))
+        }
+    }
+}
+
+/// Helper to get an API key from the first active account
+async fn get_api_key_for_models(state: &AppState) -> Option<String> {
+    match state.account_repo.find_active().await {
+        Ok(accounts) => accounts.into_iter().next().map(|a| a.api_key),
+        Err(e) => {
+            tracing::warn!("Failed to fetch accounts for models endpoint: {}", e);
+            None
+        }
+    }
 }
 
 /// Response for /v1/models endpoint.

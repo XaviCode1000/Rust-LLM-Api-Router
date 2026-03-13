@@ -7,7 +7,6 @@ use serde::Serialize;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::domain::traits::AccountRepository;
 use crate::presentation::AppState;
 
 /// Health check response.

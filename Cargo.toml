@@ -19,11 +19,15 @@ reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 # Async
 tokio = { version = "1", features = ["full"] }
 async-trait = "0.1"
+futures = "0.3"
 
 # Config & Secrets
 config = "0.14"
 envy = "0.4"
 secrecy = "0.8"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
 
 # Error Handling
 thiserror = "1.0"
