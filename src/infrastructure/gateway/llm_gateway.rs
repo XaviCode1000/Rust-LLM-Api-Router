@@ -11,9 +11,15 @@ use tokio::sync::RwLock;
 
 use crate::domain::entities::{ChatRequest, ChatResponse, Model};
 use crate::domain::errors::DomainError;
-use crate::domain::traits::{AccountRepository, LlmGateway};
 use crate::domain::errors::DomainResult;
+use crate::domain::traits::{AccountRepository, LlmGateway};
 use crate::infrastructure::http_client::SharedHttpClient;
+
+/// Type alias for cache entry data (models + timestamp)
+type CacheEntry = (Vec<Model>, chrono::DateTime<chrono::Utc>);
+
+/// Type alias for the models cache with TTL
+type ModelsCache = RwLock<HashMap<String, CacheEntry>>;
 
 /// Configuration for a single provider
 #[derive(Debug, Clone)]
@@ -41,22 +47,12 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
 
     providers.insert(
         "openai".to_string(),
-        ProviderConfig::new(
-            "openai",
-            "OpenAI",
-            "https://api.openai.com/v1",
-            "/models",
-        ),
+        ProviderConfig::new("openai", "OpenAI", "https://api.openai.com/v1", "/models"),
     );
 
     providers.insert(
         "groq".to_string(),
-        ProviderConfig::new(
-            "groq",
-            "Groq",
-            "https://api.groq.com/openai/v1",
-            "/models",
-        ),
+        ProviderConfig::new("groq", "Groq", "https://api.groq.com/openai/v1", "/models"),
     );
 
     providers.insert(
@@ -108,7 +104,7 @@ pub struct LlmGatewayImpl {
     account_repo: Arc<dyn AccountRepository>,
     providers: HashMap<String, ProviderConfig>,
     /// Cache for models with TTL
-    models_cache: RwLock<HashMap<String, (Vec<Model>, chrono::DateTime<chrono::Utc>)>>,
+    models_cache: ModelsCache,
     cache_ttl_seconds: u64,
 }
 
@@ -139,16 +135,19 @@ impl LlmGatewayImpl {
 
         let url = format!("{}{}", config.base_url, config.models_endpoint);
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .client()
             .get(&url)
             .header("Authorization", format!("Bearer {}", api_key))
             .send()
             .await
-            .map_err(|e| DomainError::ExternalServiceError(format!(
-                "Failed to fetch models from {}: {}",
-                provider_id, e
-            )))?;
+            .map_err(|e| {
+                DomainError::ExternalServiceError(format!(
+                    "Failed to fetch models from {}: {}",
+                    provider_id, e
+                ))
+            })?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -173,22 +172,23 @@ impl LlmGatewayImpl {
         provider_id: &str,
         response: reqwest::Response,
     ) -> DomainResult<Vec<Model>> {
-        let json: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| DomainError::Serialization(format!(
+        let json: serde_json::Value = response.json().await.map_err(|e| {
+            DomainError::Serialization(format!(
                 "Failed to parse models response from {}: {}",
                 provider_id, e
-            )))?;
+            ))
+        })?;
 
         // Most providers use OpenAI-compatible format: {"data": [{"id": "...", ...}]}
         let data_array = json
             .get("data")
             .and_then(|d: &serde_json::Value| d.as_array())
-            .ok_or_else(|| DomainError::Serialization(format!(
-                "Invalid models response format from {}",
-                provider_id
-            )))?;
+            .ok_or_else(|| {
+                DomainError::Serialization(format!(
+                    "Invalid models response format from {}",
+                    provider_id
+                ))
+            })?;
 
         let mut models = Vec::new();
         for item in data_array {
@@ -207,10 +207,7 @@ impl LlmGatewayImpl {
     }
 
     /// Check if cache is valid
-    fn is_cache_valid(
-        cached_at: &chrono::DateTime<chrono::Utc>,
-        ttl_seconds: u64,
-    ) -> bool {
+    fn is_cache_valid(cached_at: &chrono::DateTime<chrono::Utc>, ttl_seconds: u64) -> bool {
         let now = chrono::Utc::now();
         let elapsed = now.signed_duration_since(*cached_at).num_seconds() as u64;
         elapsed < ttl_seconds
@@ -223,7 +220,7 @@ impl LlmGateway for LlmGatewayImpl {
         // Delegated to specific provider implementations
         // This is handled by the service layer
         Err(DomainError::NotImplemented(
-            "Direct chat via gateway not implemented, use LlmService".to_string()
+            "Direct chat via gateway not implemented, use LlmService".to_string(),
         ))
     }
 
@@ -239,7 +236,8 @@ impl LlmGateway for LlmGatewayImpl {
         }
 
         // Get all enabled providers
-        let enabled_providers = self.account_repo
+        let enabled_providers = self
+            .account_repo
             .find_all()
             .await?
             .into_iter()

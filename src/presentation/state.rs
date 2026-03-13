@@ -22,7 +22,7 @@ impl AppState {
         let account_repo: Arc<dyn AccountRepository> = Arc::new(
             JsonAccountRepository::new().map_err(|e| crate::Error::Internal(e.to_string()))?,
         );
-        
+
         // Create LLM Gateway with 1 hour cache TTL
         let llm_gateway = Arc::new(LlmGatewayImpl::new(
             http_client.clone(),

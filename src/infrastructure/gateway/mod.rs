@@ -2,4 +2,4 @@
 
 pub mod llm_gateway;
 
-pub use llm_gateway::{LlmGatewayImpl, ProviderConfig, default_providers};
+pub use llm_gateway::{default_providers, LlmGatewayImpl, ProviderConfig};
