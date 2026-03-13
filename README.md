@@ -7,6 +7,7 @@ Proxy/router de API LLM con arquitectura limpia en Rust. Permite usar múltiples
 - ✅ **Multi-proveedor**: Soporta 12+ proveedores LLM gratuitos
 - ✅ **Multi-cuenta**: Múltiples API keys por proveedor con rotación automática
 - ✅ **Failover automático**: Circuit breaker y reintentos inteligentes
+- ✅ **Streaming SSE**: Respuestas en tiempo real token a token
 - ✅ **API OpenAI-compatible**: Usa clientes OpenAI sin cambios
 - ✅ **Health checks**: Monitoreo completo del sistema
 - ✅ **CLI integrada**: Gestión de proveedores y cuentas desde terminal
@@ -65,6 +66,21 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 ```
 
 > **Nota**: Los modelos deben especificarse con el prefijo del proveedor (ej: `groq:model-name`, `openai:gpt-3.5-turbo`)
+
+### Streaming (SSE)
+
+```bash
+# Streaming con respuesta en tiempo real (token a token)
+curl -N -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-test-api-key>" \
+  -d '{
+    "model": "groq:llama-3.3-70b-versatile",
+    "messages": [{"role": "user", "content": "Hola!"}],
+    "stream": true,
+    "max_tokens": 50
+  }'
+```
 
 ## API Reference
 
