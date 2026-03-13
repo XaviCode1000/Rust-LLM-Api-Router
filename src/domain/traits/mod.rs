@@ -21,6 +21,14 @@ pub type DomainResult<T> = Result<T, DomainError>;
 pub trait LlmProvider: Send + Sync {
     /// Sends a chat request to the LLM provider.
     async fn chat(&self, request: LlmRequest) -> Result<LlmResponse>;
+    /// Lists available models from the provider.
+    ///
+    /// # Arguments
+    /// * `api_key` - The API key for authentication
+    ///
+    /// # Returns
+    /// A list of available models
+    async fn list_models(&self, api_key: &str) -> Result<Vec<Model>>;
     /// Returns the provider name.
     fn name(&self) -> &str;
 }

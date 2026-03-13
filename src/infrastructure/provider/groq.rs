@@ -1,4 +1,4 @@
-//! Anthropic provider implementation
+//! Groq provider implementation
 
 use async_trait::async_trait;
 
@@ -8,7 +8,7 @@ use crate::domain::Model;
 use crate::error::{Error, Result};
 use crate::infrastructure::http_client::SharedHttpClient;
 
-pub struct AnthropicProvider {
+pub struct GroqProvider {
     #[allow(dead_code)]
     name: String,
     #[allow(dead_code)]
@@ -19,10 +19,10 @@ pub struct AnthropicProvider {
     http_client: SharedHttpClient,
 }
 
-impl AnthropicProvider {
+impl GroqProvider {
     pub fn new(api_url: String, api_key: String, http_client: SharedHttpClient) -> Self {
         Self {
-            name: "anthropic".to_string(),
+            name: "groq".to_string(),
             api_url,
             api_key,
             http_client,
@@ -31,10 +31,10 @@ impl AnthropicProvider {
 }
 
 #[async_trait]
-impl LlmProvider for AnthropicProvider {
+impl LlmProvider for GroqProvider {
     async fn chat(&self, _request: LlmRequest) -> Result<LlmResponse> {
         // Implementation would go here
-        todo!("Implement Anthropic chat completion")
+        todo!("Implement Groq chat completion")
     }
 
     async fn list_models(&self, api_key: &str) -> Result<Vec<Model>> {
@@ -44,12 +44,11 @@ impl LlmProvider for AnthropicProvider {
             .http_client
             .client()
             .get(&url)
-            .header("x-api-key", api_key)
-            .header("anthropic-version", "2023-06-01")
+            .header("Authorization", format!("Bearer {}", api_key))
             .send()
             .await
             .map_err(|e| {
-                Error::Internal(format!("Failed to fetch models from Anthropic: {}", e))
+                Error::Internal(format!("Failed to fetch models from Groq: {}", e))
             })?;
 
         if !response.status().is_success() {
@@ -59,26 +58,26 @@ impl LlmProvider for AnthropicProvider {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(Error::Internal(format!(
-                "Anthropic returned {}: {}",
+                "Groq returned {}: {}",
                 status, error_text
             )));
         }
 
-        // Parse response - Anthropic format: {"data": [{"id": "...", "type": "model", ...}]}
+        // Parse response - Groq uses OpenAI-compatible format: {"data": [{"id": "...", "object": "model", ...}]}
         let json: serde_json::Value = response.json().await.map_err(|e| {
-            Error::Internal(format!("Failed to parse Anthropic models response: {}", e))
+            Error::Internal(format!("Failed to parse Groq models response: {}", e))
         })?;
 
         let mut models = Vec::new();
         let data_array = json
             .get("data")
             .and_then(|d: &serde_json::Value| d.as_array())
-            .ok_or_else(|| Error::Internal("Invalid Anthropic models response format".to_string()))?;
+            .ok_or_else(|| Error::Internal("Invalid Groq models response format".to_string()))?;
 
         for item in data_array {
             if let Some(id) = item.get("id").and_then(|v: &serde_json::Value| v.as_str()) {
                 let name = item
-                    .get("display_name")
+                    .get("owned_by")
                     .or_else(|| item.get("id"))
                     .and_then(|v: &serde_json::Value| v.as_str())
                     .unwrap_or(id);

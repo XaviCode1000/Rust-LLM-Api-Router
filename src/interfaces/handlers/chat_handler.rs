@@ -4,12 +4,17 @@
 
 use axum::{
     extract::State,
-    http::StatusCode,
-    response::{IntoResponse, Response},
+    http::{header, HeaderValue, StatusCode},
+    response::{sse::{Event, Sse}, IntoResponse, Response},
     Json,
 };
+use bytes::Bytes;
+use futures::Stream;
+use futures::TryStreamExt;
+use std::convert::Infallible;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tokio_stream::StreamExt as TokioStreamExt;
 
 use crate::domain::traits::LlmGateway;
 use crate::domain::{
@@ -27,15 +32,7 @@ pub async fn chat_completions(
 ) -> Response {
     // Handle streaming vs non-streaming
     if request.stream.unwrap_or(false) {
-        // TODO: Implement streaming
-        return (
-            StatusCode::NOT_IMPLEMENTED,
-            Json(OpenAIErrorResponse::new(
-                "not_implemented",
-                "Streaming not yet implemented",
-            )),
-        )
-            .into_response();
+        return stream_chat_request(State(state), request).await.into_response();
     }
 
     // Process non-streaming request
@@ -43,6 +40,82 @@ pub async fn chat_completions(
         Ok(response) => Json(response).into_response(),
         Err(e) => e.into_response(),
     }
+}
+
+/// Handler for streaming POST /v1/chat/completions requests
+async fn stream_chat_request(
+    State(state): State<Arc<AppState>>,
+    request: OpenAIChatRequest,
+) -> Response {
+    // Extract model name (format: "provider:model" or just "model")
+    let (provider_id, model_name) = parse_model(&request.model);
+
+    // Get active accounts for the provider
+    let accounts = match state
+        .account_repo
+        .find_active_by_provider(&provider_id)
+        .await
+    {
+        Ok(accounts) => accounts,
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "provider_error",
+                format!("Failed to get accounts for provider '{}': {}", provider_id, e),
+            );
+        }
+    };
+
+    if accounts.is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "no_accounts",
+            format!("No active accounts found for provider '{}'", provider_id),
+        );
+    }
+
+    // Select account using round-robin
+    let account = select_account(&accounts, &state);
+
+    // Convert OpenAI request to internal ChatRequest
+    let chat_request = convert_to_chat_request(&request, &model_name);
+
+    // Make streaming request to provider
+    match make_streaming_provider_request(&state.http_client, &account, &chat_request).await {
+        Ok(stream) => {
+            // Convert the provider stream to SSE events
+            let sse_stream = stream_to_sse_events(stream);
+            
+            // Return SSE response with proper headers
+            let mut response = Sse::new(sse_stream).into_response();
+            
+            // Set SSE-appropriate headers
+            response.headers_mut().insert(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("text/event-stream"),
+            );
+            response.headers_mut().insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("no-cache"),
+            );
+            response.headers_mut().insert(
+                header::CONNECTION,
+                HeaderValue::from_static("keep-alive"),
+            );
+            
+            response
+        }
+        Err(e) => error_response(
+            StatusCode::BAD_GATEWAY,
+            "provider_error",
+            format!("Streaming request to provider failed: {}", e),
+        ),
+    }
+}
+
+/// Helper to create error response
+fn error_response(status: StatusCode, error_type: &str, message: String) -> Response {
+    (status, Json(OpenAIErrorResponse::new(error_type, &message))).into_response()
 }
 
 /// Process a chat completion request.
@@ -204,6 +277,98 @@ async fn make_provider_request(
         .map_err(|e| format!("Failed to parse response: {}", e))?;
 
     Ok(chat_response)
+}
+
+/// Make HTTP streaming request to the provider.
+async fn make_streaming_provider_request(
+    http_client: &HttpClient,
+    account: &Account,
+    chat_request: &ChatRequest,
+) -> Result<impl Stream<Item = Result<Bytes, String>>, String> {
+    // Build provider URL - use base_url from provider info
+    let base_url = match account.provider_id.as_str() {
+        "groq" => "https://api.groq.com/openai/v1",
+        "openrouter" => "https://openrouter.ai/api/v1",
+        "mistral" => "https://api.mistral.ai/v1",
+        "cerebras" => "https://api.cerebras.ai/v1",
+        "openai" => "https://api.openai.com/v1",
+        _ => &account.provider_id, // Use as-is if not recognized
+    };
+
+    let url = format!("{}/chat/completions", base_url);
+
+    // Build request body in OpenAI format (what providers expect)
+    let body = serde_json::json!({
+        "model": chat_request.model,
+        "messages": chat_request.messages.iter().map(|m| serde_json::json!({
+            "role": m.role,
+            "content": m.content
+        })).collect::<Vec<_>>(),
+        "temperature": chat_request.temperature,
+        "max_tokens": chat_request.max_tokens,
+        "stream": true
+    });
+
+    // Make HTTP POST request with streaming
+    let response = http_client
+        .client()
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", account.api_key))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("HTTP request failed: {}", e))?;
+
+    // Check for error status
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        return Err(format!("Provider returned {}: {}", status, error_text));
+    }
+
+    // Get the streaming body and convert error type from reqwest::Error to String
+    let bytes_stream = response.bytes_stream().map_err(|e| format!("Stream error: {}", e));
+
+    Ok(bytes_stream)
+}
+
+/// Convert provider byte stream to SSE events.
+/// This is a passthrough implementation - we pass through the raw SSE data 
+/// from the provider directly to the client with minimal parsing.
+fn stream_to_sse_events(
+    stream: impl Stream<Item = Result<Bytes, String>>,
+) -> impl Stream<Item = Result<Event, Infallible>> {
+    // Transform each chunk into an SSE event with the raw data
+    stream.map(|result| {
+        match result {
+            Ok(bytes) => {
+                // Convert bytes to string, passing through raw SSE data
+                match String::from_utf8(bytes.to_vec()) {
+                    Ok(data) => {
+                        // Skip empty chunks
+                        if data.trim().is_empty() {
+                            Ok(Event::default().data(""))
+                        } else {
+                            Ok(Event::default().data(data))
+                        }
+                    }
+                    Err(_) => {
+                        // Binary data or invalid UTF-8 - convert to hex representation
+                        let hex = bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+                        Ok(Event::default().data(format!("[binary: {}]", hex)))
+                    }
+                }
+            }
+            Err(e) => {
+                // On error, send an error message as SSE data
+                Ok(Event::default().data(format!("[error: {}]", e)))
+            }
+        }
+    })
 }
 
 /// Convert internal ChatResponse to OpenAI format.

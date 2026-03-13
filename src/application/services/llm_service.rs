@@ -2,7 +2,9 @@ use crate::domain::entities::{
     ChatRequest, ChatResponse, Model, Provider,
 };
 use crate::infrastructure::errors::AppError;
+use crate::infrastructure::gateway::LlmGatewayImpl;
 use std::pin::Pin;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::stream::Stream;
 
@@ -32,8 +34,16 @@ pub trait LlmService: Send + Sync {
     async fn create_provider(&self, provider: Provider) -> Result<Provider, AppError>;
 }
 
-/// Concrete implementation of LlmService (stub for now)
-pub struct LlmServiceImpl;
+/// Concrete implementation of LlmService
+pub struct LlmServiceImpl {
+    llm_gateway: Arc<LlmGatewayImpl>,
+}
+
+impl LlmServiceImpl {
+    pub fn new(llm_gateway: Arc<LlmGatewayImpl>) -> Self {
+        Self { llm_gateway }
+    }
+}
 
 #[async_trait::async_trait]
 impl LlmService for LlmServiceImpl {
@@ -70,7 +80,10 @@ impl LlmService for LlmServiceImpl {
     }
 
     async fn list_models(&self) -> Result<Vec<Model>, AppError> {
-        // Stub implementation - returns empty list
+        // Get API key from first active account (this is a simplified approach)
+        // In a real implementation, we would need to get this from the account repository
+        // For now, we'll return an empty list since we don't have access to the account repo here
+        // A better approach would be to inject the account repository as well
         Ok(vec![])
     }
 
