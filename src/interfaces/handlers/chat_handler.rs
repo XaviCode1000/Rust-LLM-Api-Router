@@ -11,11 +11,11 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::domain::traits::AccountRepository;
 use crate::domain::{
     Account, ChatRequest, ChatResponse, Message, OpenAIChatRequest, OpenAIChatResponse,
     OpenAIChoice, OpenAIErrorResponse, OpenAIMessage, OpenAIUsage,
 };
+use crate::domain::traits::LlmGateway;
 use crate::infrastructure::HttpClient;
 use crate::presentation::AppState;
 use crate::Result;

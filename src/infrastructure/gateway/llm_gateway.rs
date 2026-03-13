@@ -12,7 +12,7 @@ use tokio::sync::RwLock;
 use crate::domain::entities::{ChatRequest, ChatResponse, Model};
 use crate::domain::errors::DomainError;
 use crate::domain::traits::{AccountRepository, LlmGateway};
-use crate::error::Result as DomainResult;
+use crate::domain::errors::DomainResult;
 use crate::infrastructure::http_client::SharedHttpClient;
 
 /// Configuration for a single provider
@@ -38,7 +38,7 @@ impl ProviderConfig {
 /// Default provider configurations
 pub fn default_providers() -> HashMap<String, ProviderConfig> {
     let mut providers = HashMap::new();
-    
+
     providers.insert(
         "openai".to_string(),
         ProviderConfig::new(
@@ -48,7 +48,7 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
             "/models",
         ),
     );
-    
+
     providers.insert(
         "groq".to_string(),
         ProviderConfig::new(
@@ -58,7 +58,7 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
             "/models",
         ),
     );
-    
+
     providers.insert(
         "openrouter".to_string(),
         ProviderConfig::new(
@@ -68,7 +68,7 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
             "/models",
         ),
     );
-    
+
     providers.insert(
         "mistral".to_string(),
         ProviderConfig::new(
@@ -78,7 +78,7 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
             "/models",
         ),
     );
-    
+
     providers.insert(
         "cerebras".to_string(),
         ProviderConfig::new(
@@ -88,7 +88,7 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
             "/models",
         ),
     );
-    
+
     providers.insert(
         "anthropic".to_string(),
         ProviderConfig::new(
@@ -98,7 +98,7 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
             "/models",
         ),
     );
-    
+
     providers
 }
 
@@ -176,7 +176,7 @@ impl LlmGatewayImpl {
         let json: serde_json::Value = response
             .json()
             .await
-            .map_err(|e| DomainError::SerializationError(format!(
+            .map_err(|e| DomainError::Serialization(format!(
                 "Failed to parse models response from {}: {}",
                 provider_id, e
             )))?;
@@ -184,21 +184,21 @@ impl LlmGatewayImpl {
         // Most providers use OpenAI-compatible format: {"data": [{"id": "...", ...}]}
         let data_array = json
             .get("data")
-            .and_then(|d| d.as_array())
-            .ok_or_else(|| DomainError::SerializationError(format!(
+            .and_then(|d: &serde_json::Value| d.as_array())
+            .ok_or_else(|| DomainError::Serialization(format!(
                 "Invalid models response format from {}",
                 provider_id
             )))?;
 
         let mut models = Vec::new();
         for item in data_array {
-            if let Some(id) = item.get("id").and_then(|v| v.as_str()) {
+            if let Some(id) = item.get("id").and_then(|v: &serde_json::Value| v.as_str()) {
                 let name = item
                     .get("name")
                     .or_else(|| item.get("owned_by"))
-                    .and_then(|v| v.as_str())
+                    .and_then(|v: &serde_json::Value| v.as_str())
                     .unwrap_or(id);
-                
+
                 models.push(Model::new(id, name, provider_id));
             }
         }
@@ -232,7 +232,7 @@ impl LlmGateway for LlmGatewayImpl {
         {
             let cache = self.models_cache.read().await;
             if let Some((models, cached_at)) = cache.get("all") {
-                if Self::is_cache_valid(&cached_at, self.cache_ttl_seconds) {
+                if Self::is_cache_valid(cached_at, self.cache_ttl_seconds) {
                     return Ok(models.clone());
                 }
             }
