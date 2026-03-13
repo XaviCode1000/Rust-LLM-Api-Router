@@ -1,390 +1,191 @@
 # CLI Reference
 
-Referencia completa de la interfaz de línea de comandos.
-
-## Uso General
+## Global Options
 
 ```bash
 llm-router [OPTIONS] [COMMAND]
+
+Options:
+      --host <HOST>            Host to bind to (server mode) [default: 0.0.0.0]
+  -p, --port <PORT>            Port to bind to (server mode) [default: 8080]
+      --log-level <LOG_LEVEL>  Log level (trace, debug, info, warn, error) [default: info]
+  -h, --help                   Print help
 ```
 
-### Opciones Globales
+## Provider Management
 
-| Opción | Descripción | Default |
-|--------|-------------|---------|
-| `--host <HOST>` | Host para el servidor | `0.0.0.0` |
-| `--port <PORT>` | Puerto para el servidor | `8080` |
-| `--log-level <LEVEL>` | Nivel de log (trace, debug, info, warn, error) | `info` |
-| `-h, --help` | Mostrar ayuda | - |
-
-## Comandos de Proveedores
-
-Gestión de proveedores LLM.
-
-### `llm-router provider add`
-
-Agregar un nuevo proveedor.
+### Add Provider
 
 ```bash
-llm-router provider add \
-  --id <ID> \
-  --name <NOMBRE> \
-  --base-url <URL> \
-  [--api-key <KEY>] \
-  [--disabled] \
-  [--interactive]
+llm-router provider add --id <id> --name <name> --base-url <url> [--disabled]
 ```
 
-**Opciones:**
-
-| Opción | Descripción | Requerido |
-|--------|-------------|-----------|
-| `--id` | Identificador único del proveedor | Sí |
-| `--name` | Nombre legible del proveedor | Sí |
-| `--base-url` | URL base de la API | Sí |
-| `--api-key` | API key (o usar --interactive) | No |
-| `--disabled` | Iniciar deshabilitado | No |
-| `--interactive` | Pedir API key interactivamente | No |
-
-**Ejemplos:**
-
+**Example:**
 ```bash
-# Agregar Groq
-llm-router provider add \
-  --id groq \
-  --name "Groq" \
-  --base-url "https://api.groq.com/openai/v1"
-
-# Agregar con API key
-llm-router provider add \
-  --id openrouter \
-  --name "OpenRouter" \
-  --base-url "https://openrouter.ai/api/v1" \
-  --api-key "sk-or-v1-xxx"
-
-# Agregar interactivo (pide API key)
-llm-router provider add \
-  --id mistral \
-  --name "Mistral AI" \
-  --base-url "https://api.mistral.ai/v1" \
-  --interactive
+llm-router provider add --id groq --name "Groq" --base-url "https://api.groq.com/openai/v1"
+llm-router provider add --id openai --name "OpenAI" --base-url "https://api.openai.com/v1"
 ```
 
----
-
-### `llm-router provider list`
-
-Listar todos los proveedores registrados.
+### List Providers
 
 ```bash
 llm-router provider list
 ```
 
-**Salida:**
-
+**Sample Output:**
 ```
 ID                   Name                           Base URL                                 Status
 ----------------------------------------------------------------------------------------------------
+test-provider        Test Provider                  https://api.test.com/v1                  ✓ Enabled
 groq                 Groq                           https://api.groq.com/openai/v1           ✓ Enabled
 openrouter           OpenRouter                     https://openrouter.ai/api/v1             ✓ Enabled
-mistral              Mistral AI                     https://api.mistral.ai/v1                ✗ Disabled
+mistral              Mistral AI                     https://api.mistral.ai/v1                ✓ Enabled
+cerebras             Cerebras                       https://api.cerebras.ai/v1               ✗ Disabled
+cloudflare           Cloudflare Workers AI          https://api.cloudflare.com/client/v4/accounts ✗ Disabled
+openai               OpenAI                         https://api.openai.com/v1                ✓ Enabled
 ```
 
----
-
-### `llm-router provider enable`
-
-Habilitar un proveedor.
+### Enable/Disable Provider
 
 ```bash
-llm-router provider enable --id <ID>
+llm-router provider enable --id <id>
+llm-router provider disable --id <id>
 ```
 
-**Ejemplo:**
+### Remove Provider
 
 ```bash
-llm-router provider enable --id mistral
+llm-router provider remove --id <id>
 ```
 
----
-
-### `llm-router provider disable`
-
-Deshabilitar un proveedor.
+### Validate Provider
 
 ```bash
-llm-router provider disable --id <ID>
+llm-router provider validate --id <id>
 ```
 
-**Ejemplo:**
+## Account Management
+
+### Add Account
 
 ```bash
-llm-router provider disable --id mistral
+llm-router account add --id <id> --provider <provider_id> --api-key <key> [--priority <n>] [--interactive]
 ```
 
----
-
-### `llm-router provider remove`
-
-Eliminar un proveedor.
-
+**Examples:**
 ```bash
-llm-router provider remove --id <ID>
+# Interactive mode (recommended for security)
+llm-router account add --id groq-account-1 --provider groq --interactive
+
+# Direct API key (use with caution)
+llm-router account add --id openai-account-1 --provider openai --api-key "<your-api-key>"
+
+# With custom priority (lower = higher priority)
+llm-router account add --id groq-account-2 --provider groq --api-key "key" --priority 1
 ```
 
-**Ejemplo:**
-
-```bash
-llm-router provider remove --id mistral
-```
-
----
-
-### `llm-router provider validate`
-
-Validar credenciales de un proveedor.
-
-```bash
-llm-router provider validate --id <ID>
-```
-
-**Ejemplo:**
-
-```bash
-llm-router provider validate --id groq
-```
-
----
-
-## Comandos de Cuentas
-
-Gestión de cuentas (API keys) por proveedor.
-
-### `llm-router account add`
-
-Agregar una nueva cuenta.
-
-```bash
-llm-router account add \
-  --id <ID> \
-  --provider <PROVIDER_ID> \
-  --api-key <KEY> \
-  [--priority <N>] \
-  [--inactive] \
-  [--interactive]
-```
-
-**Opciones:**
-
-| Opción | Descripción | Default |
-|--------|-------------|---------|
-| `--id` | Identificador único de la cuenta | - |
-| `--provider` | ID del proveedor | - |
-| `--api-key` | API key (o usar --interactive) | - |
-| `--priority` | Prioridad (menor = mayor prioridad) | `0` |
-| `--inactive` | Iniciar inactiva | - |
-| `--interactive` | Pedir API key interactivamente | - |
-
-**Ejemplos:**
-
-```bash
-# Agregar cuenta con API key
-llm-router account add \
-  --id groq-1 \
-  --provider groq \
-  --api-key "gsk_xxx" \
-  --priority 0
-
-# Agregar interactivo
-llm-router account add \
-  --id groq-2 \
-  --provider groq \
-  --priority 1 \
-  --interactive
-```
-
----
-
-### `llm-router account list`
-
-Listar todas las cuentas.
+### List Accounts
 
 ```bash
 llm-router account list
 ```
 
-**Salida:**
-
+**Sample Output:**
 ```
 ID                   Provider             Priority   Status   API Key
 ------------------------------------------------------------------------------------------
-groq-1               groq                 0          ✓ Active gsk_DVyb...
-groq-2               groq                 1          ✓ Active gsk_ABC...
-openrouter-1         openrouter           0          ✓ Active sk-or-v1...
+openrouter-1         openrouter           0          ✓ Active <your-openrouter-api-key>
+openai-1             openai               0          ✓ Active <your-openai-api-key>
+openai-2             openai               1          ✓ Active <your-openai-api-key>
+groq-2               groq                 0          ✓ Active gsk_DVyb...
+openai-account-1     openai               0          ✓ Active ****
 ```
 
----
-
-### `llm-router account set-priority`
-
-Cambiar prioridad de una cuenta.
+### Set Account Priority
 
 ```bash
-llm-router account set-priority --id <ID> --priority <N>
+llm-router account set-priority --id <id> --priority <n>
 ```
 
-**Ejemplo:**
-
+**Example:**
 ```bash
-llm-router account set-priority --id groq-1 --priority 10
+llm-router account set-priority --id groq-account-1 --priority 0
 ```
 
----
-
-### `llm-router account remove`
-
-Eliminar una cuenta.
+### Remove Account
 
 ```bash
-llm-router account remove --id <ID>
+llm-router account remove --id <id>
 ```
 
-**Ejemplo:**
+### Validate Account
 
 ```bash
-llm-router account remove --id groq-1
+llm-router account validate --id <id>
 ```
 
----
+## Working Commands Verified
 
-### `llm-router account validate`
-
-Validar API key de una cuenta.
-
+### Provider Setup
 ```bash
-llm-router account validate --id <ID>
-```
-
-**Ejemplo:**
-
-```bash
-llm-router account validate --id groq-1
-```
-
----
-
-## Scripts de Bootstrap
-
-### register-providers.sh
-
-Registra automáticamente 12+ proveedores:
-
-```bash
-./scripts/register-providers.sh
-```
-
-**Opciones:**
-
-```bash
-./scripts/register-providers.sh [--api-key <KEY>] [--interactive]
-```
-
----
-
-### register-accounts.sh
-
-Registra proveedores y cuentas usando API keys de copyq:
-
-```bash
-./scripts/register-accounts.sh
-```
-
-**Requisitos:**
-
-- Tener `copyq` instalado
-- API keys en pestaña `SECRETS` de copyq
-
----
-
-## Ejemplos de Uso
-
-### Flujo Completo
-
-```bash
-# 1. Registrar proveedores
+# Add Groq provider (already configured in default data)
 llm-router provider add --id groq --name "Groq" --base-url "https://api.groq.com/openai/v1"
-llm-router provider add --id openrouter --name "OpenRouter" --base-url "https://openrouter.ai/api/v1"
 
-# 2. Registrar cuentas
-llm-router account add --id groq-1 --provider groq --api-key "gsk_xxx" --priority 0
-llm-router account add --id or-1 --provider openrouter --api-key "sk-or-v1_xxx" --priority 0
-
-# 3. Habilitar proveedores
-llm-router provider enable --id groq
-llm-router provider enable --id openrouter
-
-# 4. Verificar
-llm-router provider list
-llm-router account list
-
-# 5. Iniciar servidor
-llm-router --port 8080
+# Add OpenAI provider
+llm-router provider add --id openai --name "OpenAI" --base-url "https://api.openai.com/v1"
 ```
 
-### Usar con OpenAI SDK
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    base_url="http://localhost:8080/v1",
-    api_key="no-needed"  # La API key está en el sistema
-)
-
-response = client.chat.completions.create(
-    model="groq:llama-3.1-8b-instant",
-    messages=[
-        {"role": "user", "content": "Hola!"}
-    ]
-)
-
-print(response.choices[0].message.content)
-```
-
----
-
-## Solución de Problemas
-
-### "No API key provided"
-
-Usá `--api-key` o `--interactive`:
-
+### Account Setup (Working Examples)
 ```bash
-llm-router provider add --id groq --name "Groq" --base-url "https://api.groq.com/openai/v1" --api-key "gsk_xxx"
+# Add Groq account with verified working key
+llm-router account add --id groq-working --provider groq --api-key "<your-groq-api-key>" --priority 0
+
+# Add OpenAI account (requires valid key from platform.openai.com)
+llm-router account add --id openai-working --provider openai --api-key "<your-api-key>r-valid-key-here" --priority 0
 ```
 
-### "Provider not found"
+## Testing the Setup
 
-Verificá el ID con `provider list`:
-
+### Health Check
 ```bash
-llm-router provider list
+curl http://localhost:8080/health
+# Returns: {"status":"healthy","timestamp":1773367298,"version":"0.1.0"}
 ```
 
-### "Invalid API key"
-
-Validá la key con el proveedor:
-
+### Chat Completion (Working Example)
 ```bash
-llm-router account validate --id groq-1
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-groq-api-key>" \
+  -d '{
+    "model": "groq:llama-3.3-70b-versatile",
+    "messages": [{"role": "user", "content": "Hello, world!"}],
+    "max_tokens": 50
+  }'
 ```
 
-### Cuentas no se rotan
+## Provider-Specific Notes
 
-Verificá que haya múltiples cuentas activas:
+### Groq
+- Working models: `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, `groq/compound`, `groq/compound-mini`
+- Decommissioned models (do NOT use): `llama3-8b-8192`, `mixtral-8x7b-32768`
+- Base URL: `https://api.groq.com/openai/v1`
 
-```bash
-llm-router account list
-```
+### OpenAI
+- Requires valid API key from https://platform.openai.com/account/api-keys
+- Working models: `gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo` (with valid key)
+- Base URL: `https://api.openai.com/v1`
 
-Si todas tienen la misma prioridad, el sistema usa round-robin.
+## Troubleshooting
+
+### "No active accounts found for provider"
+- Solution: Add accounts for the provider using `llm-router account add`
+
+### "Provider returned 401 Unauthorized"
+- Solution: Verify your API key is valid and has sufficient permissions
+
+### "Model decommissioned" (Groq specific)
+- Solution: Use supported models like `llama-3.3-70b-versatile` or `llama-3.1-8b-instant`
+
+### Port already in use
+- Solution: Kill existing process or use different port: `llm-router --port 8081`

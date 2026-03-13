@@ -1,132 +1,35 @@
 # API Reference
 
-Referencia completa de la API HTTP.
-
 ## Base URL
 
+All API endpoints are accessible at `http://localhost:8080`
+
+## Authentication
+
+The LLM API Router uses Bearer token authentication for API endpoints. 
+The token should be a valid API key from one of your configured accounts.
+
 ```
-http://localhost:8080
+Authorization: Bearer <your-api-key>
 ```
 
-## Autenticación
-
-No requiere autenticación externa. Las API keys están almacenadas internamente y se rotan automáticamente.
-
----
+Note: The API key is validated against your configured accounts, not directly against the provider.
 
 ## Endpoints
 
-### Health Checks
+### POST /v1/chat/completions
 
-#### GET /health
+Create a chat completion (OpenAI-compatible).
 
-Health check básico.
-
-**Request:**
-
-```bash
-GET /health
-```
-
-**Response 200:**
+#### Request Body
 
 ```json
 {
-  "status": "healthy",
-  "timestamp": 1773335508,
-  "version": "0.1.0"
-}
-```
-
----
-
-#### GET /health/detail
-
-Estado detallado del sistema con estadísticas.
-
-**Request:**
-
-```bash
-GET /health/detail
-```
-
-**Response 200:**
-
-```json
-{
-  "status": "healthy",
-  "timestamp": 1773335515,
-  "version": "0.1.0",
-  "providers": {
-    "total": 3,
-    "enabled": 3,
-    "disabled": 0
-  },
-  "accounts": {
-    "total": 5,
-    "active": 5,
-    "inactive": 0
-  }
-}
-```
-
----
-
-#### GET /accounts
-
-Lista de cuentas registradas (API keys enmascaradas).
-
-**Request:**
-
-```bash
-GET /accounts
-```
-
-**Response 200:**
-
-```json
-[
-  {
-    "id": "groq-1",
-    "provider_id": "groq",
-    "is_active": true,
-    "priority": 0,
-    "api_key_prefix": "gsk_DVyb"
-  },
-  {
-    "id": "groq-2",
-    "provider_id": "groq",
-    "is_active": true,
-    "priority": 1,
-    "api_key_prefix": "gsk_ABC"
-  }
-]
-```
-
----
-
-### API OpenAI-Compatible
-
-#### POST /v1/chat/completions
-
-Generar completado de chat compatible con OpenAI.
-
-**Request:**
-
-```bash
-POST /v1/chat/completions
-Content-Type: application/json
-```
-
-**Body:**
-
-```json
-{
-  "model": "groq:llama-3.1-8b-instant",
+  "model": "groq:llama-3.3-70b-versatile",
   "messages": [
     {
       "role": "user",
-      "content": "Hola!"
+      "content": "Hello, world!"
     }
   ],
   "temperature": 0.7,
@@ -135,32 +38,29 @@ Content-Type: application/json
 }
 ```
 
-**Parámetros:**
+#### Model Format
 
-| Campo | Tipo | Descripción | Default |
-|-------|------|-------------|---------|
-| `model` | string | Modelo en formato `provider:model` | - |
-| `messages` | array[] | Lista de mensajes | - |
-| `messages[].role` | string | Rol: "system", "user", "assistant" | - |
-| `messages[].content` | string | Contenido del mensaje | - |
-| `temperature` | number | Temperatura (0.0 - 2.0) | 0.7 |
-| `max_tokens` | integer | Máximo de tokens a generar | 1024 |
-| `stream` | boolean | Habilitar streaming (SSE) | false |
+Models must be specified with the provider prefix: `provider:model-name`
 
-**Response 200:**
+Examples:
+- `groq:llama-3.3-70b-versatile`
+- `groq:llama-3.1-8b-instant`
+- `openai:gpt-3.5-turbo`
+
+#### Response
 
 ```json
 {
-  "id": "chatcmpl-653e9220-350f-4c66-8522-cda8c95a0bb8",
+  "id": "chatcmpl-unique-id",
   "object": "chat.completion",
-  "created": 1773335238,
-  "model": "groq:llama-3.1-8b-instant",
+  "created": 1773367546,
+  "model": "groq:llama-3.3-70b-versatile",
   "choices": [
     {
       "index": 0,
       "message": {
         "role": "assistant",
-        "content": "¡Hola! ¿Cómo puedo ayudarte hoy?"
+        "content": "Hello! It's nice to meet you. Is there something I can help you with?"
       },
       "finish_reason": "stop"
     }
@@ -173,41 +73,11 @@ Content-Type: application/json
 }
 ```
 
-**Response 400 (Error):**
+### GET /v1/models
 
-```json
-{
-  "error": {
-    "message": "No active accounts found for provider 'groq'",
-    "type": "no_accounts"
-  }
-}
-```
+List available models (currently returns placeholder data).
 
-**Response 502 (Provider Error):**
-
-```json
-{
-  "error": {
-    "message": "Request to provider failed: HTTP request failed",
-    "type": "provider_error"
-  }
-}
-```
-
----
-
-#### GET /v1/models
-
-Listar modelos disponibles.
-
-**Request:**
-
-```bash
-GET /v1/models
-```
-
-**Response 200:**
+#### Response
 
 ```json
 {
@@ -216,209 +86,145 @@ GET /v1/models
 }
 ```
 
-> **Nota:** Este endpoint está en desarrollo. Devuelve lista vacía actualmente.
+> **Note**: This endpoint is planned for improvement in future versions to return actual model lists from configured providers.
 
----
+### GET /health
 
-### Métricas
+Basic health check.
 
-#### GET /metrics
-
-Métricas en formato Prometheus.
-
-**Request:**
-
-```bash
-GET /metrics
-```
-
-**Response 200:**
-
-```
-# HELP llm_proxy_requests_total Total number of requests
-# TYPE llm_proxy_requests_total counter
-llm_proxy_requests_total 42
-
-# HELP llm_proxy_request_duration_seconds Request duration in seconds
-# TYPE llm_proxy_request_duration_seconds histogram
-llm_proxy_request_duration_seconds_bucket{le="0.1"} 30
-llm_proxy_request_duration_seconds_bucket{le="0.5"} 40
-llm_proxy_request_duration_seconds_bucket{le="1.0"} 42
-llm_proxy_request_duration_seconds_bucket{le="+Inf"} 42
-```
-
----
-
-## Formatos de Modelo
-
-El campo `model` acepta estos formatos:
-
-### `provider:model`
+#### Response
 
 ```json
-{"model": "groq:llama-3.1-8b-instant"}
-{"model": "openrouter:meta-llama/llama-3.2-3b-instruct:free"}
+{
+  "status": "healthy",
+  "timestamp": 1773367298,
+  "version": "0.1.0"
+}
 ```
 
-### `provider/model`
+### GET /health/detail
+
+Detailed system health including provider and account status.
+
+#### Response
 
 ```json
-{"model": "mistral/mistral-small-latest"}
-{"model": "cerebras/llama3.1-8b"}
+{
+  "status": "healthy",
+  "timestamp": 1773367298,
+  "version": "0.1.0",
+  "providers": {
+    "total": 5,
+    "enabled": 4,
+    "disabled": 1
+  },
+  "accounts": {
+    "total": 5,
+    "active": 5,
+    "inactive": 0
+  }
+}
 ```
 
-### Modelos por Proveedor
+### GET /accounts
 
-#### Groq
+List all registered accounts (API keys partially masked).
+
+#### Response
+
+```json
+[
+  {
+    "id": "openai-account-1",
+    "provider_id": "openai",
+    "priority": 0,
+    "is_active": true,
+    "api_key_masked": "****"
+  },
+  {
+    "id": "groq-2",
+    "provider_id": "groq",
+    "priority": 0,
+    "is_active": true,
+    "api_key_masked": "gsk_DVyb..."
+  }
+]
+```
+
+### GET /metrics
+
+Prometheus metrics endpoint.
+
+#### Response (text/plain)
 
 ```
-groq:llama-3.1-8b-instant
-groq:llama-3.3-70b-versatile
-groq:mixtral-8x7b-32768
+# HELP llm_router_requests_total Total number of HTTP requests
+# TYPE llm_router_requests_total counter
+llm_router_requests_total{method="POST",endpoint="/v1/chat/completions",status="200"} 1
+llm_router_requests_total{method="GET",endpoint="/health",status="200"} 5
 ```
 
-#### OpenRouter
+## Error Responses
 
+All error responses follow this format:
+
+```json
+{
+  "error": {
+    "message": "Error description",
+    "type": "error_type",
+    "param": null,
+    "code": null
+  }
+}
 ```
-openrouter:meta-llama/llama-3.2-3b-instruct:free
-openrouter:google/gemma-7b-it:free
-openrouter:mistralai/mistral-7b-instruct:free
-```
 
-#### Mistral AI
+### Common Error Types
 
-```
-mistral:mistral-small-latest
-mistral:mistral-medium-latest
-mistral:mistral-large-latest
-```
+- `no_accounts`: No active accounts found for the specified provider
+- `provider_error`: Error communicating with the provider API
+- `invalid_request_error`: Invalid request parameters
+- `internal`: Internal server error
 
----
+## Working Models (Verified)
 
-## Códigos de Error
+### Groq Provider
 
-| Código | Tipo | Descripción |
-|--------|------|-------------|
-| 400 | `no_accounts` | No hay cuentas activas para el proveedor |
-| 400 | `invalid_request` | Request inválido |
-| 401 | `authentication_error` | API key inválida |
-| 429 | `rate_limit` | Límite de tasa excedido |
-| 502 | `provider_error` | Error del proveedor |
-| 501 | `not_implemented` | Feature no implementada (ej: streaming) |
+With account `<your-groq-api-key>`:
+- `llama-3.3-70b-versatile` ✅
+- `llama-3.1-8b-instant` ✅
+- `groq/compound` ✅
+- `groq/compound-mini` ✅
 
----
+> **Note**: Models like `llama3-8b-8192` and `mixtral-8x7b-32768` have been decommissioned by Groq and are no longer functional.
 
-## Ejemplos
+## Usage Examples
 
-### cURL
+### Basic Request
 
 ```bash
-# Chat simple
 curl -X POST http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-groq-api-key>" \
   -d '{
-    "model": "groq:llama-3.1-8b-instant",
-    "messages": [{"role": "user", "content": "Hola!"}]
-  }'
-
-# Con temperatura y max_tokens
-curl -X POST http://localhost:8080/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "groq:llama-3.1-8b-instant",
-    "messages": [{"role": "user", "content": "Explicá Rust en 1 oración"}],
-    "temperature": 0.5,
-    "max_tokens": 50
+    "model": "groq:llama-3.3-70b-versatile",
+    "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
 
-### Python (OpenAI SDK)
+### With Custom Parameters
 
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    base_url="http://localhost:8080/v1",
-    api_key="not-needed"
-)
-
-response = client.chat.completions.create(
-    model="groq:llama-3.1-8b-instant",
-    messages=[
-        {"role": "system", "content": "Sos un asistente útil."},
-        {"role": "user", "content": "Hola!"}
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-api-key-here" \
+  -d '{
+    "model": "groq:llama-3.1-8b-instant",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Explain quantum computing in simple terms."}
     ],
-    temperature=0.7
-)
-
-print(response.choices[0].message.content)
-```
-
-### Node.js (OpenAI SDK)
-
-```javascript
-import OpenAI from 'openai';
-
-const openai = new OpenAI({
-  baseURL: 'http://localhost:8080/v1',
-  apiKey: 'not-needed'
-});
-
-const response = await openai.chat.completions.create({
-  model: 'groq:llama-3.1-8b-instant',
-  messages: [
-    { role: 'user', content: 'Hola!' }
-  ]
-});
-
-console.log(response.choices[0].message.content);
-```
-
----
-
-## Rotación y Failover
-
-El sistema automáticamente:
-
-1. **Selecciona cuenta** usando round-robin o prioridad
-2. **Intenta request** con la cuenta seleccionada
-3. **Reintenta** con otra cuenta si falla (máx 3 intentos)
-4. **Abre circuit breaker** tras 5 fallos consecutivos
-5. **Cierra circuit breaker** después de 30 segundos
-
-### Ejemplo de Failover
-
-```bash
-# Si groq-1 falla, automáticamente usa groq-2
-curl -X POST http://localhost:8080/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model": "groq:llama-3.1-8b-instant", "messages": [{"role": "user", "content": "Hola!"}]}'
-```
-
----
-
-## Streaming (SSE)
-
-> **Nota:** Streaming no implementado aún. Ver Issue #10.
-
-Cuando esté disponible:
-
-```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "groq:llama-3.1-8b-instant",
-    "messages": [{"role": "user", "content": "Hola!"}],
-    "stream": true
+    "temperature": 0.3,
+    "max_tokens": 150
   }'
-```
-
-Response será Server-Sent Events:
-
-```
-data: {"choices":[{"delta":{"content":"Hola"}}]}
-
-data: {"choices":[{"delta":{"content":"!"}}]}
-
-data: [DONE]
 ```

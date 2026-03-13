@@ -57,11 +57,14 @@ cargo build --release
 ```bash
 curl -X POST http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-test-api-key>" \
   -d '{
-    "model": "groq:llama-3.1-8b-instant",
+    "model": "groq:llama-3.3-70b-versatile",
     "messages": [{"role": "user", "content": "Hola!"}]
   }'
 ```
+
+> **Nota**: Los modelos deben especificarse con el prefijo del proveedor (ej: `groq:model-name`, `openai:gpt-3.5-turbo`)
 
 ## API Reference
 
@@ -72,7 +75,7 @@ Endpoint compatible con OpenAI.
 **Request:**
 ```json
 {
-  "model": "groq:llama-3.1-8b-instant",
+  "model": "groq:llama-3.3-70b-versatile",
   "messages": [
     {"role": "user", "content": "Hola!"}
   ],
@@ -87,7 +90,7 @@ Endpoint compatible con OpenAI.
   "id": "chatcmpl-xxx",
   "object": "chat.completion",
   "created": 1773335238,
-  "model": "groq:llama-3.1-8b-instant",
+  "model": "groq:llama-3.3-70b-versatile",
   "choices": [{
     "index": 0,
     "message": {
@@ -203,6 +206,14 @@ llm-router account validate --id <id>
 | Google AI Studio | https://generativelanguage.googleapis.com/v1beta | 🔄 |
 
 ✅ = Probado | 🔄 = Soportado (pendiente test)
+
+## Modelos Funcionales Verificados
+
+### Groq (con cuenta <your-groq-api-key>):
+- `llama-3.3-70b-versatile`
+- `llama-3.1-8b-instant`
+- `groq/compound`
+- `groq/compound-mini`
 
 ## Estrategias de Rotación
 
