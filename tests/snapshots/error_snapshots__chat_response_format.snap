@@ -1,0 +1,25 @@
+---
+source: tests/error_snapshots.rs
+expression: snapshot
+---
+{
+  "id": "chatcmpl-123456789",
+  "object": "chat.completion",
+  "model": "gpt-4",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Hello! How can I help you today?"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 20,
+    "total_tokens": 30
+  },
+  "system_fingerprint": null
+}

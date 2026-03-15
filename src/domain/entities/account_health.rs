@@ -73,8 +73,9 @@ impl AccountHealth {
 
     /// Records a successful request.
     pub fn record_success(&mut self, latency_ms: u64) {
-        self.total_requests += 1;
-        self.successful_requests += 1;
+        // Use saturating_add to prevent overflow (CWE-190)
+        self.total_requests = self.total_requests.saturating_add(1);
+        self.successful_requests = self.successful_requests.saturating_add(1);
         self.consecutive_failures = 0;
 
         // Update latency tracking
@@ -96,9 +97,10 @@ impl AccountHealth {
 
     /// Records a failed request.
     pub fn record_failure(&mut self) {
-        self.total_requests += 1;
-        self.failed_requests += 1;
-        self.consecutive_failures += 1;
+        // Use saturating_add to prevent overflow (CWE-190)
+        self.total_requests = self.total_requests.saturating_add(1);
+        self.failed_requests = self.failed_requests.saturating_add(1);
+        self.consecutive_failures = self.consecutive_failures.saturating_add(1);
         self.last_failure_at = Some(current_timestamp());
 
         // Open circuit breaker after 5 consecutive failures
@@ -148,8 +150,8 @@ impl AccountHealth {
     ///
     /// Higher is better. Based on:
     /// - Success rate (50 points max)
-    /// - Latency (30 points max)
-    /// - Circuit breaker state (20 points max)
+    /// - Latency (30 points max) - only scored if there are recorded latencies
+    /// - Circuit breaker state (20 points max) - only scored if there are requests
     pub fn health_score(&self) -> f64 {
         let mut score = 0.0;
 
@@ -157,21 +159,23 @@ impl AccountHealth {
         if self.total_requests > 0 {
             let success_rate = self.successful_requests as f64 / self.total_requests as f64;
             score += success_rate * 50.0;
+
+            // Latency score (30 points) - only scored if we have latency data
+            // < 500ms = 30 points, 500-2000ms = 15 points, > 2000ms = 0 points
+            if !self.recent_latencies.is_empty() {
+                if self.avg_latency_ms < 500.0 {
+                    score += 30.0;
+                } else if self.avg_latency_ms < 2000.0 {
+                    score += 15.0;
+                }
+            }
+
+            // Circuit breaker (20 points) - only scored after requests
+            if !self.circuit_breaker_open {
+                score += 20.0;
+            }
         } else {
-            score += 25.0; // Default score for new accounts
-        }
-
-        // Latency score (30 points)
-        // < 500ms = 30 points, 500-2000ms = 15 points, > 2000ms = 0 points
-        if self.avg_latency_ms < 500.0 {
-            score += 30.0;
-        } else if self.avg_latency_ms < 2000.0 {
-            score += 15.0;
-        }
-
-        // Circuit breaker (20 points)
-        if !self.circuit_breaker_open {
-            score += 20.0;
+            score += 25.0; // Default score for new accounts (no requests yet)
         }
 
         score.min(100.0)
@@ -204,3 +208,4 @@ fn current_timestamp() -> u64 {
         .map(|d| d.as_secs())
         .unwrap_or(0)
 }
+

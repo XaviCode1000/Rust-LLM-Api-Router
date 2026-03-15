@@ -1,6 +1,7 @@
 //! Chat completion handler for OpenAI-compatible API
 //!
 //! This handler processes POST /v1/chat/completions requests.
+//! Refactored to use ProviderConfig for testability.
 
 use axum::{
     extract::State,
@@ -80,15 +81,15 @@ async fn stream_chat_request(
     // Convert OpenAI request to internal ChatRequest
     let chat_request = convert_to_chat_request(&request, &model_name);
 
-    // Make streaming request to provider
-    match make_streaming_provider_request(&state.http_client, &account, &chat_request).await {
+    // Make streaming request to provider using ProviderConfig
+    match make_streaming_provider_request(&state.http_client, &state.provider_config, &account, &chat_request).await {
         Ok(stream) => {
             // Convert the provider stream to SSE events
             let sse_stream = stream_to_sse_events(stream);
-            
+
             // Return SSE response with proper headers
             let mut response = Sse::new(sse_stream).into_response();
-            
+
             // Set SSE-appropriate headers
             response.headers_mut().insert(
                 header::CONTENT_TYPE,
@@ -102,7 +103,7 @@ async fn stream_chat_request(
                 header::CONNECTION,
                 HeaderValue::from_static("keep-alive"),
             );
-            
+
             response
         }
         Err(e) => error_response(
@@ -154,8 +155,8 @@ async fn process_chat_request(
     // Convert OpenAI request to internal ChatRequest
     let chat_request = convert_to_chat_request(&openai_request, &model_name);
 
-    // Make request to provider
-    match make_provider_request(&state.http_client, &account, &chat_request).await {
+    // Make request to provider using ProviderConfig
+    match make_provider_request(&state.http_client, &state.provider_config, &account, &chat_request).await {
         Ok(provider_response) => {
             // Convert provider response to OpenAI format
             Ok(convert_to_openai_response(
@@ -172,7 +173,7 @@ async fn process_chat_request(
 
 /// Parse model string to extract provider ID and model name.
 /// Supports formats: "provider:model", "provider/model", or just "model"
-fn parse_model(model: &str) -> (String, String) {
+pub fn parse_model(model: &str) -> (String, String) {
     // Try colon separator first (OpenRouter style)
     if let Some(pos) = model.find(':') {
         let provider = &model[..pos];
@@ -219,22 +220,44 @@ fn convert_to_chat_request(openai_request: &OpenAIChatRequest, model_name: &str)
         .with_stream(openai_request.stream.unwrap_or(false))
 }
 
+/// Get the base URL for a provider from ProviderConfig.
+/// Falls back to mock URL if configured for testing, then to hardcoded URLs.
+fn get_provider_base_url(
+    http_client: &HttpClient,
+    provider_config: &std::collections::HashMap<String, crate::infrastructure::gateway::llm_gateway::ProviderConfig>,
+    provider_id: &str,
+) -> String {
+    // Check if mock URL is configured (for testing) - highest priority
+    if let Some(mock_url) = http_client.mock_base_url() {
+        return format!("{}/v1", mock_url);
+    }
+
+    // Try to get URL from ProviderConfig
+    if let Some(config) = provider_config.get(provider_id) {
+        return config.base_url.clone();
+    }
+
+    // Fallback to hardcoded URLs for backward compatibility
+    match provider_id {
+        "groq" => "https://api.groq.com/openai/v1".to_string(),
+        "openrouter" => "https://openrouter.ai/api/v1".to_string(),
+        "mistral" => "https://api.mistral.ai/v1".to_string(),
+        "cerebras" => "https://api.cerebras.ai/v1".to_string(),
+        "openai" => "https://api.openai.com/v1".to_string(),
+        "anthropic" => "https://api.anthropic.com/v1".to_string(),
+        _ => provider_id.to_string(), // Use as-is if not recognized
+    }
+}
+
 /// Make HTTP request to the provider.
 async fn make_provider_request(
     http_client: &HttpClient,
+    provider_config: &std::collections::HashMap<String, crate::infrastructure::gateway::llm_gateway::ProviderConfig>,
     account: &Account,
     chat_request: &ChatRequest,
 ) -> Result<ChatResponse, String> {
-    // Build provider URL - use base_url from provider info
-    let base_url = match account.provider_id.as_str() {
-        "groq" => "https://api.groq.com/openai/v1",
-        "openrouter" => "https://openrouter.ai/api/v1",
-        "mistral" => "https://api.mistral.ai/v1",
-        "cerebras" => "https://api.cerebras.ai/v1",
-        "openai" => "https://api.openai.com/v1",
-        _ => &account.provider_id, // Use as-is if not recognized
-    };
-
+    // Build provider URL using ProviderConfig
+    let base_url = get_provider_base_url(http_client, provider_config, &account.provider_id);
     let url = format!("{}/chat/completions", base_url);
 
     // Build request body in OpenAI format (what providers expect)
@@ -282,19 +305,12 @@ async fn make_provider_request(
 /// Make HTTP streaming request to the provider.
 async fn make_streaming_provider_request(
     http_client: &HttpClient,
+    provider_config: &std::collections::HashMap<String, crate::infrastructure::gateway::llm_gateway::ProviderConfig>,
     account: &Account,
     chat_request: &ChatRequest,
 ) -> Result<impl Stream<Item = Result<Bytes, String>>, String> {
-    // Build provider URL - use base_url from provider info
-    let base_url = match account.provider_id.as_str() {
-        "groq" => "https://api.groq.com/openai/v1",
-        "openrouter" => "https://openrouter.ai/api/v1",
-        "mistral" => "https://api.mistral.ai/v1",
-        "cerebras" => "https://api.cerebras.ai/v1",
-        "openai" => "https://api.openai.com/v1",
-        _ => &account.provider_id, // Use as-is if not recognized
-    };
-
+    // Build provider URL using ProviderConfig
+    let base_url = get_provider_base_url(http_client, provider_config, &account.provider_id);
     let url = format!("{}/chat/completions", base_url);
 
     // Build request body in OpenAI format (what providers expect)
@@ -337,7 +353,7 @@ async fn make_streaming_provider_request(
 }
 
 /// Convert provider byte stream to SSE events.
-/// This is a passthrough implementation - we pass through the raw SSE data 
+/// This is a passthrough implementation - we pass through the raw SSE data
 /// from the provider directly to the client with minimal parsing.
 fn stream_to_sse_events(
     stream: impl Stream<Item = Result<Bytes, String>>,
@@ -372,7 +388,7 @@ fn stream_to_sse_events(
 }
 
 /// Convert internal ChatResponse to OpenAI format.
-fn convert_to_openai_response(chat_response: ChatResponse, model: &str) -> OpenAIChatResponse {
+pub fn convert_to_openai_response(chat_response: ChatResponse, model: &str) -> OpenAIChatResponse {
     let choices: Vec<OpenAIChoice> = chat_response
         .choices
         .into_iter()
@@ -453,7 +469,7 @@ pub async fn list_models(
 }
 
 /// Helper to get an API key from the first active account
-async fn get_api_key_for_models(state: &AppState) -> Option<String> {
+pub async fn get_api_key_for_models(state: &AppState) -> Option<String> {
     match state.account_repo.find_active().await {
         Ok(accounts) => accounts.into_iter().next().map(|a| a.api_key),
         Err(e) => {
@@ -477,4 +493,58 @@ pub struct OpenAIModelInfo {
     pub object: String,
     pub created: u64,
     pub owned_by: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::infrastructure::gateway::llm_gateway::ProviderConfig;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_get_provider_base_url_uses_mock_url() {
+        let http_client = HttpClient::with_mock_url("http://localhost:8080").unwrap();
+        let provider_config = HashMap::new();
+        
+        let url = get_provider_base_url(&http_client, &provider_config, "openai");
+        
+        // Mock URL should take precedence
+        assert_eq!(url, "http://localhost:8080/v1");
+    }
+
+    #[test]
+    fn test_get_provider_base_url_uses_provider_config() {
+        let http_client = HttpClient::new().unwrap();
+        let mut provider_config = HashMap::new();
+        provider_config.insert(
+            "custom".to_string(),
+            ProviderConfig::new("custom", "Custom", "https://custom.api.com/v1", "/models"),
+        );
+        
+        let url = get_provider_base_url(&http_client, &provider_config, "custom");
+        
+        assert_eq!(url, "https://custom.api.com/v1");
+    }
+
+    #[test]
+    fn test_get_provider_base_url_fallback_hardcoded() {
+        let http_client = HttpClient::new().unwrap();
+        let provider_config = HashMap::new();
+        
+        let url = get_provider_base_url(&http_client, &provider_config, "openai");
+        
+        // Should fallback to hardcoded URL
+        assert_eq!(url, "https://api.openai.com/v1");
+    }
+
+    #[test]
+    fn test_get_provider_base_url_unknown_provider() {
+        let http_client = HttpClient::new().unwrap();
+        let provider_config = HashMap::new();
+        
+        let url = get_provider_base_url(&http_client, &provider_config, "unknown-provider");
+        
+        // Unknown provider returns the provider ID as-is
+        assert_eq!(url, "unknown-provider");
+    }
 }

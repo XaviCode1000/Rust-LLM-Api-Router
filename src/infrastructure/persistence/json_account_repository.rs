@@ -62,6 +62,14 @@ pub struct JsonAccountRepository {
     file_path: PathBuf,
 }
 
+impl Clone for JsonAccountRepository {
+    fn clone(&self) -> Self {
+        Self {
+            file_path: self.file_path.clone(),
+        }
+    }
+}
+
 impl JsonAccountRepository {
     /// Creates a new repository with the default config path.
     ///
@@ -212,5 +220,83 @@ impl AccountRepository for JsonAccountRepository {
         // Sort by priority (lower = higher priority)
         accounts.sort_by_key(|a| a.priority);
         Ok(accounts)
+    }
+
+    async fn delete(&self, id: &str) -> DomainResult<()> {
+        let accounts = self.read_accounts().await?;
+        
+        // Verify account exists
+        let exists = accounts.iter().any(|a| a.id == id);
+        if !exists {
+            return Err(crate::domain::DomainError::AccountNotFound(id.to_string()));
+        }
+
+        // Filter out the account to delete
+        let updated: Vec<AccountData> = accounts.into_iter().filter(|a| a.id != id).collect();
+
+        // Write updated accounts back to file (persist changes)
+        self.write_accounts(&updated).await?;
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn test_delete_account_persists() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        // Add an account first
+        let account = Account::new("test-1", "openai", "sk-test-key");
+        repo.save(account).await.unwrap();
+
+        // Delete the account
+        repo.delete("test-1").await.unwrap();
+
+        // Verify account is deleted
+        let result = repo.find_by_id("test-1").await;
+        assert!(result.is_err());
+
+        // Verify persistence by creating new repo instance
+        let repo2 = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+        let result2 = repo2.find_by_id("test-1").await;
+        assert!(result2.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_delete_non_existent_account() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        let result = repo.delete("non-existent").await;
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            crate::domain::DomainError::AccountNotFound(_)
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_delete_and_verify_file_updated() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        // Add two accounts
+        repo.save(Account::new("test-1", "openai", "sk-key-1")).await.unwrap();
+        repo.save(Account::new("test-2", "groq", "sk-key-2")).await.unwrap();
+
+        // Delete one
+        repo.delete("test-1").await.unwrap();
+
+        // Verify only one remains
+        let all = repo.find_all().await.unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].id, "test-2");
     }
 }

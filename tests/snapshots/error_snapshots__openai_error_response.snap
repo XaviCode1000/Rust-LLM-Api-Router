@@ -1,0 +1,10 @@
+---
+source: tests/error_snapshots.rs
+expression: error_response
+---
+{
+  "error": {
+    "message": "Invalid API key provided",
+    "type": "authentication_error"
+  }
+}

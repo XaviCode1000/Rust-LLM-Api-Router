@@ -243,6 +243,12 @@ impl Account {
         self.priority = priority;
         self
     }
+
+    /// Sets the active state of the account.
+    pub fn with_active(mut self, active: bool) -> Self {
+        self.is_active = active;
+        self
+    }
 }
 
 /// Model information from an LLM provider.

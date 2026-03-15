@@ -12,13 +12,6 @@ use tokio::io::AsyncReadExt;
 use crate::domain::traits::ProviderRepository;
 use crate::domain::{DomainResult, Provider};
 
-/// JSON-based provider repository.
-///
-/// Stores providers in a JSON file at the configured path.
-pub struct JsonProviderRepository {
-    file_path: PathBuf,
-}
-
 /// Internal representation for JSON serialization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ProviderData {
@@ -48,6 +41,13 @@ impl From<ProviderData> for Provider {
             enabled: data.enabled,
         }
     }
+}
+
+/// JSON-based provider repository.
+///
+/// Stores providers in a JSON file at the configured path.
+pub struct JsonProviderRepository {
+    file_path: PathBuf,
 }
 
 impl JsonProviderRepository {
@@ -183,5 +183,70 @@ impl ProviderRepository for JsonProviderRepository {
         } else {
             Err(crate::domain::DomainError::ProviderDisabled(id.to_string()))
         }
+    }
+
+    async fn delete(&self, id: &str) -> DomainResult<()> {
+        let providers = self.read_providers().await?;
+        
+        // Verify provider exists
+        let exists = providers.iter().any(|p| p.id == id);
+        if !exists {
+            return Err(crate::domain::DomainError::ProviderNotFound(id.to_string()));
+        }
+
+        // Filter out the provider to delete
+        let updated: Vec<ProviderData> = providers.into_iter().filter(|p| p.id != id).collect();
+
+        // Write updated providers back to file (persist changes)
+        self.write_providers(&updated).await?;
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn test_delete_provider_persists() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonProviderRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        // Add a provider first
+        let provider = Provider {
+            id: "test-provider".to_string(),
+            name: "Test".to_string(),
+            base_url: "https://test.api.com".to_string(),
+            enabled: true,
+        };
+        repo.save(provider).await.unwrap();
+
+        // Delete the provider
+        repo.delete("test-provider").await.unwrap();
+
+        // Verify provider is deleted
+        let result = repo.find_by_id("test-provider").await;
+        assert!(result.is_err());
+
+        // Verify persistence by creating new repo instance
+        let repo2 = JsonProviderRepository::with_config_dir(temp_dir.path()).unwrap();
+        let result2 = repo2.find_by_id("test-provider").await;
+        assert!(result2.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_delete_non_existent_provider() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonProviderRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        let result = repo.delete("non-existent").await;
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            crate::domain::DomainError::ProviderNotFound(_)
+        ));
     }
 }

@@ -251,7 +251,7 @@ impl IntoResponse for OpenAIErrorResponse {
 }
 
 /// Returns current Unix timestamp.
-fn current_timestamp() -> u64 {
+pub fn current_timestamp() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())

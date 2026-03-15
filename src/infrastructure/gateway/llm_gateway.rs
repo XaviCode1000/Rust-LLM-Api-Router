@@ -2,6 +2,21 @@
 //!
 //! This module provides the concrete implementation of the LlmGateway trait,
 //! handling communication with multiple LLM providers and aggregating results.
+//!
+//! ## Design
+//!
+//! Supports dependency injection via `ProviderConfig` for testability:
+//!
+//! ```rust
+//! // Production usage (backward compatible)
+//! let gateway = LlmGatewayImpl::new(http_client, account_repo, 3600);
+//!
+//! // Test usage (custom config)
+//! let config = ProviderConfig::builder()
+//!     .with_provider("openai", "https://api.openai.com/v1", "sk-test")
+//!     .build();
+//! let gateway = LlmGatewayImpl::with_config(http_client, account_repo, config, 3600);
+//! ```
 
 use async_trait::async_trait;
 use futures::future::join_all;
@@ -15,12 +30,6 @@ use crate::domain::errors::DomainResult;
 use crate::domain::traits::{AccountRepository, LlmGateway};
 use crate::infrastructure::http_client::SharedHttpClient;
 
-/// Type alias for cache entry data (models + timestamp)
-type CacheEntry = (Vec<Model>, chrono::DateTime<chrono::Utc>);
-
-/// Type alias for the models cache with TTL
-type ModelsCache = RwLock<HashMap<String, CacheEntry>>;
-
 /// Configuration for a single provider
 #[derive(Debug, Clone)]
 pub struct ProviderConfig {
@@ -31,6 +40,7 @@ pub struct ProviderConfig {
 }
 
 impl ProviderConfig {
+    /// Create a new provider config
     pub fn new(id: &str, name: &str, base_url: &str, models_endpoint: &str) -> Self {
         Self {
             id: id.to_string(),
@@ -38,6 +48,54 @@ impl ProviderConfig {
             base_url: base_url.to_string(),
             models_endpoint: models_endpoint.to_string(),
         }
+    }
+
+    /// Create a builder for provider config
+    pub fn builder() -> ProviderConfigBuilder {
+        ProviderConfigBuilder::new()
+    }
+
+    /// Create default config with URL (for backward compatibility)
+    pub fn default_with_url(base_url: &str, api_key: &str) -> HashMap<String, Self> {
+        let mut providers = HashMap::new();
+        providers.insert(
+            "default".to_string(),
+            Self::new("default", "Default", base_url, "/models"),
+        );
+        providers
+    }
+}
+
+/// Builder for ProviderConfig HashMap
+#[derive(Debug, Default)]
+pub struct ProviderConfigBuilder {
+    providers: HashMap<String, ProviderConfig>,
+}
+
+impl ProviderConfigBuilder {
+    pub fn new() -> Self {
+        Self {
+            providers: HashMap::new(),
+        }
+    }
+
+    /// Add a provider to the builder
+    pub fn with_provider(mut self, id: &str, name: &str, base_url: &str, models_endpoint: &str) -> Self {
+        let config = ProviderConfig::new(id, name, base_url, models_endpoint);
+        self.providers.insert(id.to_string(), config);
+        self
+    }
+
+    /// Add a provider with simplified signature (id, base_url, api_key)
+    pub fn with_provider_simple(mut self, id: &str, base_url: &str, _api_key: &str) -> Self {
+        let config = ProviderConfig::new(id, id, base_url, "/models");
+        self.providers.insert(id.to_string(), config);
+        self
+    }
+
+    /// Build the provider config HashMap
+    pub fn build(self) -> HashMap<String, ProviderConfig> {
+        self.providers
     }
 }
 
@@ -108,7 +166,14 @@ pub struct LlmGatewayImpl {
     cache_ttl_seconds: u64,
 }
 
+/// Type alias for cache entry data (models + timestamp)
+type CacheEntry = (Vec<Model>, chrono::DateTime<chrono::Utc>);
+
+/// Type alias for the models cache with TTL
+type ModelsCache = RwLock<HashMap<String, CacheEntry>>;
+
 impl LlmGatewayImpl {
+    /// Create a new LLM gateway with default providers (backward compatible)
     pub fn new(
         http_client: SharedHttpClient,
         account_repo: Arc<dyn AccountRepository>,
@@ -123,6 +188,27 @@ impl LlmGatewayImpl {
         }
     }
 
+    /// Create a new LLM gateway with custom provider config (for testing)
+    pub fn with_config(
+        http_client: SharedHttpClient,
+        account_repo: Arc<dyn AccountRepository>,
+        config: HashMap<String, ProviderConfig>,
+        cache_ttl_seconds: u64,
+    ) -> Self {
+        Self {
+            http_client,
+            account_repo,
+            providers: config,
+            models_cache: RwLock::new(HashMap::new()),
+            cache_ttl_seconds,
+        }
+    }
+
+    /// Get the configured providers (for testing)
+    pub fn providers(&self) -> &HashMap<String, ProviderConfig> {
+        &self.providers
+    }
+
     /// Fetch models from a single provider
     async fn fetch_provider_models(
         &self,
@@ -133,7 +219,7 @@ impl LlmGatewayImpl {
             DomainError::ProviderNotFound(format!("Provider '{}' not configured", provider_id))
         })?;
 
-        let url = format!("{}{}", config.base_url, config.models_endpoint);
+        let url = format!("{}{}", self.http_client.mock_base_url().map(|url| url.to_string()).unwrap_or_else(|| config.base_url.clone()), config.models_endpoint);
 
         let response = self
             .http_client
@@ -207,7 +293,7 @@ impl LlmGatewayImpl {
     }
 
     /// Check if cache is valid
-    fn is_cache_valid(cached_at: &chrono::DateTime<chrono::Utc>, ttl_seconds: u64) -> bool {
+    pub fn is_cache_valid(cached_at: &chrono::DateTime<chrono::Utc>, ttl_seconds: u64) -> bool {
         let now = chrono::Utc::now();
         let elapsed = now.signed_duration_since(*cached_at).num_seconds() as u64;
         elapsed < ttl_seconds
@@ -276,5 +362,105 @@ impl LlmGateway for LlmGatewayImpl {
         }
 
         Ok(all_models)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::infrastructure::http_client::HttpClient;
+    use crate::infrastructure::persistence::json_account_repository::JsonAccountRepository;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_provider_config_builder() {
+        let config = ProviderConfig::builder()
+            .with_provider("openai", "OpenAI", "https://api.openai.com/v1", "/models")
+            .with_provider("groq", "Groq", "https://api.groq.com/openai/v1", "/models")
+            .build();
+
+        assert_eq!(config.len(), 2);
+        assert!(config.contains_key("openai"));
+        assert!(config.contains_key("groq"));
+    }
+
+    #[test]
+    fn test_provider_config_builder_simple() {
+        let config = ProviderConfig::builder()
+            .with_provider_simple("openai", "https://api.openai.com/v1", "sk-test")
+            .with_provider_simple("groq", "https://api.groq.com/openai/v1", "sk-groq")
+            .build();
+
+        assert_eq!(config.len(), 2);
+        let openai_config = config.get("openai").unwrap();
+        assert_eq!(openai_config.base_url, "https://api.openai.com/v1");
+        assert_eq!(openai_config.models_endpoint, "/models");
+    }
+
+    #[test]
+    fn test_provider_config_default_with_url() {
+        let config = ProviderConfig::default_with_url("https://custom.api.com/v1", "sk-custom");
+
+        assert_eq!(config.len(), 1);
+        assert!(config.contains_key("default"));
+        let default_config = config.get("default").unwrap();
+        assert_eq!(default_config.base_url, "https://custom.api.com/v1");
+    }
+
+    #[tokio::test]
+    async fn test_gateway_with_custom_config() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
+        let http_client = Arc::new(HttpClient::new().unwrap());
+
+        let config = ProviderConfig::builder()
+            .with_provider("test-provider", "Test", "https://test.api.com/v1", "/models")
+            .build();
+
+        let gateway = LlmGatewayImpl::with_config(
+            http_client,
+            repo,
+            config,
+            3600,
+        );
+
+        // Verify custom config was set
+        assert_eq!(gateway.providers().len(), 1);
+        assert!(gateway.providers().contains_key("test-provider"));
+    }
+
+    #[tokio::test]
+    async fn test_gateway_default_config() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
+        let http_client = Arc::new(HttpClient::new().unwrap());
+
+        let gateway = LlmGatewayImpl::new(http_client, repo, 3600);
+
+        // Verify default providers are loaded
+        assert!(gateway.providers().len() >= 5);
+        assert!(gateway.providers().contains_key("openai"));
+        assert!(gateway.providers().contains_key("groq"));
+    }
+
+    #[test]
+    fn test_is_cache_valid() {
+        let now = chrono::Utc::now();
+        let ttl = 3600;
+
+        // Fresh cache entry
+        assert!(LlmGatewayImpl::is_cache_valid(&now, ttl));
+
+        // Old cache entry (2 hours ago)
+        let old = now - chrono::Duration::hours(2);
+        assert!(!LlmGatewayImpl::is_cache_valid(&old, ttl));
+
+        // Edge case: exactly at TTL
+        let edge = now - chrono::Duration::seconds(ttl as i64);
+        assert!(!LlmGatewayImpl::is_cache_valid(&edge, ttl));
+
+        // Just before TTL
+        let just_before = now - chrono::Duration::seconds((ttl - 1) as i64);
+        assert!(LlmGatewayImpl::is_cache_valid(&just_before, ttl));
     }
 }

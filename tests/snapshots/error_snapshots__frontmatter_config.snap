@@ -1,0 +1,27 @@
+---
+source: tests/error_snapshots.rs
+expression: frontmatter_data
+---
+{
+  "author": "LLM Router Team",
+  "date": "2026-03-14",
+  "features": {
+    "failover": true,
+    "metrics": true,
+    "rate_limiting": true,
+    "streaming": true
+  },
+  "providers": [
+    "openai",
+    "anthropic",
+    "google"
+  ],
+  "tags": [
+    "rust",
+    "api",
+    "llm",
+    "proxy"
+  ],
+  "title": "LLM API Router Configuration",
+  "version": "0.1.0"
+}

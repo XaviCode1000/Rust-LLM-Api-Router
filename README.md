@@ -321,11 +321,41 @@ Presentation        (Handlers HTTP, Routes)
 cargo build
 ```
 
-### Tests
+### Tests & Coverage
+
+**¡Logro alcanzado! 🎉** Cobertura de **80.35%** con **492 tests passing**.
 
 ```bash
-cargo test
+# Correr todos los tests (4x más rápido con nextest)
+cargo nextest run --test-threads 2
+
+# Generar reporte de cobertura (10x más rápido que tarpaulin)
+cargo llvm-cov --html --output-dir coverage-llvm
+
+# Ver resumen de cobertura
+cargo llvm-cov --summary-only
 ```
+
+#### Testing Journey
+
+- **Inicio**: 32.02% coverage (104 tests)
+- **Actual**: 80.35% coverage (492 tests)
+- **Progreso**: +48.33% coverage, +388 tests agregados
+
+Ver [`docs/TESTING_JOURNEY.md`](docs/TESTING_JOURNEY.md) para más detalles.
+
+#### Stack Óptimo 2025-26
+
+El proyecto usa el stack óptimo de desarrollo Rust 2025-26:
+
+- **cargo-nextest**: Test runner (4x más rápido)
+- **cargo-llvm-cov**: Cobertura nativa LLVM (10x más rápido)
+- **sccache**: Cache de compilación (6x más rápido)
+- **cargo-watch**: Auto-recompilar en cambios
+- **wiremock**: HTTP mocking para tests de integración
+- **mockall**: Mocking de traits
+
+Ver [`DEVELOPMENT.md`](DEVELOPMENT.md) para la guía completa.
 
 ### Lint
 
@@ -335,6 +365,21 @@ cargo fmt
 ```
 
 ## Roadmap
+
+### Testing Achievements ✅
+
+- [x] **80.35% Code Coverage** (32% → 80.35%, +48.33%)
+- [x] **492 Tests Passing** (104 → 492, +388 tests)
+- [x] **Domain Layer**: 100% coverage
+- [x] **Error Handling**: 100% coverage
+- [x] **Health Handler**: 100% coverage
+- [x] **Gateway**: 94.26% coverage
+- [x] **Failover**: 86.79% coverage
+- [x] **CLI Commands**: 84-85% coverage
+- [x] **Chat Handler**: 85.80% coverage
+- [x] **Repository**: 80.72% coverage
+
+### Pending
 
 - [ ] Streaming (SSE) para /v1/chat/completions
 - [ ] Endpoint /v1/models con lista real

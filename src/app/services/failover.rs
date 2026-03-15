@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use crate::domain::traits::AccountRepository;
 use crate::domain::{Account, AccountHealth};
-use crate::infrastructure::JsonAccountRepository;
 
 use super::account_rotation::AccountSelector;
 
@@ -15,7 +14,7 @@ use super::account_rotation::AccountSelector;
 /// Handles automatic retry with different accounts when requests fail.
 pub struct FailoverManager {
     /// Account repository for fetching accounts
-    account_repo: Arc<JsonAccountRepository>,
+    account_repo: Arc<dyn AccountRepository>,
 
     /// Account selector with rotation strategy
     selector: AccountSelector,
@@ -29,8 +28,27 @@ pub struct FailoverManager {
 
 impl FailoverManager {
     /// Creates a new failover manager.
+    ///
+    /// # Arguments
+    /// * `account_repo` - Repository for fetching accounts
+    /// * `selector` - Account selection strategy
+    /// * `max_retries` - Maximum number of retry attempts
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::sync::Arc;
+    /// use rust_llm_api_router::app::services::{FailoverManager, AccountSelector};
+    /// use rust_llm_api_router::infrastructure::JsonAccountRepository;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let repo = Arc::new(JsonAccountRepository::new()?);
+    /// let manager = FailoverManager::new(repo, AccountSelector::round_robin(), 3);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn new(
-        account_repo: Arc<JsonAccountRepository>,
+        account_repo: Arc<dyn AccountRepository>,
         selector: AccountSelector,
         max_retries: u32,
     ) -> Self {
@@ -43,22 +61,48 @@ impl FailoverManager {
     }
 
     /// Creates a new failover manager with round-robin strategy.
-    pub fn with_round_robin(account_repo: Arc<JsonAccountRepository>) -> Self {
+    ///
+    /// # Arguments
+    /// * `account_repo` - Repository for fetching accounts
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::sync::Arc;
+    /// use rust_llm_api_router::app::services::FailoverManager;
+    /// use rust_llm_api_router::infrastructure::JsonAccountRepository;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let repo = Arc::new(JsonAccountRepository::new()?);
+    /// let manager = FailoverManager::with_round_robin(repo);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn with_round_robin(account_repo: Arc<dyn AccountRepository>) -> Self {
         Self::new(account_repo, AccountSelector::round_robin(), 3)
     }
 
     /// Creates a new failover manager with weighted strategy.
-    pub fn with_weighted(account_repo: Arc<JsonAccountRepository>) -> Self {
+    ///
+    /// # Arguments
+    /// * `account_repo` - Repository for fetching accounts
+    pub fn with_weighted(account_repo: Arc<dyn AccountRepository>) -> Self {
         Self::new(account_repo, AccountSelector::weighted(), 3)
     }
 
     /// Creates a new failover manager with latency-based strategy.
-    pub fn with_latency_based(account_repo: Arc<JsonAccountRepository>) -> Self {
+    ///
+    /// # Arguments
+    /// * `account_repo` - Repository for fetching accounts
+    pub fn with_latency_based(account_repo: Arc<dyn AccountRepository>) -> Self {
         Self::new(account_repo, AccountSelector::latency_based(), 3)
     }
 
     /// Creates a new failover manager with user-affinity strategy.
-    pub fn with_user_affinity(account_repo: Arc<JsonAccountRepository>) -> Self {
+    ///
+    /// # Arguments
+    /// * `account_repo` - Repository for fetching accounts
+    pub fn with_user_affinity(account_repo: Arc<dyn AccountRepository>) -> Self {
         Self::new(account_repo, AccountSelector::user_affinity(), 3)
     }
 
@@ -70,6 +114,37 @@ impl FailoverManager {
     ///
     /// # Returns
     /// The response if successful, or the last error if all accounts fail
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - No accounts are available for the provider
+    /// - All retry attempts fail
+    /// - The repository fails to fetch accounts
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::sync::Arc;
+    /// use rust_llm_api_router::app::services::FailoverManager;
+    /// use rust_llm_api_router::infrastructure::JsonAccountRepository;
+    /// use rust_llm_api_router::domain::Account;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let repo = Arc::new(JsonAccountRepository::new()?);
+    /// let manager = FailoverManager::with_round_robin(repo);
+    ///
+    /// let result: Result<String, String> = manager
+    ///     .execute_with_failover("openai", |account| {
+    ///         let account_id = account.id.clone();
+    ///         async move {
+    ///             // Execute request with account.api_key
+    ///             Ok(format!("Success with {}", account_id))
+    ///         }
+    ///     })
+    ///     .await;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn execute_with_failover<F, Fut, T, E>(
         &self,
         provider_id: &str,

@@ -1,0 +1,496 @@
+//! Integration tests for middleware
+//!
+//! Tests verify middleware behavior:
+//! - logging_middleware: Request logging with latency
+//! - cors_middleware: CORS header handling
+//! - metrics_middleware: Metrics recording
+
+use axum::{
+    body::Body,
+    http::{Request, StatusCode, HeaderMap},
+    middleware::{self, Next},
+    response::Response,
+    routing::get,
+    Router,
+};
+use tower::ServiceExt;
+use std::time::Duration;
+
+use rust_llm_api_router::interfaces::middleware::{
+    logging_middleware, cors_middleware, metrics_middleware,
+};
+use rust_llm_api_router::application::services::metrics_service::MetricsService;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+async fn simple_handler() -> &'static str {
+    "OK"
+}
+
+async fn error_handler() -> StatusCode {
+    StatusCode::INTERNAL_SERVER_ERROR
+}
+
+fn create_app_with_logging() -> Router {
+    Router::new()
+        .route("/health", get(simple_handler))
+        .route("/error", get(error_handler))
+        .layer(middleware::from_fn(logging_middleware))
+}
+
+fn create_app_with_cors() -> Router {
+    Router::new()
+        .route("/health", get(simple_handler))
+        .layer(middleware::from_fn(cors_middleware))
+}
+
+fn create_app_with_metrics() -> Router {
+    let metrics = MetricsService::new();
+    Router::new()
+        .route("/health", get(simple_handler))
+        .with_state(metrics)
+        .layer(middleware::from_fn_with_state(metrics))
+}
+
+// ============================================================================
+// Logging Middleware Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_logging_middleware_success_request() {
+    let app = create_app_with_logging();
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/health")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_logging_middleware_error_request() {
+    let app = create_app_with_logging();
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/error")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+#[tokio::test]
+async fn test_logging_middleware_post_request() {
+    let app = create_app_with_logging();
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/health")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    // POST to /health returns 404 (method not allowed)
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_logging_middleware_not_found() {
+    let app = create_app_with_logging();
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/nonexistent")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_logging_middleware_with_headers() {
+    let app = create_app_with_logging();
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/health")
+                .header("X-Custom-Header", "test-value")
+                .header("Content-Type", "application/json")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+// ============================================================================
+// CORS Middleware Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_cors_middleware_passes_through() {
+    let app = create_app_with_cors();
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/health")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_cors_middleware_options_request() {
+    let app = create_app_with_cors();
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("OPTIONS")
+                .uri("/health")
+                .header("Origin", "http://example.com")
+                .header("Access-Control-Request-Method", "GET")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    // OPTIONS should pass through (actual CORS handling is in router)
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_cors_middleware_post_request() {
+    let app = create_app_with_cors();
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/health")
+                .header("Origin", "http://example.com")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+// ============================================================================
+// Metrics Middleware Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_metrics_middleware_records_success() {
+    let metrics = MetricsService::new();
+    let app = Router::new()
+        .route("/health", get(simple_handler))
+        .with_state(metrics.clone())
+        .layer(middleware::from_fn_with_state(metrics.clone(), metrics_middleware));
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/health")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::OK);
+    
+    // Verify metrics were recorded (check internal state)
+    let snapshot = metrics.get_snapshot().await;
+    assert!(snapshot.request_count > 0);
+}
+
+#[tokio::test]
+async fn test_metrics_middleware_records_error() {
+    let metrics = MetricsService::new();
+    let app = Router::new()
+        .route("/error", get(error_handler))
+        .with_state(metrics.clone())
+        .layer(middleware::from_fn_with_state(metrics.clone(), metrics_middleware));
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/error")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    
+    // Verify metrics were recorded even for errors
+    let snapshot = metrics.get_snapshot().await;
+    assert!(snapshot.request_count > 0);
+}
+
+#[tokio::test]
+async fn test_metrics_middleware_multiple_requests() {
+    let metrics = MetricsService::new();
+    let app = Router::new()
+        .route("/health", get(simple_handler))
+        .with_state(metrics.clone())
+        .layer(middleware::from_fn_with_state(metrics.clone(), metrics_middleware));
+    
+    // Make multiple requests
+    for _ in 0..5 {
+        let _ = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+    }
+    
+    let snapshot = metrics.get_snapshot().await;
+    assert!(snapshot.request_count >= 5);
+}
+
+// ============================================================================
+// Middleware Stack Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_logging_and_cors_middleware_combined() {
+    let app = Router::new()
+        .route("/health", get(simple_handler))
+        .layer(middleware::from_fn(logging_middleware))
+        .layer(middleware::from_fn(cors_middleware));
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/health")
+                .header("Origin", "http://example.com")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_all_middleware_stack() {
+    let metrics = MetricsService::new();
+    let app = Router::new()
+        .route("/health", get(simple_handler))
+        .with_state(metrics.clone())
+        .layer(middleware::from_fn(logging_middleware))
+        .layer(middleware::from_fn(cors_middleware))
+        .layer(middleware::from_fn_with_state(metrics.clone(), metrics_middleware));
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/health")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::OK);
+    
+    let snapshot = metrics.get_snapshot().await;
+    assert!(snapshot.request_count > 0);
+}
+
+// ============================================================================
+// Edge Cases Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_logging_middleware_query_parameters() {
+    let app = create_app_with_logging();
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/health?param1=value1&param2=value2")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_logging_middleware_large_headers() {
+    let app = create_app_with_logging();
+    
+    let large_value = "x".repeat(1000);
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/health")
+                .header("X-Large-Header", large_value)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_cors_middleware_empty_origin() {
+    let app = create_app_with_cors();
+    
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/health")
+                .header("Origin", "")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_metrics_middleware_concurrent_requests() {
+    let metrics = MetricsService::new();
+    let app = Router::new()
+        .route("/health", get(simple_handler))
+        .with_state(metrics.clone())
+        .layer(middleware::from_fn_with_state(metrics.clone(), metrics_middleware));
+    
+    // Make concurrent requests
+    let mut handles = vec![];
+    for _ in 0..10 {
+        let app_clone = app.clone();
+        let handle = tokio::spawn(async move {
+            app_clone
+                .oneshot(
+                    Request::builder()
+                        .method("GET")
+                        .uri("/health")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+        });
+        handles.push(handle);
+    }
+    
+    // Wait for all requests
+    for handle in handles {
+        let _ = handle.await.unwrap();
+    }
+    
+    let snapshot = metrics.get_snapshot().await;
+    assert!(snapshot.request_count >= 10);
+}
+
+// ============================================================================
+// MetricsService Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_metrics_service_new() {
+    let metrics = MetricsService::new();
+    let snapshot = metrics.get_snapshot().await;
+    
+    assert_eq!(snapshot.request_count, 0);
+}
+
+#[tokio::test]
+async fn test_metrics_service_record_request() {
+    let metrics = MetricsService::new();
+    
+    let result = metrics.record_request(Duration::from_millis(10)).await;
+    assert!(result.is_ok());
+    
+    let snapshot = metrics.get_snapshot().await;
+    assert_eq!(snapshot.request_count, 1);
+}
+
+#[tokio::test]
+async fn test_metrics_service_multiple_recordings() {
+    let metrics = MetricsService::new();
+    
+    for _ in 0..10 {
+        metrics.record_request(Duration::from_millis(5)).await.unwrap();
+    }
+    
+    let snapshot = metrics.get_snapshot().await;
+    assert_eq!(snapshot.request_count, 10);
+}
+
+#[tokio::test]
+async fn test_metrics_service_snapshot_latency() {
+    let metrics = MetricsService::new();
+    
+    metrics.record_request(Duration::from_millis(100)).await.unwrap();
+    metrics.record_request(Duration::from_millis(200)).await.unwrap();
+    metrics.record_request(Duration::from_millis(50)).await.unwrap();
+    
+    let snapshot = metrics.get_snapshot().await;
+    
+    // Total latency should be sum of all requests
+    assert!(snapshot.total_latency_ms >= 350);
+}

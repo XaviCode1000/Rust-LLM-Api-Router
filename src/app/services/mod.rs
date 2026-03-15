@@ -8,3 +8,9 @@ pub use account_rotation::{
     WeightedStrategy,
 };
 pub use failover::FailoverManager;
+
+#[cfg(test)]
+mod failover_tests;
+
+#[cfg(test)]
+mod account_rotation_tests;

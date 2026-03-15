@@ -1,0 +1,15 @@
+---
+source: tests/error_snapshots.rs
+expression: serialized
+---
+[
+  "invalid request: Missing required field: model",
+  "provider not found: openai",
+  "provider disabled: anthropic",
+  "account not found: acc_123",
+  "account inactive: acc_456",
+  "model not found: gpt-5",
+  "authentication error: Invalid credentials",
+  "rate limited: Too many requests",
+  "validation error: Temperature must be between 0 and 2"
+]

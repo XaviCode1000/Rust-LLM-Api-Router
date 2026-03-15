@@ -173,3 +173,6 @@ impl DomainError {
 
 /// Result type alias for domain operations.
 pub type DomainResult<T> = Result<T, DomainError>;
+
+#[cfg(test)]
+mod mod_tests;

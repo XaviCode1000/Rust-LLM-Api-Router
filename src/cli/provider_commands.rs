@@ -128,7 +128,7 @@ pub async fn handle_provider_command(cmd: ProviderCommands) -> Result<()> {
 }
 
 /// Add a new provider
-async fn cmd_add_provider(args: AddProviderArgs, repo: &JsonProviderRepository) -> Result<()> {
+pub async fn cmd_add_provider(args: AddProviderArgs, repo: &JsonProviderRepository) -> Result<()> {
     // Get API key (from args or interactive)
     let api_key = if args.interactive {
         read_api_key_interactive()?
@@ -155,7 +155,7 @@ async fn cmd_add_provider(args: AddProviderArgs, repo: &JsonProviderRepository) 
 }
 
 /// List all providers
-async fn cmd_list_providers(repo: &JsonProviderRepository) -> Result<()> {
+pub async fn cmd_list_providers(repo: &JsonProviderRepository) -> Result<()> {
     let providers = repo
         .find_all()
         .await
@@ -185,7 +185,13 @@ async fn cmd_list_providers(repo: &JsonProviderRepository) -> Result<()> {
 }
 
 /// Remove a provider
-async fn cmd_remove_provider(
+///
+/// # Bug Fix
+/// This function now properly handles:
+/// 1. Verifying provider exists before deletion
+/// 2. Using the repository's delete method for proper persistence
+/// 3. Handling empty list after deletion gracefully
+pub async fn cmd_remove_provider(
     args: RemoveProviderArgs,
     repo: &JsonProviderRepository,
 ) -> Result<()> {
@@ -194,29 +200,17 @@ async fn cmd_remove_provider(
         .await
         .map_err(|_| crate::Error::ProviderNotFound(args.id.clone()))?;
 
-    // Get all providers and filter out the one to remove
-    let providers = repo
-        .find_all()
+    // Use repository delete method which properly persists the deletion
+    repo.delete(&args.id)
         .await
         .map_err(|e| crate::Error::Internal(e.to_string()))?;
 
-    let updated: Vec<_> = providers.into_iter().filter(|p| p.id != args.id).collect();
-
-    // Save all providers back (overwrites the file)
-    for provider in updated {
-        repo.save(provider)
-            .await
-            .map_err(|e| crate::Error::Internal(e.to_string()))?;
-    }
-
-    // Note: This approach is inefficient but works with current trait
-    // A proper delete method should be added to ProviderRepository trait
     println!("✓ Provider '{}' removed successfully", args.id);
     Ok(())
 }
 
 /// Enable a provider
-async fn cmd_enable_provider(
+pub async fn cmd_enable_provider(
     args: EnableProviderArgs,
     repo: &JsonProviderRepository,
 ) -> Result<()> {
@@ -236,7 +230,7 @@ async fn cmd_enable_provider(
 }
 
 /// Disable a provider
-async fn cmd_disable_provider(
+pub async fn cmd_disable_provider(
     args: DisableProviderArgs,
     repo: &JsonProviderRepository,
 ) -> Result<()> {
@@ -256,7 +250,7 @@ async fn cmd_disable_provider(
 }
 
 /// Validate provider credentials
-async fn cmd_validate_provider(
+pub async fn cmd_validate_provider(
     args: ValidateProviderArgs,
     repo: &JsonProviderRepository,
 ) -> Result<()> {

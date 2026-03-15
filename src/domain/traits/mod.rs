@@ -97,6 +97,15 @@ pub trait ProviderRepository: Send + Sync {
     /// # Returns
     /// The enabled provider if found
     async fn find_enabled_by_id(&self, id: &str) -> DomainResult<Provider>;
+
+    /// Deletes a provider by its ID.
+    ///
+    /// # Arguments
+    /// * `id` - The provider identifier
+    ///
+    /// # Returns
+    /// Ok(()) if deleted, error if not found
+    async fn delete(&self, id: &str) -> DomainResult<()>;
 }
 
 /// Repository trait for managing accounts.
@@ -142,4 +151,13 @@ pub trait AccountRepository: Send + Sync {
     /// # Returns
     /// A list of active accounts for the provider
     async fn find_active_by_provider(&self, provider_id: &str) -> DomainResult<Vec<Account>>;
+
+    /// Deletes an account by its ID.
+    ///
+    /// # Arguments
+    /// * `id` - The account identifier
+    ///
+    /// # Returns
+    /// Ok(()) if deleted, error if not found
+    async fn delete(&self, id: &str) -> DomainResult<()>;
 }

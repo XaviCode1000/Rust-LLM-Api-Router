@@ -119,7 +119,7 @@ pub async fn handle_account_command(cmd: AccountCommands) -> Result<()> {
 }
 
 /// Add a new account
-async fn cmd_add_account(args: AddAccountArgs, repo: &JsonAccountRepository) -> Result<()> {
+pub async fn cmd_add_account(args: AddAccountArgs, repo: &JsonAccountRepository) -> Result<()> {
     // Get API key (from args or interactive)
     let api_key = if args.interactive {
         read_api_key_interactive()?
@@ -150,7 +150,7 @@ async fn cmd_add_account(args: AddAccountArgs, repo: &JsonAccountRepository) -> 
 }
 
 /// List all accounts
-async fn cmd_list_accounts(repo: &JsonAccountRepository) -> Result<()> {
+pub async fn cmd_list_accounts(repo: &JsonAccountRepository) -> Result<()> {
     let accounts = repo
         .find_all()
         .await
@@ -188,33 +188,18 @@ async fn cmd_list_accounts(repo: &JsonAccountRepository) -> Result<()> {
 }
 
 /// Remove an account
-async fn cmd_remove_account(args: RemoveAccountArgs, repo: &JsonAccountRepository) -> Result<()> {
-    // First check if account exists
-    repo.find_by_id(&args.id)
+pub async fn cmd_remove_account(args: RemoveAccountArgs, repo: &JsonAccountRepository) -> Result<()> {
+    // Delete account (this now persists automatically)
+    repo.delete(&args.id)
         .await
         .map_err(|_| crate::Error::ProviderNotFound(args.id.clone()))?;
-
-    // Get all accounts and filter out the one to remove
-    let accounts = repo
-        .find_all()
-        .await
-        .map_err(|e| crate::Error::Internal(e.to_string()))?;
-
-    let updated: Vec<_> = accounts.into_iter().filter(|a| a.id != args.id).collect();
-
-    // Save all accounts back (overwrites the file)
-    for account in updated {
-        repo.save(account)
-            .await
-            .map_err(|e| crate::Error::Internal(e.to_string()))?;
-    }
 
     println!("✓ Account '{}' removed successfully", args.id);
     Ok(())
 }
 
 /// Set account priority
-async fn cmd_set_priority(args: SetPriorityArgs, repo: &JsonAccountRepository) -> Result<()> {
+pub async fn cmd_set_priority(args: SetPriorityArgs, repo: &JsonAccountRepository) -> Result<()> {
     let mut account = repo
         .find_by_id(&args.id)
         .await
@@ -231,7 +216,7 @@ async fn cmd_set_priority(args: SetPriorityArgs, repo: &JsonAccountRepository) -
 }
 
 /// Validate account API key
-async fn cmd_validate_account(
+pub async fn cmd_validate_account(
     args: ValidateAccountArgs,
     repo: &JsonAccountRepository,
 ) -> Result<()> {
@@ -263,4 +248,143 @@ async fn cmd_validate_account(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn test_cmd_remove_account_persists() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        // Add account
+        let account = Account::new("test-1", "openai", "sk-test-key");
+        repo.save(account).await.unwrap();
+
+        // Remove account
+        let args = RemoveAccountArgs { id: "test-1".to_string() };
+        cmd_remove_account(args, &repo).await.unwrap();
+
+        // Verify deleted
+        let result = repo.find_by_id("test-1").await;
+        assert!(result.is_err());
+
+        // Verify persistence with new repo instance
+        let repo2 = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+        let result2 = repo2.find_by_id("test-1").await;
+        assert!(result2.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_cmd_remove_non_existent_account() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        let args = RemoveAccountArgs { id: "non-existent".to_string() };
+        let result = cmd_remove_account(args, &repo).await;
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            crate::Error::ProviderNotFound(_)
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_cmd_add_account() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        let args = AddAccountArgs {
+            id: "test-add".to_string(),
+            provider: "openai".to_string(),
+            api_key: Some("sk-test-key".to_string()),
+            priority: 0,
+            inactive: false,
+            interactive: false,
+        };
+
+        cmd_add_account(args, &repo).await.unwrap();
+
+        // Verify account was added
+        let account = repo.find_by_id("test-add").await.unwrap();
+        assert_eq!(account.provider_id, "openai");
+        assert_eq!(account.api_key, "sk-test-key");
+        assert!(account.is_active);
+    }
+
+    #[tokio::test]
+    async fn test_cmd_list_accounts_empty() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        // Should not panic on empty list
+        let result = cmd_list_accounts(&repo).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_cmd_set_priority() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        // Add account
+        let account = Account::new("test-priority", "groq", "sk-key");
+        repo.save(account).await.unwrap();
+
+        // Set priority
+        let args = SetPriorityArgs {
+            id: "test-priority".to_string(),
+            priority: 10,
+        };
+        cmd_set_priority(args, &repo).await.unwrap();
+
+        // Verify priority was updated
+        let updated = repo.find_by_id("test-priority").await.unwrap();
+        assert_eq!(updated.priority, 10);
+    }
+
+    #[tokio::test]
+    async fn test_cmd_validate_account() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        // Add account with valid key
+        let account = Account::new("test-validate", "openai", "sk-valid-key-123");
+        repo.save(account).await.unwrap();
+
+        let args = ValidateAccountArgs { id: "test-validate".to_string() };
+        let result = cmd_validate_account(args, &repo).await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_cmd_validate_account_short_key() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        // Add account with short key
+        let account = Account::new("test-short", "openai", "short");
+        repo.save(account).await.unwrap();
+
+        let args = ValidateAccountArgs { id: "test-short".to_string() };
+        let result = cmd_validate_account(args, &repo).await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_cmd_validate_non_existent() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        let args = ValidateAccountArgs { id: "non-existent".to_string() };
+        let result = cmd_validate_account(args, &repo).await;
+
+        assert!(result.is_err());
+    }
 }
