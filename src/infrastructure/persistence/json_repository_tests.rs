@@ -10,8 +10,8 @@ use tempfile::TempDir;
 
 fn create_temp_repository() -> (TempDir, JsonAccountRepository) {
     let temp_dir = TempDir::new().expect("Should create temp dir");
-    let repo = JsonAccountRepository::with_config_dir(temp_dir.path())
-        .expect("Should create repository");
+    let repo =
+        JsonAccountRepository::with_config_dir(temp_dir.path()).expect("Should create repository");
     (temp_dir, repo)
 }
 

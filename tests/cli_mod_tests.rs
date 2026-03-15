@@ -1,7 +1,7 @@
 //! Tests for CLI module
 
-use rust_llm_api_router::cli::{Cli, CliCommands};
 use clap::Parser;
+use rust_llm_api_router::cli::{Cli, CliCommands};
 
 #[test]
 fn test_cli_parse_default_args() {

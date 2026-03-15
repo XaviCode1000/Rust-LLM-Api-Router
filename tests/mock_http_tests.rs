@@ -3,7 +3,7 @@
 //! These tests use wiremock to simulate real API responses.
 
 mod common;
-use common::containers::{MockOpenAIServer, MockGroqServer};
+use common::containers::{MockGroqServer, MockOpenAIServer};
 
 /// Test: Failover works with real HTTP mock servers
 #[tokio::test]

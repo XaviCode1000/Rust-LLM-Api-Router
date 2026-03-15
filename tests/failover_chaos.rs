@@ -1,7 +1,7 @@
 //! Chaos tests for failover system using turmoil
 //!
 //! These tests simulate network partitions, latency, and provider failures.
-//! 
+//!
 //! Note: turmoil requires using its own runtime and has specific API requirements.
 //! These tests are placeholders for future implementation.
 
@@ -20,7 +20,7 @@ fn network_partition_to_openai() {
     // 3. Verify failover switches to Groq
     // 4. Recover network
     // 5. Verify client can use OpenAI again
-    
+
     println!("TODO: Implement network partition test with turmoil");
 }
 

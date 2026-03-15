@@ -7,21 +7,23 @@
 //! - stream_to_sse_events edge cases
 //! - parse_model variations
 
-use rust_llm_api_router::domain::{
-    ChatResponse, Choice, Message, Usage,
+use axum::http::StatusCode;
+use rust_llm_api_router::config::Settings;
+use rust_llm_api_router::domain::{Account, AccountRepository};
+use rust_llm_api_router::domain::{ChatResponse, Choice, Message, Usage};
+use rust_llm_api_router::infrastructure::gateway::llm_gateway::{
+    default_providers, ProviderConfig,
+};
+use rust_llm_api_router::infrastructure::{
+    HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
 };
 use rust_llm_api_router::interfaces::handlers::chat_handler::{
-    parse_model, convert_to_openai_response, list_models, get_api_key_for_models,
-    OpenAIModelsResponse, OpenAIModelInfo,
+    convert_to_openai_response, get_api_key_for_models, list_models, parse_model, OpenAIModelInfo,
+    OpenAIModelsResponse,
 };
 use rust_llm_api_router::presentation::state::AppState;
-use rust_llm_api_router::config::Settings;
-use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics};
-use rust_llm_api_router::infrastructure::gateway::llm_gateway::{default_providers, ProviderConfig};
-use rust_llm_api_router::domain::{Account, AccountRepository};
 use std::sync::Arc;
 use tempfile::TempDir;
-use axum::http::StatusCode;
 
 // ============================================================================
 // PARSE_MODEL TESTS
@@ -70,16 +72,14 @@ fn test_parse_model_empty_string() {
 fn test_convert_to_openai_response_basic() {
     let chat_response = ChatResponse {
         id: "mock-123".to_string(),
-        choices: vec![
-            Choice {
-                index: 0,
-                message: Message {
-                    role: "assistant".to_string(),
-                    content: "Hello!".to_string(),
-                },
-                finish_reason: Some("stop".to_string()),
-            }
-        ],
+        choices: vec![Choice {
+            index: 0,
+            message: Message {
+                role: "assistant".to_string(),
+                content: "Hello!".to_string(),
+            },
+            finish_reason: Some("stop".to_string()),
+        }],
         usage: Usage {
             prompt_tokens: 10,
             completion_tokens: 5,
@@ -93,7 +93,10 @@ fn test_convert_to_openai_response_basic() {
     assert_eq!(openai_response.model, "gpt-4");
     assert_eq!(openai_response.choices.len(), 1);
     assert_eq!(openai_response.choices[0].message.content, "Hello!");
-    assert_eq!(openai_response.choices[0].finish_reason, Some("stop".to_string()));
+    assert_eq!(
+        openai_response.choices[0].finish_reason,
+        Some("stop".to_string())
+    );
     assert_eq!(openai_response.usage.prompt_tokens, 10);
     assert_eq!(openai_response.usage.completion_tokens, 5);
     assert_eq!(openai_response.usage.total_tokens, 15);
@@ -139,16 +142,14 @@ fn test_convert_to_openai_response_multiple_choices() {
 fn test_convert_to_openai_response_no_finish_reason() {
     let chat_response = ChatResponse {
         id: "no-finish".to_string(),
-        choices: vec![
-            Choice {
-                index: 0,
-                message: Message {
-                    role: "assistant".to_string(),
-                    content: "Hello".to_string(),
-                },
-                finish_reason: None,
-            }
-        ],
+        choices: vec![Choice {
+            index: 0,
+            message: Message {
+                role: "assistant".to_string(),
+                content: "Hello".to_string(),
+            },
+            finish_reason: None,
+        }],
         usage: Usage {
             prompt_tokens: 5,
             completion_tokens: 5,
@@ -186,9 +187,8 @@ async fn setup_app_state_with_accounts_in_temp(
     temp_dir: &TempDir,
     accounts: Vec<Account>,
 ) -> Arc<AppState> {
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap(),
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     for account in accounts {
         repo.save(account).await.unwrap();
@@ -231,9 +231,7 @@ async fn test_list_models_no_accounts_returns_service_unavailable() {
 #[tokio::test]
 async fn test_get_api_key_for_models_with_accounts() {
     let temp_dir = TempDir::new().unwrap();
-    let accounts = vec![
-        Account::new("account-1", "openai", "sk-key-123"),
-    ];
+    let accounts = vec![Account::new("account-1", "openai", "sk-key-123")];
     let state = setup_app_state_with_accounts_in_temp(&temp_dir, accounts).await;
 
     let api_key = get_api_key_for_models(&state).await;
@@ -273,31 +271,40 @@ async fn test_get_api_key_for_models_multiple_accounts_returns_first() {
 
 #[tokio::test]
 async fn test_streaming_with_empty_chunk() {
-    use wiremock::{MockServer, Mock, ResponseTemplate};
-    use wiremock::matchers::{method, path};
-    use axum::{http::{Request, StatusCode}, body::Body};
-    use tower::util::ServiceExt;
-    use serde_json::json;
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
+    use rust_llm_api_router::config::Settings;
     use rust_llm_api_router::domain::AccountRepository;
-    use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics};
-use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
+    use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
+    use rust_llm_api_router::infrastructure::{
+        HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
+    };
     use rust_llm_api_router::interfaces::handlers::chat_handler::chat_completions;
     use rust_llm_api_router::presentation::state::AppState;
-    use rust_llm_api_router::config::Settings;
+    use serde_json::json;
+    use tower::util::ServiceExt;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     let mock_server = MockServer::start().await;
     let temp_dir = TempDir::new().unwrap();
-    
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap(),
-    );
+
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
     let account = Account::new("mock-account", "openai", "sk-mock-key");
     repo.save(account).await.unwrap();
-    
+
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
     let metrics = Arc::new(Metrics::new().unwrap());
     let provider_config = Arc::new(default_providers());
-    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(http_client.clone(), repo.clone(), (*provider_config).clone(), 3600));
+    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
+        http_client.clone(),
+        repo.clone(),
+        (*provider_config).clone(),
+        3600,
+    ));
     let settings = Settings::default();
     let state = Arc::new(AppState {
         config: settings,
@@ -309,15 +316,20 @@ use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers
     });
 
     let app = axum::Router::new()
-        .route("/v1/chat/completions", axum::routing::post(chat_completions))
+        .route(
+            "/v1/chat/completions",
+            axum::routing::post(chat_completions),
+        )
         .with_state(state);
 
     // Mock with empty chunk
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(ResponseTemplate::new(200)
-            .insert_header("Content-Type", "text/event-stream")
-            .set_body_raw("\n\n", "text/event-stream"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("Content-Type", "text/event-stream")
+                .set_body_raw("\n\n", "text/event-stream"),
+        )
         .expect(1)
         .mount(&mock_server)
         .await;
@@ -328,11 +340,14 @@ use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": [{"role": "user", "content": "Hello"}],
-                    "stream": true
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": [{"role": "user", "content": "Hello"}],
+                        "stream": true
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -344,31 +359,40 @@ use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers
 
 #[tokio::test]
 async fn test_streaming_with_valid_utf8_handling() {
-    use wiremock::{MockServer, Mock, ResponseTemplate};
-    use wiremock::matchers::{method, path};
-    use axum::{http::{Request, StatusCode}, body::Body};
-    use tower::util::ServiceExt;
-    use serde_json::json;
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
+    use rust_llm_api_router::config::Settings;
     use rust_llm_api_router::domain::AccountRepository;
-    use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics};
-use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
+    use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
+    use rust_llm_api_router::infrastructure::{
+        HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
+    };
     use rust_llm_api_router::interfaces::handlers::chat_handler::chat_completions;
     use rust_llm_api_router::presentation::state::AppState;
-    use rust_llm_api_router::config::Settings;
+    use serde_json::json;
+    use tower::util::ServiceExt;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     let mock_server = MockServer::start().await;
     let temp_dir = TempDir::new().unwrap();
 
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap(),
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
     let account = Account::new("mock-account", "openai", "sk-mock-key");
     repo.save(account).await.unwrap();
-    
+
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
     let metrics = Arc::new(Metrics::new().unwrap());
     let provider_config = Arc::new(default_providers());
-    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(http_client.clone(), repo.clone(), (*provider_config).clone(), 3600));
+    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
+        http_client.clone(),
+        repo.clone(),
+        (*provider_config).clone(),
+        3600,
+    ));
     let settings = Settings::default();
     let state = Arc::new(AppState {
         config: settings,
@@ -380,15 +404,20 @@ use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers
     });
 
     let app = axum::Router::new()
-        .route("/v1/chat/completions", axum::routing::post(chat_completions))
+        .route(
+            "/v1/chat/completions",
+            axum::routing::post(chat_completions),
+        )
         .with_state(state);
 
     // Mock with valid SSE data that will be processed
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(ResponseTemplate::new(200)
-            .insert_header("Content-Type", "text/event-stream")
-            .set_body_raw("data: {\"test\": \"valid\"}\n\n", "text/event-stream"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("Content-Type", "text/event-stream")
+                .set_body_raw("data: {\"test\": \"valid\"}\n\n", "text/event-stream"),
+        )
         .expect(1)
         .mount(&mock_server)
         .await;
@@ -399,11 +428,14 @@ use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": [{"role": "user", "content": "Hello"}],
-                    "stream": true
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": [{"role": "user", "content": "Hello"}],
+                        "stream": true
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -421,14 +453,12 @@ use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers
 fn test_openai_models_response_serialization() {
     let models_response = OpenAIModelsResponse {
         object: "list".to_string(),
-        data: vec![
-            OpenAIModelInfo {
-                id: "openai:gpt-4".to_string(),
-                object: "model".to_string(),
-                created: 1234567890,
-                owned_by: "openai".to_string(),
-            }
-        ],
+        data: vec![OpenAIModelInfo {
+            id: "openai:gpt-4".to_string(),
+            object: "model".to_string(),
+            created: 1234567890,
+            owned_by: "openai".to_string(),
+        }],
     };
 
     let json = serde_json::to_string(&models_response).unwrap();

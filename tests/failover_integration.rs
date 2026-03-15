@@ -20,7 +20,7 @@ use tokio::sync::Mutex;
 mockall::mock! {
     /// Mock account repository for testing
     pub AccountRepository {}
-    
+
     // Implement AccountRepository trait methods
     #[async_trait]
     impl AccountRepository for AccountRepository {
@@ -133,7 +133,7 @@ async fn test_circuit_breaker_integration() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("openai"))
-        .times(1..)  // Called multiple times in loop
+        .times(1..) // Called multiple times in loop
         .returning(|_| {
             Ok(vec![
                 Account::new("account-1", "openai", "sk-key-1"),
@@ -184,7 +184,7 @@ async fn test_concurrent_requests_no_race_condition() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("openai"))
-        .times(1..)  // Allow multiple calls in concurrent test
+        .times(1..) // Allow multiple calls in concurrent test
         .returning(|_| {
             Ok(vec![
                 Account::new("account-1", "openai", "sk-key-1"),
@@ -234,10 +234,8 @@ async fn test_health_tracking_concurrent() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("openai"))
-        .times(1..)  // Allow multiple calls in concurrent test
-        .returning(|_| {
-            Ok(vec![Account::new("account-1", "openai", "sk-key-1")])
-        });
+        .times(1..) // Allow multiple calls in concurrent test
+        .returning(|_| Ok(vec![Account::new("account-1", "openai", "sk-key-1")]));
 
     let manager = Arc::new(FailoverManager::with_round_robin(Arc::new(mock_repo)));
 
@@ -265,7 +263,10 @@ async fn test_health_tracking_concurrent() {
     let health_scores = manager.get_all_health();
     assert!(!health_scores.is_empty());
 
-    let account_health = health_scores.iter().find(|h| h.account_id == "account-1").unwrap();
+    let account_health = health_scores
+        .iter()
+        .find(|h| h.account_id == "account-1")
+        .unwrap();
 
     // Should have recorded both successes and failures
     assert_eq!(account_health.total_requests, 50);
@@ -385,10 +386,8 @@ async fn test_memory_under_load() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("openai"))
-        .times(1..)  // Allow multiple calls in loop test
-        .returning(|_| {
-            Ok(vec![Account::new("account-1", "openai", "sk-key-1")])
-        });
+        .times(1..) // Allow multiple calls in loop test
+        .returning(|_| Ok(vec![Account::new("account-1", "openai", "sk-key-1")]));
 
     let manager = Arc::new(FailoverManager::with_round_robin(Arc::new(mock_repo)));
 

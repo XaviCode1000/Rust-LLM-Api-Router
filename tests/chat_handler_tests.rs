@@ -14,26 +14,31 @@ use std::sync::Arc;
 use tempfile::TempDir;
 use tower::util::ServiceExt;
 
+use rust_llm_api_router::config::Settings;
 use rust_llm_api_router::domain::{Account, AccountRepository};
-use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics};
-use rust_llm_api_router::infrastructure::gateway::llm_gateway::{ProviderConfig, default_providers};
+use rust_llm_api_router::infrastructure::gateway::llm_gateway::{
+    default_providers, ProviderConfig,
+};
+use rust_llm_api_router::infrastructure::{
+    HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
+};
 use rust_llm_api_router::interfaces::handlers::chat_handler::chat_completions;
 use rust_llm_api_router::presentation::state::AppState;
-use rust_llm_api_router::config::Settings;
 
 /// Setup test fixtures with in-memory repository
 async fn setup_test_app() -> (Router, TempDir) {
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path())
-            .expect("Should create repository"),
+        JsonAccountRepository::with_config_dir(temp_dir.path()).expect("Should create repository"),
     );
 
     // Create test accounts
     let account_openai = Account::new("test-openai-1", "openai", "sk-test-key-123");
     let account_groq = Account::new("test-groq-1", "groq", "gq-test-key-456");
 
-    repo.save(account_openai).await.expect("Should save account");
+    repo.save(account_openai)
+        .await
+        .expect("Should save account");
     repo.save(account_groq).await.expect("Should save account");
 
     let http_client = Arc::new(HttpClient::new().expect("Should create HTTP client"));
@@ -87,7 +92,11 @@ async fn test_chat_handler_missing_model() {
         .unwrap();
 
     // Missing model should fail validation
-    assert!(response.status() == StatusCode::BAD_REQUEST || response.status() == StatusCode::UNPROCESSABLE_ENTITY || response.status() == StatusCode::BAD_GATEWAY);
+    assert!(
+        response.status() == StatusCode::BAD_REQUEST
+            || response.status() == StatusCode::UNPROCESSABLE_ENTITY
+            || response.status() == StatusCode::BAD_GATEWAY
+    );
 }
 
 #[tokio::test]
@@ -112,7 +121,11 @@ async fn test_chat_handler_missing_messages() {
         .unwrap();
 
     // Missing messages should fail validation
-    assert!(response.status() == StatusCode::BAD_REQUEST || response.status() == StatusCode::UNPROCESSABLE_ENTITY || response.status() == StatusCode::BAD_GATEWAY);
+    assert!(
+        response.status() == StatusCode::BAD_REQUEST
+            || response.status() == StatusCode::UNPROCESSABLE_ENTITY
+            || response.status() == StatusCode::BAD_GATEWAY
+    );
 }
 
 #[tokio::test]
@@ -138,7 +151,11 @@ async fn test_chat_handler_empty_messages() {
         .unwrap();
 
     // Empty messages should fail validation
-    assert!(response.status() == StatusCode::BAD_REQUEST || response.status() == StatusCode::UNPROCESSABLE_ENTITY || response.status() == StatusCode::BAD_GATEWAY);
+    assert!(
+        response.status() == StatusCode::BAD_REQUEST
+            || response.status() == StatusCode::UNPROCESSABLE_ENTITY
+            || response.status() == StatusCode::BAD_GATEWAY
+    );
 }
 
 #[tokio::test]
@@ -164,15 +181,18 @@ async fn test_chat_handler_invalid_message_role() {
         .unwrap();
 
     // Invalid role should fail validation
-    assert!(response.status() == StatusCode::BAD_REQUEST || response.status() == StatusCode::UNPROCESSABLE_ENTITY || response.status() == StatusCode::BAD_GATEWAY);
+    assert!(
+        response.status() == StatusCode::BAD_REQUEST
+            || response.status() == StatusCode::UNPROCESSABLE_ENTITY
+            || response.status() == StatusCode::BAD_GATEWAY
+    );
 }
 
 #[tokio::test]
 async fn test_chat_handler_no_accounts_for_provider() {
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path())
-            .expect("Should create repository"),
+        JsonAccountRepository::with_config_dir(temp_dir.path()).expect("Should create repository"),
     );
 
     // No accounts created - provider has no accounts
@@ -221,7 +241,11 @@ async fn test_chat_handler_no_accounts_for_provider() {
         .unwrap();
 
     // No accounts for provider should return error
-    assert!(response.status() == StatusCode::BAD_REQUEST || response.status() == StatusCode::UNPROCESSABLE_ENTITY || response.status() == StatusCode::BAD_GATEWAY);
+    assert!(
+        response.status() == StatusCode::BAD_REQUEST
+            || response.status() == StatusCode::UNPROCESSABLE_ENTITY
+            || response.status() == StatusCode::BAD_GATEWAY
+    );
 }
 
 #[tokio::test]
@@ -250,7 +274,10 @@ async fn test_chat_handler_model_parsing_colon() {
 
     // Should parse model correctly (may fail on API call, but not on parsing)
     // Status depends on whether request reaches provider
-    assert!(response.status() == StatusCode::BAD_GATEWAY || response.status() == StatusCode::BAD_REQUEST);
+    assert!(
+        response.status() == StatusCode::BAD_GATEWAY
+            || response.status() == StatusCode::BAD_REQUEST
+    );
 }
 
 #[tokio::test]
@@ -276,7 +303,10 @@ async fn test_chat_handler_model_parsing_slash() {
         .unwrap();
 
     // Should parse model correctly
-    assert!(response.status() == StatusCode::BAD_GATEWAY || response.status() == StatusCode::BAD_REQUEST);
+    assert!(
+        response.status() == StatusCode::BAD_GATEWAY
+            || response.status() == StatusCode::BAD_REQUEST
+    );
 }
 
 #[tokio::test]
@@ -331,7 +361,10 @@ async fn test_chat_handler_with_temperature() {
         .unwrap();
 
     // Should accept temperature parameter
-    assert!(response.status() == StatusCode::BAD_GATEWAY || response.status() == StatusCode::BAD_REQUEST);
+    assert!(
+        response.status() == StatusCode::BAD_GATEWAY
+            || response.status() == StatusCode::BAD_REQUEST
+    );
 }
 
 #[tokio::test]
@@ -358,7 +391,10 @@ async fn test_chat_handler_with_max_tokens() {
         .unwrap();
 
     // Should accept max_tokens parameter
-    assert!(response.status() == StatusCode::BAD_GATEWAY || response.status() == StatusCode::BAD_REQUEST);
+    assert!(
+        response.status() == StatusCode::BAD_GATEWAY
+            || response.status() == StatusCode::BAD_REQUEST
+    );
 }
 
 #[tokio::test]
@@ -389,5 +425,8 @@ async fn test_chat_handler_multiple_messages() {
         .unwrap();
 
     // Should accept multiple messages
-    assert!(response.status() == StatusCode::BAD_GATEWAY || response.status() == StatusCode::BAD_REQUEST);
+    assert!(
+        response.status() == StatusCode::BAD_GATEWAY
+            || response.status() == StatusCode::BAD_REQUEST
+    );
 }

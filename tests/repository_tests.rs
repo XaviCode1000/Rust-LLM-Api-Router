@@ -26,9 +26,8 @@ fn test_inactive_account(id: &str, provider: &str, api_key: &str) -> Account {
 #[tokio::test]
 async fn test_account_repository_save_and_find() {
     let temp_dir = TempDir::new().unwrap();
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let account = test_account("test-1", "openai", "sk-test-key");
     repo.save(account.clone()).await.unwrap();
@@ -40,21 +39,22 @@ async fn test_account_repository_save_and_find() {
 #[tokio::test]
 async fn test_account_repository_find_non_existent() {
     let temp_dir = TempDir::new().unwrap();
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let result = repo.find_by_id("non-existent").await;
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), DomainError::AccountNotFound(_)));
+    assert!(matches!(
+        result.unwrap_err(),
+        DomainError::AccountNotFound(_)
+    ));
 }
 
 #[tokio::test]
 async fn test_account_repository_find_all_empty() {
     let temp_dir = TempDir::new().unwrap();
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let accounts = repo.find_all().await.unwrap();
     assert!(accounts.is_empty());
@@ -63,9 +63,8 @@ async fn test_account_repository_find_all_empty() {
 #[tokio::test]
 async fn test_account_repository_find_all_with_data() {
     let temp_dir = TempDir::new().unwrap();
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let account1 = test_account("acc-1", "openai", "sk-key-1");
     let account2 = test_account("acc-2", "groq", "gq-key-2");
@@ -80,9 +79,8 @@ async fn test_account_repository_find_all_with_data() {
 #[tokio::test]
 async fn test_account_repository_find_active() {
     let temp_dir = TempDir::new().unwrap();
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let active1 = test_account("active-1", "openai", "sk-key-1");
     let active2 = test_account("active-2", "groq", "gq-key-2");
@@ -102,9 +100,8 @@ async fn test_account_repository_find_active() {
 #[tokio::test]
 async fn test_account_repository_find_active_by_provider() {
     let temp_dir = TempDir::new().unwrap();
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let account1 = test_account("acc-1", "openai", "key-1");
     let account2 = test_inactive_account("acc-2", "openai", "key-2");
@@ -126,9 +123,8 @@ async fn test_account_repository_find_active_by_provider() {
 #[tokio::test]
 async fn test_account_repository_find_active_by_provider_empty() {
     let temp_dir = TempDir::new().unwrap();
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let accounts = repo.find_active_by_provider("non-existent").await.unwrap();
     assert!(accounts.is_empty());
@@ -137,9 +133,8 @@ async fn test_account_repository_find_active_by_provider_empty() {
 #[tokio::test]
 async fn test_account_repository_update() {
     let temp_dir = TempDir::new().unwrap();
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let mut account = test_account("test-1", "openai", "sk-test-key");
     account.priority = 10;
@@ -158,9 +153,8 @@ async fn test_account_repository_update() {
 #[tokio::test]
 async fn test_account_repository_update_non_existent() {
     let temp_dir = TempDir::new().unwrap();
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let account = test_account("new-acc", "openai", "sk-new-key");
     repo.save(account.clone()).await.unwrap();
@@ -172,9 +166,8 @@ async fn test_account_repository_update_non_existent() {
 #[tokio::test]
 async fn test_account_repository_priority_sorting() {
     let temp_dir = TempDir::new().unwrap();
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let mut acc1 = test_account("acc-1", "openai", "key-1");
     let mut acc2 = test_account("acc-2", "openai", "key-2");
@@ -199,9 +192,8 @@ async fn test_account_repository_priority_sorting() {
 #[tokio::test]
 async fn test_account_repository_multiple_providers() {
     let temp_dir = TempDir::new().unwrap();
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let openai_acc = test_account("openai-1", "openai", "sk-key");
     let groq_acc = test_account("groq-1", "groq", "gq-key");
@@ -224,16 +216,14 @@ async fn test_account_repository_persistence_across_instances() {
     let temp_dir = TempDir::new().unwrap();
 
     // Create repo and save account
-    let repo1: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo1: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
     let account = test_account("persist-test", "openai", "sk-persist-key");
     repo1.save(account).await.unwrap();
 
     // Create new repo instance pointing to same directory
-    let repo2: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo2: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     // Should find the saved account
     let found = repo2.find_by_id("persist-test").await.unwrap();
@@ -244,9 +234,8 @@ async fn test_account_repository_persistence_across_instances() {
 #[tokio::test]
 async fn test_account_repository_find_by_id_preserves_data() {
     let temp_dir = TempDir::new().unwrap();
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap()
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let account = test_account("data-test", "mistral", "mi-test-key-123");
     repo.save(account.clone()).await.unwrap();

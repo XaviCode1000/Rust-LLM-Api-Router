@@ -2,23 +2,23 @@
 
 pub mod containers;
 
-use rust_llm_api_router::app::services::{FailoverManager, AccountSelector};
-use rust_llm_api_router::domain::{Account, AccountRepository};
-use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics};
-use rust_llm_api_router::infrastructure::gateway::llm_gateway::{default_providers, ProviderConfig};
-use rust_llm_api_router::presentation::state::AppState;
+use rust_llm_api_router::app::services::{AccountSelector, FailoverManager};
 use rust_llm_api_router::config::Settings;
+use rust_llm_api_router::domain::{Account, AccountRepository};
+use rust_llm_api_router::infrastructure::gateway::llm_gateway::{
+    default_providers, ProviderConfig,
+};
+use rust_llm_api_router::infrastructure::{
+    HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
+};
+use rust_llm_api_router::presentation::state::AppState;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Create a failover manager with a test account pointing to a mock endpoint
-pub async fn create_manager_with_provider(
-    provider_id: &str,
-    endpoint: &str,
-) -> FailoverManager {
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::new().expect("Should create repository"),
-    );
+pub async fn create_manager_with_provider(provider_id: &str, endpoint: &str) -> FailoverManager {
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::new().expect("Should create repository"));
 
     let account = Account::new(
         format!("{}-test-1", provider_id),
@@ -31,12 +31,8 @@ pub async fn create_manager_with_provider(
 }
 
 /// Helper to create a manager with custom selector
-pub async fn create_manager_with_selector(
-    selector: AccountSelector,
-) -> FailoverManager {
-    let repo = Arc::new(
-        JsonAccountRepository::new().expect("Should create repository"),
-    );
+pub async fn create_manager_with_selector(selector: AccountSelector) -> FailoverManager {
+    let repo = Arc::new(JsonAccountRepository::new().expect("Should create repository"));
 
     FailoverManager::new(repo, selector, 3)
 }
@@ -55,7 +51,7 @@ pub fn create_test_app_state(
         3600,
     ));
     let settings = Settings::default();
-    
+
     AppState {
         config: settings,
         http_client,
@@ -81,7 +77,7 @@ pub fn create_test_app_state_with_config(
         3600,
     ));
     let settings = Settings::default();
-    
+
     AppState {
         config: settings,
         http_client,

@@ -224,7 +224,7 @@ impl AccountRepository for JsonAccountRepository {
 
     async fn delete(&self, id: &str) -> DomainResult<()> {
         let accounts = self.read_accounts().await?;
-        
+
         // Verify account exists
         let exists = accounts.iter().any(|a| a.id == id);
         if !exists {
@@ -288,8 +288,12 @@ mod tests {
         let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
 
         // Add two accounts
-        repo.save(Account::new("test-1", "openai", "sk-key-1")).await.unwrap();
-        repo.save(Account::new("test-2", "groq", "sk-key-2")).await.unwrap();
+        repo.save(Account::new("test-1", "openai", "sk-key-1"))
+            .await
+            .unwrap();
+        repo.save(Account::new("test-2", "groq", "sk-key-2"))
+            .await
+            .unwrap();
 
         // Delete one
         repo.delete("test-1").await.unwrap();

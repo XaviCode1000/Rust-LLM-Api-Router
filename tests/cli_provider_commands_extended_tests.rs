@@ -6,14 +6,13 @@
 use tempfile::TempDir;
 
 use rust_llm_api_router::cli::provider_commands::{
-    AddProviderArgs, RemoveProviderArgs, EnableProviderArgs, DisableProviderArgs,
-    ValidateProviderArgs, ProviderCommands,
-    cmd_add_provider, cmd_list_providers, cmd_remove_provider,
-    cmd_enable_provider, cmd_disable_provider, cmd_validate_provider,
+    cmd_add_provider, cmd_disable_provider, cmd_enable_provider, cmd_list_providers,
+    cmd_remove_provider, cmd_validate_provider, AddProviderArgs, DisableProviderArgs,
+    EnableProviderArgs, ProviderCommands, RemoveProviderArgs, ValidateProviderArgs,
 };
 use rust_llm_api_router::domain::traits::ProviderRepository;
-use rust_llm_api_router::infrastructure::JsonProviderRepository;
 use rust_llm_api_router::domain::Provider;
+use rust_llm_api_router::infrastructure::JsonProviderRepository;
 
 // ============================================================================
 // Helper Functions
@@ -92,9 +91,13 @@ async fn test_cli_remove_provider_last_one_with_error_handling() {
     cmd_remove_provider(args, &repo).await.unwrap();
 
     // Try to remove again (should fail gracefully)
-    let result = cmd_remove_provider(RemoveProviderArgs {
-        id: "last-one".to_string(),
-    }, &repo).await;
+    let result = cmd_remove_provider(
+        RemoveProviderArgs {
+            id: "last-one".to_string(),
+        },
+        &repo,
+    )
+    .await;
 
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("not found"));
@@ -106,32 +109,47 @@ async fn test_cli_remove_provider_from_multiple() {
     let (_temp_dir, repo) = create_test_repo();
 
     // Add multiple providers
-    cmd_add_provider(AddProviderArgs {
-        id: "prov-1".to_string(),
-        name: "Provider 1".to_string(),
-        base_url: "https://prov1.com".to_string(),
-        api_key: Some("key-1".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "prov-1".to_string(),
+            name: "Provider 1".to_string(),
+            base_url: "https://prov1.com".to_string(),
+            api_key: Some("key-1".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
-    cmd_add_provider(AddProviderArgs {
-        id: "prov-2".to_string(),
-        name: "Provider 2".to_string(),
-        base_url: "https://prov2.com".to_string(),
-        api_key: Some("key-2".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "prov-2".to_string(),
+            name: "Provider 2".to_string(),
+            base_url: "https://prov2.com".to_string(),
+            api_key: Some("key-2".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
-    cmd_add_provider(AddProviderArgs {
-        id: "prov-3".to_string(),
-        name: "Provider 3".to_string(),
-        base_url: "https://prov3.com".to_string(),
-        api_key: Some("key-3".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "prov-3".to_string(),
+            name: "Provider 3".to_string(),
+            base_url: "https://prov3.com".to_string(),
+            api_key: Some("key-3".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     // Remove middle one
     let args = RemoveProviderArgs {
@@ -153,32 +171,47 @@ async fn test_cli_remove_provider_first_of_many() {
     let (_temp_dir, repo) = create_test_repo();
 
     // Add three providers
-    cmd_add_provider(AddProviderArgs {
-        id: "first".to_string(),
-        name: "First".to_string(),
-        base_url: "https://first.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "first".to_string(),
+            name: "First".to_string(),
+            base_url: "https://first.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
-    cmd_add_provider(AddProviderArgs {
-        id: "second".to_string(),
-        name: "Second".to_string(),
-        base_url: "https://second.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "second".to_string(),
+            name: "Second".to_string(),
+            base_url: "https://second.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
-    cmd_add_provider(AddProviderArgs {
-        id: "third".to_string(),
-        name: "Third".to_string(),
-        base_url: "https://third.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "third".to_string(),
+            name: "Third".to_string(),
+            base_url: "https://third.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     // Remove first one
     let args = RemoveProviderArgs {
@@ -197,32 +230,47 @@ async fn test_cli_remove_provider_last_of_many() {
     let (_temp_dir, repo) = create_test_repo();
 
     // Add three providers
-    cmd_add_provider(AddProviderArgs {
-        id: "first".to_string(),
-        name: "First".to_string(),
-        base_url: "https://first.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "first".to_string(),
+            name: "First".to_string(),
+            base_url: "https://first.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
-    cmd_add_provider(AddProviderArgs {
-        id: "second".to_string(),
-        name: "Second".to_string(),
-        base_url: "https://second.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "second".to_string(),
+            name: "Second".to_string(),
+            base_url: "https://second.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
-    cmd_add_provider(AddProviderArgs {
-        id: "third".to_string(),
-        name: "Third".to_string(),
-        base_url: "https://third.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "third".to_string(),
+            name: "Third".to_string(),
+            base_url: "https://third.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     // Remove last one
     let args = RemoveProviderArgs {
@@ -241,32 +289,47 @@ async fn test_cli_remove_provider_middle_of_many() {
     let (_temp_dir, repo) = create_test_repo();
 
     // Add three providers
-    cmd_add_provider(AddProviderArgs {
-        id: "first".to_string(),
-        name: "First".to_string(),
-        base_url: "https://first.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "first".to_string(),
+            name: "First".to_string(),
+            base_url: "https://first.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
-    cmd_add_provider(AddProviderArgs {
-        id: "second".to_string(),
-        name: "Second".to_string(),
-        base_url: "https://second.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "second".to_string(),
+            name: "Second".to_string(),
+            base_url: "https://second.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
-    cmd_add_provider(AddProviderArgs {
-        id: "third".to_string(),
-        name: "Third".to_string(),
-        base_url: "https://third.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "third".to_string(),
+            name: "Third".to_string(),
+            base_url: "https://third.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     // Remove middle one
     let args = RemoveProviderArgs {
@@ -285,14 +348,19 @@ async fn test_cli_remove_provider_persists_across_instances() {
     let (temp_dir, repo) = create_test_repo();
 
     // Add provider
-    cmd_add_provider(AddProviderArgs {
-        id: "to-remove".to_string(),
-        name: "Remove Me".to_string(),
-        base_url: "https://remove.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "to-remove".to_string(),
+            name: "Remove Me".to_string(),
+            base_url: "https://remove.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     // Remove provider
     let args = RemoveProviderArgs {
@@ -315,14 +383,19 @@ async fn test_cli_remove_provider_with_special_characters_in_id() {
     let (_temp_dir, repo) = create_test_repo();
 
     // Add provider with special characters
-    cmd_add_provider(AddProviderArgs {
-        id: "test-provider-123".to_string(),
-        name: "Test Provider".to_string(),
-        base_url: "https://test.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "test-provider-123".to_string(),
+            name: "Test Provider".to_string(),
+            base_url: "https://test.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     // Remove it
     let args = RemoveProviderArgs {
@@ -341,14 +414,19 @@ async fn test_cli_remove_provider_case_sensitive() {
     let (_temp_dir, repo) = create_test_repo();
 
     // Add provider
-    cmd_add_provider(AddProviderArgs {
-        id: "MyProvider".to_string(),
-        name: "My Provider".to_string(),
-        base_url: "https://myprovider.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "MyProvider".to_string(),
+            name: "My Provider".to_string(),
+            base_url: "https://myprovider.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     // Try to remove with different case (should fail)
     let args = RemoveProviderArgs {
@@ -372,14 +450,19 @@ async fn test_cli_workflow_add_remove_multiple_sequential() {
 
     // Add 5 providers
     for i in 0..5 {
-        cmd_add_provider(AddProviderArgs {
-            id: format!("provider-{}", i),
-            name: format!("Provider {}", i),
-            base_url: format!("https://provider{}.com", i),
-            api_key: Some("key".to_string()),
-            disabled: false,
-            interactive: false,
-        }, &repo).await.unwrap();
+        cmd_add_provider(
+            AddProviderArgs {
+                id: format!("provider-{}", i),
+                name: format!("Provider {}", i),
+                base_url: format!("https://provider{}.com", i),
+                api_key: Some("key".to_string()),
+                disabled: false,
+                interactive: false,
+            },
+            &repo,
+        )
+        .await
+        .unwrap();
     }
 
     // Verify all exist
@@ -404,27 +487,42 @@ async fn test_cli_workflow_add_disable_remove() {
     let (_temp_dir, repo) = create_test_repo();
 
     // Add provider
-    cmd_add_provider(AddProviderArgs {
-        id: "workflow-provider".to_string(),
-        name: "Workflow Provider".to_string(),
-        base_url: "https://workflow.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: false,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "workflow-provider".to_string(),
+            name: "Workflow Provider".to_string(),
+            base_url: "https://workflow.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: false,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     // Disable it
-    cmd_disable_provider(DisableProviderArgs {
-        id: "workflow-provider".to_string(),
-    }, &repo).await.unwrap();
+    cmd_disable_provider(
+        DisableProviderArgs {
+            id: "workflow-provider".to_string(),
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     let provider = repo.find_by_id("workflow-provider").await.unwrap();
     assert!(!provider.enabled);
 
     // Remove it
-    cmd_remove_provider(RemoveProviderArgs {
-        id: "workflow-provider".to_string(),
-    }, &repo).await.unwrap();
+    cmd_remove_provider(
+        RemoveProviderArgs {
+            id: "workflow-provider".to_string(),
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     // Verify removed
     assert!(repo.find_by_id("workflow-provider").await.is_err());
@@ -435,30 +533,45 @@ async fn test_cli_workflow_add_enable_remove() {
     let (_temp_dir, repo) = create_test_repo();
 
     // Add disabled provider
-    cmd_add_provider(AddProviderArgs {
-        id: "disabled-provider".to_string(),
-        name: "Disabled Provider".to_string(),
-        base_url: "https://disabled.com".to_string(),
-        api_key: Some("key".to_string()),
-        disabled: true,
-        interactive: false,
-    }, &repo).await.unwrap();
+    cmd_add_provider(
+        AddProviderArgs {
+            id: "disabled-provider".to_string(),
+            name: "Disabled Provider".to_string(),
+            base_url: "https://disabled.com".to_string(),
+            api_key: Some("key".to_string()),
+            disabled: true,
+            interactive: false,
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     let provider = repo.find_by_id("disabled-provider").await.unwrap();
     assert!(!provider.enabled);
 
     // Enable it
-    cmd_enable_provider(EnableProviderArgs {
-        id: "disabled-provider".to_string(),
-    }, &repo).await.unwrap();
+    cmd_enable_provider(
+        EnableProviderArgs {
+            id: "disabled-provider".to_string(),
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     let provider = repo.find_by_id("disabled-provider").await.unwrap();
     assert!(provider.enabled);
 
     // Remove it
-    cmd_remove_provider(RemoveProviderArgs {
-        id: "disabled-provider".to_string(),
-    }, &repo).await.unwrap();
+    cmd_remove_provider(
+        RemoveProviderArgs {
+            id: "disabled-provider".to_string(),
+        },
+        &repo,
+    )
+    .await
+    .unwrap();
 
     // Verify removed
     assert!(repo.find_by_id("disabled-provider").await.is_err());

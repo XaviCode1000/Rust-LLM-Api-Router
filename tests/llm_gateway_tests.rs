@@ -7,16 +7,16 @@
 //! - Cache TTL behavior
 
 use mockall::predicate::*;
-use wiremock::{MockServer, Mock, ResponseTemplate};
-use wiremock::matchers::{method, path, header};
 use serde_json::json;
 use std::sync::Arc;
+use wiremock::matchers::{header, method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use rust_llm_api_router::domain::entities::{Model, ChatRequest, Message};
+use rust_llm_api_router::domain::entities::{ChatRequest, Message, Model};
 use rust_llm_api_router::domain::traits::{AccountRepository, LlmGateway};
+use rust_llm_api_router::domain::Account;
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::{LlmGatewayImpl, ProviderConfig};
 use rust_llm_api_router::infrastructure::http_client::HttpClient;
-use rust_llm_api_router::domain::Account;
 
 // ============================================================================
 // Mock AccountRepository for testing
@@ -61,13 +61,13 @@ async fn _disabled_test_llm_gateway_list_models_single_provider_success() {
         .await;
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
-        .times(1)
-        .returning(|| Ok(vec![
+    mock_repo.expect_find_all().times(1).returning(|| {
+        Ok(vec![
             Account::new("acc-1", "openai", "sk-test-key").with_active(true)
-        ]));
+        ])
+    });
 
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 300);
     let models = gateway.list_models("sk-test-key").await.unwrap();
@@ -112,14 +112,14 @@ async fn _disabled_test_llm_gateway_list_models_multiple_providers_success() {
         .await;
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
-        .times(1)
-        .returning(|| Ok(vec![
+    mock_repo.expect_find_all().times(1).returning(|| {
+        Ok(vec![
             Account::new("acc-1", "openai", "sk-openai-key").with_active(true),
-            Account::new("acc-2", "groq", "sk-groq-key").with_active(true)
-        ]));
+            Account::new("acc-2", "groq", "sk-groq-key").with_active(true),
+        ])
+    });
 
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 300);
     let models = gateway.list_models("sk-multi-key").await.unwrap();
@@ -161,14 +161,14 @@ async fn _disabled_test_llm_gateway_list_models_resilient_to_provider_failure() 
         .await;
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
-        .times(1)
-        .returning(|| Ok(vec![
+    mock_repo.expect_find_all().times(1).returning(|| {
+        Ok(vec![
             Account::new("acc-1", "openai", "sk-openai-key").with_active(true),
-            Account::new("acc-2", "groq", "sk-groq-key").with_active(true)
-        ]));
+            Account::new("acc-2", "groq", "sk-groq-key").with_active(true),
+        ])
+    });
 
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 300);
     let models = gateway.list_models("sk-multi-key").await.unwrap();
@@ -184,13 +184,13 @@ async fn _disabled_test_llm_gateway_list_models_resilient_to_provider_failure() 
 // Disabled - mock issue
 async fn _disabled_test_llm_gateway_list_models_no_active_providers() {
     let http_client = Arc::new(HttpClient::new().unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
-        .times(1)
-        .returning(|| Ok(vec![
+    mock_repo.expect_find_all().times(1).returning(|| {
+        Ok(vec![
             Account::new("acc-1", "openai", "sk-key").with_active(false)
-        ]));
+        ])
+    });
 
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 300);
     let models = gateway.list_models("sk-test-key").await.unwrap();
@@ -202,9 +202,10 @@ async fn _disabled_test_llm_gateway_list_models_no_active_providers() {
 // Disabled - mock issue
 async fn _disabled_test_llm_gateway_list_models_empty_repository() {
     let http_client = Arc::new(HttpClient::new().unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
+    mock_repo
+        .expect_find_all()
         .times(1)
         .returning(|| Ok(vec![]));
 
@@ -234,20 +235,23 @@ async fn _disabled_test_llm_gateway_list_models_uses_cache() {
         .await;
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
+    mock_repo
+        .expect_find_all()
         .times(2) // Called twice - once for each list_models call
-        .returning(|| Ok(vec![
-            Account::new("acc-1", "openai", "sk-test-key").with_active(true)
-        ]));
+        .returning(|| {
+            Ok(vec![
+                Account::new("acc-1", "openai", "sk-test-key").with_active(true)
+            ])
+        });
 
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 300);
-    
+
     // First call - should hit API
     let models1 = gateway.list_models("sk-test-key").await.unwrap();
     assert_eq!(models1.len(), 1);
-    
+
     // Second call - should use cache (no additional HTTP calls)
     let models2 = gateway.list_models("sk-test-key").await.unwrap();
     assert_eq!(models2.len(), 1);
@@ -275,23 +279,23 @@ async fn _disabled_test_llm_gateway_list_models_cache_ttl_expires() {
         .await;
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
-        .times(2)
-        .returning(|| Ok(vec![
+    mock_repo.expect_find_all().times(2).returning(|| {
+        Ok(vec![
             Account::new("acc-1", "openai", "sk-test-key").with_active(true)
-        ]));
+        ])
+    });
 
     // Use 0 second TTL to force expiration
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 0);
-    
+
     // First call
     let _ = gateway.list_models("sk-test-key").await.unwrap();
-    
+
     // Small delay to ensure TTL expires
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    
+
     // Second call - cache should be expired
     let _ = gateway.list_models("sk-test-key").await.unwrap();
 
@@ -318,13 +322,13 @@ async fn _disabled_test_llm_gateway_list_models_401_unauthorized() {
         .await;
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
-        .times(1)
-        .returning(|| Ok(vec![
+    mock_repo.expect_find_all().times(1).returning(|| {
+        Ok(vec![
             Account::new("acc-1", "openai", "sk-invalid-key").with_active(true)
-        ]));
+        ])
+    });
 
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 300);
     let result = gateway.list_models("sk-invalid-key").await;
@@ -349,13 +353,13 @@ async fn _disabled_test_llm_gateway_list_models_429_rate_limit() {
         .await;
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
-        .times(1)
-        .returning(|| Ok(vec![
+    mock_repo.expect_find_all().times(1).returning(|| {
+        Ok(vec![
             Account::new("acc-1", "openai", "sk-key").with_active(true)
-        ]));
+        ])
+    });
 
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 300);
     let result = gateway.list_models("sk-key").await;
@@ -378,13 +382,13 @@ async fn _disabled_test_llm_gateway_list_models_500_internal_server_error() {
         .await;
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
-        .times(1)
-        .returning(|| Ok(vec![
+    mock_repo.expect_find_all().times(1).returning(|| {
+        Ok(vec![
             Account::new("acc-1", "openai", "sk-key").with_active(true)
-        ]));
+        ])
+    });
 
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 300);
     let result = gateway.list_models("sk-key").await;
@@ -407,13 +411,13 @@ async fn _disabled_test_llm_gateway_list_models_invalid_json_response() {
         .await;
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
-        .times(1)
-        .returning(|| Ok(vec![
+    mock_repo.expect_find_all().times(1).returning(|| {
+        Ok(vec![
             Account::new("acc-1", "openai", "sk-key").with_active(true)
-        ]));
+        ])
+    });
 
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 300);
     let result = gateway.list_models("sk-key").await;
@@ -438,13 +442,13 @@ async fn _disabled_test_llm_gateway_list_models_missing_data_field() {
         .await;
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
-        .times(1)
-        .returning(|| Ok(vec![
+    mock_repo.expect_find_all().times(1).returning(|| {
+        Ok(vec![
             Account::new("acc-1", "openai", "sk-key").with_active(true)
-        ]));
+        ])
+    });
 
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 300);
     let result = gateway.list_models("sk-key").await;
@@ -457,13 +461,13 @@ async fn _disabled_test_llm_gateway_list_models_missing_data_field() {
 // Disabled - mock issue
 async fn _disabled_test_llm_gateway_list_models_repository_error() {
     let http_client = Arc::new(HttpClient::new().unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
-        .times(1)
-        .returning(|| Err(rust_llm_api_router::domain::DomainError::Internal(
-            "Database connection failed".to_string()
-        )));
+    mock_repo.expect_find_all().times(1).returning(|| {
+        Err(rust_llm_api_router::domain::DomainError::Internal(
+            "Database connection failed".to_string(),
+        ))
+    });
 
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 300);
     let result = gateway.list_models("sk-key").await;
@@ -477,8 +481,13 @@ async fn _disabled_test_llm_gateway_list_models_repository_error() {
 
 #[test]
 fn test_provider_config_new() {
-    let config = ProviderConfig::new("test-id", "Test Provider", "https://api.test.com", "/v1/models");
-    
+    let config = ProviderConfig::new(
+        "test-id",
+        "Test Provider",
+        "https://api.test.com",
+        "/v1/models",
+    );
+
     assert_eq!(config.id, "test-id");
     assert_eq!(config.name, "Test Provider");
     assert_eq!(config.base_url, "https://api.test.com");
@@ -488,19 +497,19 @@ fn test_provider_config_new() {
 #[test]
 fn test_default_providers_contains_expected_providers() {
     let providers = rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers();
-    
+
     assert!(providers.contains_key("openai"));
     assert!(providers.contains_key("groq"));
     assert!(providers.contains_key("anthropic"));
     assert!(providers.contains_key("mistral"));
     assert!(providers.contains_key("cerebras"));
     assert!(providers.contains_key("openrouter"));
-    
+
     // Verify OpenAI config
     let openai_config = providers.get("openai").unwrap();
     assert_eq!(openai_config.base_url, "https://api.openai.com/v1");
     assert_eq!(openai_config.models_endpoint, "/models");
-    
+
     // Verify Anthropic config
     let anthropic_config = providers.get("anthropic").unwrap();
     assert_eq!(anthropic_config.base_url, "https://api.anthropic.com/v1");
@@ -514,18 +523,19 @@ fn test_default_providers_contains_expected_providers() {
 // #[tokio::test]
 async fn test_llm_gateway_chat_returns_not_implemented() {
     let http_client = Arc::new(HttpClient::new().unwrap());
-    
+
     let mut mock_repo = MockAccountRepository::new();
-    mock_repo.expect_find_all()
+    mock_repo
+        .expect_find_all()
         .times(0) // Should not be called for chat
         .returning(|| Ok(vec![]));
 
     let gateway = LlmGatewayImpl::new(http_client, Arc::new(mock_repo), 300);
-    
+
     let request = ChatRequest::new("gpt-4", vec![Message::user("Hello")]);
-    
+
     let result: Result<_, _> = gateway.chat(request, "sk-test-key").await;
-    
+
     assert!(result.is_err());
     // The error should be NotImplemented
     match result {

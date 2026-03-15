@@ -14,7 +14,7 @@ impl HttpClient {
         let client = Client::builder()
             .timeout(std::time::Duration::from_secs(120))
             .build()?;
-        Ok(Self { 
+        Ok(Self {
             client,
             mock_base_url: None,
         })
@@ -25,7 +25,7 @@ impl HttpClient {
         let client = Client::builder()
             .timeout(std::time::Duration::from_secs(120))
             .build()?;
-        Ok(Self { 
+        Ok(Self {
             client,
             mock_base_url: Some(mock_url.to_string()),
         })

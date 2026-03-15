@@ -3,16 +3,16 @@
 //! Tests adicionales para cubrir list_models() con más casos de error
 //! y verificar el comportamiento específico de cada provider.
 
-use wiremock::{MockServer, Mock, ResponseTemplate};
-use wiremock::matchers::{method, path, header};
 use serde_json::json;
 use std::sync::Arc;
+use wiremock::matchers::{header, method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use rust_llm_api_router::domain::traits::LlmProvider;
 use rust_llm_api_router::infrastructure::http_client::HttpClient;
-use rust_llm_api_router::infrastructure::provider::openai::OpenAiProvider;
-use rust_llm_api_router::infrastructure::provider::groq::GroqProvider;
 use rust_llm_api_router::infrastructure::provider::anthropic::AnthropicProvider;
+use rust_llm_api_router::infrastructure::provider::groq::GroqProvider;
+use rust_llm_api_router::infrastructure::provider::openai::OpenAiProvider;
 
 // ============================================================================
 // OPENAI PROVIDER TESTS - Additional Coverage
@@ -21,7 +21,7 @@ use rust_llm_api_router::infrastructure::provider::anthropic::AnthropicProvider;
 #[tokio::test]
 async fn test_openai_provider_list_models_empty_response() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("GET"))
         .and(path("/models"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
@@ -30,16 +30,12 @@ async fn test_openai_provider_list_models_empty_response() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let provider = OpenAiProvider::new(
-        mock_server.uri(),
-        "sk-openai-key".to_string(),
-        http_client,
-    );
-    
+    let provider = OpenAiProvider::new(mock_server.uri(), "sk-openai-key".to_string(), http_client);
+
     let models = provider.list_models("sk-openai-key").await.unwrap();
-    
+
     assert!(models.is_empty());
     mock_server.verify().await;
 }
@@ -47,23 +43,19 @@ async fn test_openai_provider_list_models_empty_response() {
 #[tokio::test]
 async fn test_openai_provider_list_models_500_server_error() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("GET"))
         .and(path("/models"))
         .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let provider = OpenAiProvider::new(
-        mock_server.uri(),
-        "sk-openai-key".to_string(),
-        http_client,
-    );
-    
+    let provider = OpenAiProvider::new(mock_server.uri(), "sk-openai-key".to_string(), http_client);
+
     let result = provider.list_models("sk-openai-key").await;
-    
+
     assert!(result.is_err());
     mock_server.verify().await;
 }
@@ -71,7 +63,7 @@ async fn test_openai_provider_list_models_500_server_error() {
 #[tokio::test]
 async fn test_openai_provider_list_models_403_forbidden() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("GET"))
         .and(path("/models"))
         .respond_with(ResponseTemplate::new(403).set_body_json(json!({
@@ -80,16 +72,12 @@ async fn test_openai_provider_list_models_403_forbidden() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let provider = OpenAiProvider::new(
-        mock_server.uri(),
-        "sk-openai-key".to_string(),
-        http_client,
-    );
-    
+    let provider = OpenAiProvider::new(mock_server.uri(), "sk-openai-key".to_string(), http_client);
+
     let result = provider.list_models("sk-openai-key").await;
-    
+
     assert!(result.is_err());
     mock_server.verify().await;
 }
@@ -101,7 +89,7 @@ async fn test_openai_provider_list_models_403_forbidden() {
 #[tokio::test]
 async fn test_groq_provider_list_models_single_model() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("GET"))
         .and(path("/models"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
@@ -112,16 +100,12 @@ async fn test_groq_provider_list_models_single_model() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let provider = GroqProvider::new(
-        mock_server.uri(),
-        "sk-groq-key".to_string(),
-        http_client,
-    );
-    
+    let provider = GroqProvider::new(mock_server.uri(), "sk-groq-key".to_string(), http_client);
+
     let models = provider.list_models("sk-groq-key").await.unwrap();
-    
+
     assert_eq!(models.len(), 1);
     assert_eq!(models[0].id, "llama-3.1-70b-versatile");
     mock_server.verify().await;
@@ -130,23 +114,19 @@ async fn test_groq_provider_list_models_single_model() {
 #[tokio::test]
 async fn test_groq_provider_list_models_502_bad_gateway() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("GET"))
         .and(path("/models"))
         .respond_with(ResponseTemplate::new(502))
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let provider = GroqProvider::new(
-        mock_server.uri(),
-        "sk-groq-key".to_string(),
-        http_client,
-    );
-    
+    let provider = GroqProvider::new(mock_server.uri(), "sk-groq-key".to_string(), http_client);
+
     let result = provider.list_models("sk-groq-key").await;
-    
+
     assert!(result.is_err());
     mock_server.verify().await;
 }
@@ -154,7 +134,7 @@ async fn test_groq_provider_list_models_502_bad_gateway() {
 #[tokio::test]
 async fn test_groq_provider_list_models_403_forbidden() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("GET"))
         .and(path("/models"))
         .respond_with(ResponseTemplate::new(403).set_body_json(json!({
@@ -163,16 +143,12 @@ async fn test_groq_provider_list_models_403_forbidden() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let provider = GroqProvider::new(
-        mock_server.uri(),
-        "sk-groq-key".to_string(),
-        http_client,
-    );
-    
+    let provider = GroqProvider::new(mock_server.uri(), "sk-groq-key".to_string(), http_client);
+
     let result = provider.list_models("sk-groq-key").await;
-    
+
     assert!(result.is_err());
     mock_server.verify().await;
 }
@@ -180,7 +156,7 @@ async fn test_groq_provider_list_models_403_forbidden() {
 #[tokio::test]
 async fn test_groq_provider_list_models_many_models() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("GET"))
         .and(path("/models"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
@@ -195,16 +171,12 @@ async fn test_groq_provider_list_models_many_models() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let provider = GroqProvider::new(
-        mock_server.uri(),
-        "sk-groq-key".to_string(),
-        http_client,
-    );
-    
+    let provider = GroqProvider::new(mock_server.uri(), "sk-groq-key".to_string(), http_client);
+
     let models = provider.list_models("sk-groq-key").await.unwrap();
-    
+
     assert_eq!(models.len(), 5);
     assert_eq!(models[0].id, "llama-3.1-70b-versatile");
     assert_eq!(models[4].id, "llama3-70b-8192");
@@ -218,7 +190,7 @@ async fn test_groq_provider_list_models_many_models() {
 #[tokio::test]
 async fn test_anthropic_provider_list_models_missing_display_name() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("GET"))
         .and(path("/models"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
@@ -229,16 +201,16 @@ async fn test_anthropic_provider_list_models_missing_display_name() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let http_client = Arc::new(HttpClient::new().unwrap());
     let provider = AnthropicProvider::new(
         mock_server.uri(),
         "sk-anthropic-key".to_string(),
         http_client,
     );
-    
+
     let models = provider.list_models("sk-anthropic-key").await.unwrap();
-    
+
     assert_eq!(models.len(), 1);
     assert_eq!(models[0].name, "claude-unknown"); // Falls back to id
     mock_server.verify().await;
@@ -247,23 +219,23 @@ async fn test_anthropic_provider_list_models_missing_display_name() {
 #[tokio::test]
 async fn test_anthropic_provider_list_models_503_service_unavailable() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("GET"))
         .and(path("/models"))
         .respond_with(ResponseTemplate::new(503))
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let http_client = Arc::new(HttpClient::new().unwrap());
     let provider = AnthropicProvider::new(
         mock_server.uri(),
         "sk-anthropic-key".to_string(),
         http_client,
     );
-    
+
     let result = provider.list_models("sk-anthropic-key").await;
-    
+
     assert!(result.is_err());
     mock_server.verify().await;
 }
@@ -271,7 +243,7 @@ async fn test_anthropic_provider_list_models_503_service_unavailable() {
 #[tokio::test]
 async fn test_anthropic_provider_list_models_403_forbidden() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("GET"))
         .and(path("/models"))
         .respond_with(ResponseTemplate::new(403).set_body_json(json!({
@@ -280,16 +252,16 @@ async fn test_anthropic_provider_list_models_403_forbidden() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let http_client = Arc::new(HttpClient::new().unwrap());
     let provider = AnthropicProvider::new(
         mock_server.uri(),
         "sk-anthropic-key".to_string(),
         http_client,
     );
-    
+
     let result = provider.list_models("sk-anthropic-key").await;
-    
+
     assert!(result.is_err());
     mock_server.verify().await;
 }
@@ -297,7 +269,7 @@ async fn test_anthropic_provider_list_models_403_forbidden() {
 #[tokio::test]
 async fn test_anthropic_provider_list_models_with_display_name() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("GET"))
         .and(path("/models"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
@@ -309,16 +281,16 @@ async fn test_anthropic_provider_list_models_with_display_name() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let http_client = Arc::new(HttpClient::new().unwrap());
     let provider = AnthropicProvider::new(
         mock_server.uri(),
         "sk-anthropic-key".to_string(),
         http_client,
     );
-    
+
     let models = provider.list_models("sk-anthropic-key").await.unwrap();
-    
+
     assert_eq!(models.len(), 2);
     assert_eq!(models[0].name, "Claude 3 Opus");
     assert_eq!(models[1].name, "Claude 3 Sonnet");
@@ -337,7 +309,7 @@ fn test_openai_provider_name_constant() {
         "sk-key".to_string(),
         http_client,
     );
-    
+
     assert_eq!(provider.name(), "openai");
 }
 
@@ -349,7 +321,7 @@ fn test_groq_provider_name_constant() {
         "sk-key".to_string(),
         http_client,
     );
-    
+
     assert_eq!(provider.name(), "groq");
 }
 
@@ -361,6 +333,6 @@ fn test_anthropic_provider_name_constant() {
         "sk-key".to_string(),
         http_client,
     );
-    
+
     assert_eq!(provider.name(), "anthropic");
 }

@@ -3,9 +3,9 @@
 //! These helpers use testcontainers to spin up mock API servers.
 //! Tests will skip if Docker is not available.
 
-use wiremock::MockServer;
-use wiremock::matchers::{method, path};
 use serde_json::json;
+use wiremock::matchers::{method, path};
+use wiremock::MockServer;
 
 /// Mock OpenAI API server
 pub struct MockOpenAIServer {
@@ -68,10 +68,12 @@ impl MockOpenAIServer {
     pub async fn setup_slow_response(&self, _delay_ms: u64) {
         wiremock::Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
-            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "id": "chatcmpl-slow",
-                "choices": [{"message": {"content": "Slow response"}}]
-            })))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "id": "chatcmpl-slow",
+                    "choices": [{"message": {"content": "Slow response"}}]
+                })),
+            )
             .expect(1..)
             .mount(&self.server)
             .await;
@@ -96,12 +98,14 @@ impl MockGroqServer {
     pub async fn setup_chat_response(&self) {
         wiremock::Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
-            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "id": "groq-123",
-                "choices": [{
-                    "message": {"role": "assistant", "content": "Hello from mock Groq!"}
-                }]
-            })))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "id": "groq-123",
+                    "choices": [{
+                        "message": {"role": "assistant", "content": "Hello from mock Groq!"}
+                    }]
+                })),
+            )
             .expect(1..)
             .mount(&self.server)
             .await;

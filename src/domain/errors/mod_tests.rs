@@ -275,7 +275,9 @@ fn test_domain_result_and() {
 
     assert!(ok1.and(Ok(2)).is_ok());
     assert!(Ok::<_, DomainError>(1).and(ok2).is_ok());
-    assert!(Err::<i32, _>(DomainError::Internal("e".to_string())).and(Ok(1)).is_err());
+    assert!(Err::<i32, _>(DomainError::Internal("e".to_string()))
+        .and(Ok(1))
+        .is_err());
 }
 
 #[test]
@@ -284,8 +286,12 @@ fn test_domain_result_or() {
     let ok2: DomainResult<i32> = Ok(2);
 
     assert_eq!(ok1.or::<DomainError>(Ok(2)).unwrap(), 1);
-    assert!(Err::<i32, _>(DomainError::Internal("e".to_string())).or(ok2).is_ok());
-    assert!(Err::<i32, _>(DomainError::Internal("e1".to_string())).or(Err(DomainError::Internal("e2".to_string()))).is_err());
+    assert!(Err::<i32, _>(DomainError::Internal("e".to_string()))
+        .or(ok2)
+        .is_ok());
+    assert!(Err::<i32, _>(DomainError::Internal("e1".to_string()))
+        .or(Err(DomainError::Internal("e2".to_string())))
+        .is_err());
 }
 
 #[test]

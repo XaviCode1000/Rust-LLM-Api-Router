@@ -25,7 +25,7 @@ use tempfile::TempDir;
 mockall::mock! {
     /// Mock account repository for testing
     pub AccountRepository {}
-    
+
     // Implement AccountRepository trait methods
     #[async_trait]
     impl AccountRepository for AccountRepository {
@@ -60,13 +60,7 @@ async fn test_api_key_not_in_error_messages() {
         .expect_find_active_by_provider()
         .with(eq("openai"))
         .times(1)
-        .returning(move |_| {
-            Ok(vec![Account::new(
-                "test-account",
-                "openai",
-                secret_key,
-            )])
-        });
+        .returning(move |_| Ok(vec![Account::new("test-account", "openai", secret_key)]));
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
@@ -99,8 +93,8 @@ async fn test_file_paths_not_in_errors() {
     // Write invalid JSON to trigger error
     std::fs::write(&file_path, "invalid json").expect("Should write");
 
-    let repo = JsonAccountRepository::with_config_dir(temp_dir.path())
-        .expect("Should create repository");
+    let repo =
+        JsonAccountRepository::with_config_dir(temp_dir.path()).expect("Should create repository");
 
     let result = repo.find_all().await;
 
@@ -126,13 +120,7 @@ async fn test_account_ids_sanitized() {
         .expect_find_active_by_provider()
         .with(eq("openai"))
         .times(1)
-        .returning(move |_| {
-            Ok(vec![Account::new(
-                sensitive_id,
-                "openai",
-                "sk-key",
-            )])
-        });
+        .returning(move |_| Ok(vec![Account::new(sensitive_id, "openai", "sk-key")]));
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
@@ -232,8 +220,8 @@ async fn test_command_injection_in_provider_id() {
 
 fn create_temp_repository() -> (TempDir, Arc<dyn AccountRepository>) {
     let temp_dir = TempDir::new().expect("Should create temp dir");
-    let repo = JsonAccountRepository::with_config_dir(temp_dir.path())
-        .expect("Should create repository");
+    let repo =
+        JsonAccountRepository::with_config_dir(temp_dir.path()).expect("Should create repository");
     (temp_dir, Arc::new(repo) as Arc<dyn AccountRepository>)
 }
 
@@ -250,7 +238,7 @@ async fn test_concurrent_health_map_no_race() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("openai"))
-        .times(1..)  // Allow multiple calls in concurrent test
+        .times(1..) // Allow multiple calls in concurrent test
         .returning(|_| {
             Ok(vec![
                 Account::new("account-1", "openai", "key-1"),
@@ -306,13 +294,14 @@ fn test_atomic_counter_correctness() {
     for _ in 0..1000 {
         let strategy = strategy.clone();
         let accounts = accounts.clone();
-        let handle = std::thread::spawn(move || {
-            strategy.select(&accounts).map(|a| a.id.clone())
-        });
+        let handle = std::thread::spawn(move || strategy.select(&accounts).map(|a| a.id.clone()));
         handles.push(handle);
     }
 
-    let results: Vec<Option<String>> = handles.into_iter().map(|h: std::thread::JoinHandle<Option<String>>| h.join().unwrap()).collect();
+    let results: Vec<Option<String>> = handles
+        .into_iter()
+        .map(|h: std::thread::JoinHandle<Option<String>>| h.join().unwrap())
+        .collect();
 
     // All should succeed without panic
     assert_eq!(results.len(), 1000);
@@ -340,11 +329,12 @@ async fn test_mutex_poisoning_recovery() {
     for i in 0..50 {
         let strategy = strategy.clone();
         let accounts = accounts.clone();
-        let handle: tokio::task::JoinHandle<Option<&'static Account>> = tokio::task::spawn_blocking(move || {
-            // Leak accounts to 'static for spawn_blocking (test-only pattern)
-            let accounts_ref: &'static [Account] = Box::leak(accounts.into_boxed_slice());
-            strategy.select_for_user(accounts_ref, &format!("user-{}", i))
-        });
+        let handle: tokio::task::JoinHandle<Option<&'static Account>> =
+            tokio::task::spawn_blocking(move || {
+                // Leak accounts to 'static for spawn_blocking (test-only pattern)
+                let accounts_ref: &'static [Account] = Box::leak(accounts.into_boxed_slice());
+                strategy.select_for_user(accounts_ref, &format!("user-{}", i))
+            });
         handles.push(handle);
     }
 
@@ -367,10 +357,8 @@ async fn test_memory_bounded_health_tracking() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("openai"))
-        .times(1..)  // Allow multiple calls in loop
-        .returning(|_| {
-            Ok(vec![Account::new("account-1", "openai", "sk-key")])
-        });
+        .times(1..) // Allow multiple calls in loop
+        .returning(|_| Ok(vec![Account::new("account-1", "openai", "sk-key")]));
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
@@ -461,10 +449,8 @@ async fn test_circuit_breaker_prevents_dos() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("openai"))
-        .times(1..)  // Allow multiple calls in loop
-        .returning(|_| {
-            Ok(vec![Account::new("account-1", "openai", "sk-key")])
-        });
+        .times(1..) // Allow multiple calls in loop
+        .returning(|_| Ok(vec![Account::new("account-1", "openai", "sk-key")]));
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
@@ -497,10 +483,8 @@ async fn test_circuit_breaker_timeout() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("openai"))
-        .times(1..)  // Allow multiple calls in loop
-        .returning(|_| {
-            Ok(vec![Account::new("account-1", "openai", "sk-key")])
-        });
+        .times(1..) // Allow multiple calls in loop
+        .returning(|_| Ok(vec![Account::new("account-1", "openai", "sk-key")]));
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
@@ -581,7 +565,10 @@ fn test_debug_output_sanitization() {
     let debug_output = format!("{:?}", health);
 
     // Debug output should not contain sensitive patterns
-    assert!(!debug_output.contains("sk-"), "Debug should not leak API key patterns");
+    assert!(
+        !debug_output.contains("sk-"),
+        "Debug should not leak API key patterns"
+    );
 
     // Note: AccountHealth doesn't store API keys, but this test documents the pattern
 }

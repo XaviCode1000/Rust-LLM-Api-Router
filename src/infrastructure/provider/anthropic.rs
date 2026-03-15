@@ -9,7 +9,10 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use crate::domain::entities::{LlmRequest, LlmResponse, OpenAIChatRequest, OpenAIChatResponse, OpenAIMessage, OpenAIChoice, OpenAIUsage};
+use crate::domain::entities::{
+    LlmRequest, LlmResponse, OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice, OpenAIMessage,
+    OpenAIUsage,
+};
 use crate::domain::traits::LlmProvider;
 use crate::domain::Model;
 use crate::error::{Error, Result};
@@ -89,11 +92,11 @@ impl AnthropicProvider {
     /// - Response format: { id, content, usage, stop_reason }
     pub async fn chat(&self, request: &OpenAIChatRequest) -> Result<OpenAIChatResponse> {
         let url = format!("{}/v1/messages", self.api_url);
-        
+
         // Extract system message if present
         let mut system_message: Option<String> = None;
         let mut messages: Vec<AnthropicMessage> = Vec::new();
-        
+
         for msg in &request.messages {
             if msg.role == "system" {
                 system_message = Some(msg.content.clone());
@@ -104,7 +107,7 @@ impl AnthropicProvider {
                 });
             }
         }
-        
+
         // Build Anthropic request
         let anthropic_request = AnthropicMessageRequest {
             model: request.model.clone(),
@@ -113,7 +116,7 @@ impl AnthropicProvider {
             temperature: request.temperature,
             system: system_message,
         };
-        
+
         let response = self
             .http_client
             .client()
@@ -127,9 +130,11 @@ impl AnthropicProvider {
             .map_err(|e| Error::Internal(format!("Failed to send Anthropic request: {}", e)))?;
 
         if response.status().is_success() {
-            let anthropic_response: AnthropicMessageResponse = response.json().await
-                .map_err(|e| Error::Internal(format!("Failed to parse Anthropic response: {}", e)))?;
-            
+            let anthropic_response: AnthropicMessageResponse =
+                response.json().await.map_err(|e| {
+                    Error::Internal(format!("Failed to parse Anthropic response: {}", e))
+                })?;
+
             // Convert Anthropic response to OpenAI format
             let openai_response = OpenAIChatResponse {
                 id: anthropic_response.id,
@@ -140,7 +145,9 @@ impl AnthropicProvider {
                     index: 0,
                     message: OpenAIMessage {
                         role: "assistant".to_string(),
-                        content: anthropic_response.content.first()
+                        content: anthropic_response
+                            .content
+                            .first()
                             .map(|c| c.text.clone())
                             .unwrap_or_default(),
                         name: None,
@@ -150,11 +157,12 @@ impl AnthropicProvider {
                 usage: OpenAIUsage {
                     prompt_tokens: anthropic_response.usage.input_tokens,
                     completion_tokens: anthropic_response.usage.output_tokens,
-                    total_tokens: anthropic_response.usage.input_tokens + anthropic_response.usage.output_tokens,
+                    total_tokens: anthropic_response.usage.input_tokens
+                        + anthropic_response.usage.output_tokens,
                 },
                 system_fingerprint: None,
             };
-            
+
             Ok(openai_response)
         } else {
             let status = response.status();
@@ -176,34 +184,42 @@ impl LlmProvider for AnthropicProvider {
         // Convert LlmRequest to OpenAIChatRequest
         let openai_request = OpenAIChatRequest::new(
             request.model,
-            request.messages.into_iter().map(|m| OpenAIMessage {
-                role: m.role,
-                content: m.content,
-                name: None,
-            }).collect(),
+            request
+                .messages
+                .into_iter()
+                .map(|m| OpenAIMessage {
+                    role: m.role,
+                    content: m.content,
+                    name: None,
+                })
+                .collect(),
         );
-        
+
         // Use the typed chat method
         let openai_response = self.chat(&openai_request).await?;
-        
+
         // Convert OpenAIChatResponse to LlmResponse
         let response = LlmResponse {
             id: openai_response.id,
-            choices: openai_response.choices.into_iter().map(|c| crate::domain::Choice {
-                index: c.index,
-                message: crate::domain::Message {
-                    role: c.message.role,
-                    content: c.message.content,
-                },
-                finish_reason: c.finish_reason,
-            }).collect(),
+            choices: openai_response
+                .choices
+                .into_iter()
+                .map(|c| crate::domain::Choice {
+                    index: c.index,
+                    message: crate::domain::Message {
+                        role: c.message.role,
+                        content: c.message.content,
+                    },
+                    finish_reason: c.finish_reason,
+                })
+                .collect(),
             usage: crate::domain::Usage {
                 prompt_tokens: openai_response.usage.prompt_tokens,
                 completion_tokens: openai_response.usage.completion_tokens,
                 total_tokens: openai_response.usage.total_tokens,
             },
         };
-        
+
         Ok(response)
     }
 
@@ -243,7 +259,9 @@ impl LlmProvider for AnthropicProvider {
         let data_array = json
             .get("data")
             .and_then(|d: &serde_json::Value| d.as_array())
-            .ok_or_else(|| Error::Internal("Invalid Anthropic models response format".to_string()))?;
+            .ok_or_else(|| {
+                Error::Internal("Invalid Anthropic models response format".to_string())
+            })?;
 
         for item in data_array {
             if let Some(id) = item.get("id").and_then(|v: &serde_json::Value| v.as_str()) {
@@ -253,7 +271,11 @@ impl LlmProvider for AnthropicProvider {
                     .and_then(|v: &serde_json::Value| v.as_str())
                     .unwrap_or(id);
 
-                models.push(Model::new(id.to_string(), name.to_string(), self.name.clone()));
+                models.push(Model::new(
+                    id.to_string(),
+                    name.to_string(),
+                    self.name.clone(),
+                ));
             }
         }
 
@@ -269,8 +291,8 @@ impl LlmProvider for AnthropicProvider {
 mod tests {
     use super::*;
     use crate::infrastructure::http_client::HttpClient;
-    use std::sync::Arc;
     use crate::infrastructure::http_client::SharedHttpClient;
+    use std::sync::Arc;
 
     #[test]
     fn test_anthropic_provider_creation() {

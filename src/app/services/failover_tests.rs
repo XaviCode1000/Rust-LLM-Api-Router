@@ -12,13 +12,18 @@ use tokio::sync::Mutex;
 
 fn create_test_repository() -> (TempDir, Arc<dyn AccountRepository>) {
     let temp_dir = TempDir::new().expect("Should create temp dir");
-    let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).expect("Should create repository");
+    let repo =
+        JsonAccountRepository::with_config_dir(temp_dir.path()).expect("Should create repository");
     (temp_dir, Arc::new(repo) as Arc<dyn AccountRepository>)
 }
 
 async fn setup_test_accounts(repo: &dyn AccountRepository, provider_id: &str, count: usize) {
     for i in 0..count {
-        let account = Account::new(format!("{}-account-{}", provider_id, i), provider_id, format!("sk-test-key-{}", i));
+        let account = Account::new(
+            format!("{}-account-{}", provider_id, i),
+            provider_id,
+            format!("sk-test-key-{}", i),
+        );
         repo.save(account).await.expect("Should save account");
     }
 }
@@ -42,14 +47,16 @@ async fn test_execute_with_failover_success_first_attempt() {
     let manager = FailoverManager::with_round_robin(repo);
     let call_count = Arc::new(Mutex::new(0));
     let call_count_clone = call_count.clone();
-    let result: Result<String, String> = manager.execute_with_failover("openai", move |account| {
-        let call_count = call_count_clone.clone();
-        let account_id = account.id.clone();
-        async move {
-            *call_count.lock().await += 1;
-            Ok(format!("success-{}", account_id))
-        }
-    }).await;
+    let result: Result<String, String> = manager
+        .execute_with_failover("openai", move |account| {
+            let call_count = call_count_clone.clone();
+            let account_id = account.id.clone();
+            async move {
+                *call_count.lock().await += 1;
+                Ok(format!("success-{}", account_id))
+            }
+        })
+        .await;
     assert!(result.is_ok());
     assert_eq!(*call_count.lock().await, 1);
 }
@@ -60,10 +67,15 @@ async fn test_execute_with_failover_all_fail() {
     let (_temp_dir, repo) = create_test_repository();
     setup_test_accounts(&*repo, "openai", 2).await;
     let manager = FailoverManager::with_round_robin(repo);
-    let result: Result<String, String> = manager.execute_with_failover("openai", |_| async { Err("generic-error".to_string()) }).await;
+    let result: Result<String, String> = manager
+        .execute_with_failover("openai", |_| async { Err("generic-error".to_string()) })
+        .await;
     assert!(result.is_err());
     let err = format!("{:?}", result.err().unwrap());
-    assert!(!err.contains("sk-test-key"), "Error should not leak API keys");
+    assert!(
+        !err.contains("sk-test-key"),
+        "Error should not leak API keys"
+    );
 }
 
 /// Test: No accounts available - panics (known issue)
@@ -73,7 +85,9 @@ async fn test_execute_with_failover_no_accounts() {
     let manager = FailoverManager::with_round_robin(repo);
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         tokio::runtime::Handle::current().block_on(async {
-            let _: Result<String, String> = manager.execute_with_failover("openai", |_| async { Ok("success".to_string()) }).await;
+            let _: Result<String, String> = manager
+                .execute_with_failover("openai", |_| async { Ok("success".to_string()) })
+                .await;
         })
     }));
     assert!(result.is_err(), "Should panic when no accounts");
@@ -86,17 +100,25 @@ async fn test_circuit_breaker_blocks_failed_account() {
     setup_test_accounts(&*repo, "openai", 2).await;
     let manager = FailoverManager::with_round_robin(repo);
     for _ in 0..5 {
-        let _: Result<String, String> = manager.execute_with_failover("openai", |account| {
-            let account_id = account.id.clone();
-            async move {
-                if account_id.contains("account-0") { Err("failure".to_string()) } else { Ok("success".to_string()) }
-            }
-        }).await;
+        let _: Result<String, String> = manager
+            .execute_with_failover("openai", |account| {
+                let account_id = account.id.clone();
+                async move {
+                    if account_id.contains("account-0") {
+                        Err("failure".to_string())
+                    } else {
+                        Ok("success".to_string())
+                    }
+                }
+            })
+            .await;
     }
-    let result: Result<String, String> = manager.execute_with_failover("openai", |account| {
-        let account_id = account.id.clone();
-        async move { Ok(format!("used-{}", account_id)) }
-    }).await;
+    let result: Result<String, String> = manager
+        .execute_with_failover("openai", |account| {
+            let account_id = account.id.clone();
+            async move { Ok(format!("used-{}", account_id)) }
+        })
+        .await;
     assert!(result.unwrap().contains("account-1"));
 }
 
@@ -110,10 +132,12 @@ async fn test_concurrent_health_map_access() {
     for i in 0..10 {
         let manager = manager.clone();
         let handle: tokio::task::JoinHandle<Result<String, String>> = tokio::spawn(async move {
-            manager.execute_with_failover("openai", |_| async {
-                tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-                Ok(format!("request-{}", i))
-            }).await
+            manager
+                .execute_with_failover("openai", |_| async {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+                    Ok(format!("request-{}", i))
+                })
+                .await
         });
         handles.push(handle);
     }
@@ -131,7 +155,13 @@ async fn test_error_messages_no_key_leakage() {
     let account = Account::new("secret-account", "openai", secret_key);
     repo.save(account).await.expect("Should save");
     let manager = FailoverManager::with_round_robin(repo);
-    let result: Result<String, String> = manager.execute_with_failover("openai", |_| async { Err("API error".to_string()) }).await;
+    let result: Result<String, String> = manager
+        .execute_with_failover("openai", |_| async { Err("API error".to_string()) })
+        .await;
     let err_str = format!("{:?}", result.err().unwrap());
-    assert!(!err_str.contains(secret_key), "Error message leaked API key: {}", err_str);
+    assert!(
+        !err_str.contains(secret_key),
+        "Error message leaked API key: {}",
+        err_str
+    );
 }

@@ -9,19 +9,21 @@ use axum::{
     routing::post,
     Router,
 };
-use tower::util::ServiceExt;
 use serde_json::json;
-use wiremock::{MockServer, Mock, ResponseTemplate};
-use wiremock::matchers::{method, path, header, body_json};
 use std::sync::Arc;
 use tempfile::TempDir;
+use tower::util::ServiceExt;
+use wiremock::matchers::{body_json, header, method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use rust_llm_api_router::config::Settings;
 use rust_llm_api_router::domain::{Account, AccountRepository};
-use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics};
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
+use rust_llm_api_router::infrastructure::{
+    HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
+};
 use rust_llm_api_router::interfaces::handlers::chat_handler::chat_completions;
 use rust_llm_api_router::presentation::AppState;
-use rust_llm_api_router::config::Settings;
 
 /// Setup complete test environment with mock servers
 async fn setup_full_test_env() -> (Router, MockServer, MockServer, TempDir) {
@@ -32,9 +34,8 @@ async fn setup_full_test_env() -> (Router, MockServer, MockServer, TempDir) {
     let mock_failover = MockServer::start().await;
 
     // Setup repository with accounts pointing to both mocks
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap(),
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let primary_account = Account::new("primary-account", "openai", "sk-primary-key");
     repo.save(primary_account).await.unwrap();
@@ -77,9 +78,8 @@ async fn setup_single_mock_env() -> (Router, MockServer, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let mock_server = MockServer::start().await;
 
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap(),
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let account = Account::new("test-account", "openai", "sk-test-key");
     repo.save(account).await.unwrap();
@@ -150,21 +150,25 @@ async fn _disabled_test_chat_handler_complete_request_flow() {
         .await;
 
     // Make complete request
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": [
-                        {"role": "system", "content": "You are helpful"},
-                        {"role": "user", "content": "Hello"}
-                    ],
-                    "temperature": 0.7,
-                    "max_tokens": 100
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": [
+                            {"role": "system", "content": "You are helpful"},
+                            {"role": "user", "content": "Hello"}
+                        ],
+                        "temperature": 0.7,
+                        "max_tokens": 100
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -173,11 +177,16 @@ async fn _disabled_test_chat_handler_complete_request_flow() {
     assert_eq!(response.status(), StatusCode::OK);
 
     // Verify response body
-    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let response_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(response_json["id"], "complete-flow");
-    assert_eq!(response_json["choices"][0]["message"]["content"], "Complete flow response");
+    assert_eq!(
+        response_json["choices"][0]["message"]["content"],
+        "Complete flow response"
+    );
     assert_eq!(response_json["usage"]["total_tokens"], 15);
 
     mock_server.verify().await;
@@ -198,16 +207,20 @@ async fn test_chat_handler_with_colon_model_format() {
         .mount(&mock_server)
         .await;
 
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": [{"role": "user", "content": "Test"}]
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": [{"role": "user", "content": "Test"}]
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -232,16 +245,20 @@ async fn test_chat_handler_with_slash_model_format() {
         .mount(&mock_server)
         .await;
 
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai/gpt-4",
-                    "messages": [{"role": "user", "content": "Test"}]
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai/gpt-4",
+                        "messages": [{"role": "user", "content": "Test"}]
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -268,16 +285,20 @@ async fn test_chat_handler_provider_503_failover() {
         .mount(&mock_primary)
         .await;
 
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": [{"role": "user", "content": "Hello"}]
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": [{"role": "user", "content": "Hello"}]
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -304,16 +325,20 @@ async fn test_chat_handler_rate_limit_429() {
         .mount(&mock_server)
         .await;
 
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": [{"role": "user", "content": "Hello"}]
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": [{"role": "user", "content": "Hello"}]
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -338,16 +363,20 @@ async fn test_chat_handler_401_unauthorized() {
         .mount(&mock_server)
         .await;
 
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": [{"role": "user", "content": "Hello"}]
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": [{"role": "user", "content": "Hello"}]
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -365,16 +394,20 @@ async fn test_chat_handler_validation_empty_messages() {
     let (app, _mock_server, _temp) = setup_single_mock_env().await;
 
     // Test empty messages array
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": []
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": []
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -388,15 +421,19 @@ async fn test_chat_handler_validation_missing_model() {
     let (app, _mock_server, _temp) = setup_single_mock_env().await;
 
     // Test missing model field
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "messages": [{"role": "user", "content": "Hello"}]
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "messages": [{"role": "user", "content": "Hello"}]
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -404,8 +441,8 @@ async fn test_chat_handler_validation_missing_model() {
 
     // Missing model returns BAD_REQUEST or UNPROCESSABLE_ENTITY
     assert!(
-        response.status() == StatusCode::BAD_REQUEST ||
-        response.status() == StatusCode::UNPROCESSABLE_ENTITY
+        response.status() == StatusCode::BAD_REQUEST
+            || response.status() == StatusCode::UNPROCESSABLE_ENTITY
     );
 }
 
@@ -414,23 +451,27 @@ async fn test_chat_handler_validation_missing_messages() {
     let (app, _mock_server, _temp) = setup_single_mock_env().await;
 
     // Test missing messages field
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4"
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4"
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
         .unwrap();
 
     assert!(
-        response.status() == StatusCode::BAD_REQUEST ||
-        response.status() == StatusCode::UNPROCESSABLE_ENTITY
+        response.status() == StatusCode::BAD_REQUEST
+            || response.status() == StatusCode::UNPROCESSABLE_ENTITY
     );
 }
 
@@ -440,9 +481,8 @@ async fn test_chat_handler_no_active_accounts() {
     let mock_server = MockServer::start().await;
 
     // Create repo WITHOUT any accounts
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap(),
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
     let metrics = Arc::new(Metrics::new().unwrap());
@@ -470,16 +510,20 @@ async fn test_chat_handler_no_active_accounts() {
         .route("/v1/chat/completions", post(chat_completions))
         .with_state(state);
 
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": [{"role": "user", "content": "Hello"}]
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": [{"role": "user", "content": "Hello"}]
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -499,37 +543,44 @@ async fn test_chat_handler_streaming_response() {
 
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(ResponseTemplate::new(200)
-            .insert_header("Content-Type", "text/event-stream")
-            .set_body_raw(
-                "data: {\"choices\": [{\"delta\": {\"content\": \"Hello\"}}]}\n\n\
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("Content-Type", "text/event-stream")
+                .set_body_raw(
+                    "data: {\"choices\": [{\"delta\": {\"content\": \"Hello\"}}]}\n\n\
                  data: {\"choices\": [{\"delta\": {\"content\": \" World\"}}]}\n\n\
                  data: [DONE]\n\n",
-                "text/event-stream"
-            ))
+                    "text/event-stream",
+                ),
+        )
         .expect(1)
         .mount(&mock_server)
         .await;
 
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
                 .header("Accept", "text/event-stream")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": [{"role": "user", "content": "Hello"}],
-                    "stream": true
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": [{"role": "user", "content": "Hello"}],
+                        "stream": true
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
-    assert!(response.headers()
+    assert!(response
+        .headers()
         .get("Content-Type")
         .unwrap()
         .to_str()
@@ -548,17 +599,21 @@ async fn test_chat_handler_streaming_with_error() {
         .mount(&mock_server)
         .await;
 
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": [{"role": "user", "content": "Hello"}],
-                    "stream": true
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": [{"role": "user", "content": "Hello"}],
+                        "stream": true
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -577,14 +632,19 @@ async fn test_chat_handler_round_robin_selection() {
     let mock_server = MockServer::start().await;
 
     // Create repo with multiple accounts for same provider
-    let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap(),
-    );
+    let repo: Arc<dyn AccountRepository> =
+        Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     // Add 3 accounts
-    repo.save(Account::new("acc-1", "openai", "sk-key-1")).await.unwrap();
-    repo.save(Account::new("acc-2", "openai", "sk-key-2")).await.unwrap();
-    repo.save(Account::new("acc-3", "openai", "sk-key-3")).await.unwrap();
+    repo.save(Account::new("acc-1", "openai", "sk-key-1"))
+        .await
+        .unwrap();
+    repo.save(Account::new("acc-2", "openai", "sk-key-2"))
+        .await
+        .unwrap();
+    repo.save(Account::new("acc-3", "openai", "sk-key-3"))
+        .await
+        .unwrap();
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
     let metrics = Arc::new(Metrics::new().unwrap());
@@ -625,16 +685,20 @@ async fn test_chat_handler_round_robin_selection() {
 
     // Make 3 requests - should use different accounts
     for _ in 0..3 {
-        let response = app.clone()
+        let response = app
+            .clone()
             .oneshot(
                 Request::builder()
                     .method("POST")
                     .uri("/v1/chat/completions")
                     .header("Content-Type", "application/json")
-                    .body(Body::from(json!({
-                        "model": "openai:gpt-4",
-                        "messages": [{"role": "user", "content": "Test"}]
-                    }).to_string()))
+                    .body(Body::from(
+                        json!({
+                            "model": "openai:gpt-4",
+                            "messages": [{"role": "user", "content": "Test"}]
+                        })
+                        .to_string(),
+                    ))
                     .unwrap(),
             )
             .await
@@ -671,18 +735,22 @@ async fn test_chat_handler_with_temperature_parameter() {
         .mount(&mock_server)
         .await;
 
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": [{"role": "user", "content": "Test"}],
-                    "temperature": 0.9,
-                    "max_tokens": 500
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": [{"role": "user", "content": "Test"}],
+                        "temperature": 0.9,
+                        "max_tokens": 500
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -707,16 +775,20 @@ async fn test_chat_handler_with_default_parameters() {
         .await;
 
     // Request without optional parameters
-    let response = app.clone()
+    let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/v1/chat/completions")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "model": "openai:gpt-4",
-                    "messages": [{"role": "user", "content": "Test"}]
-                }).to_string()))
+                .body(Body::from(
+                    json!({
+                        "model": "openai:gpt-4",
+                        "messages": [{"role": "user", "content": "Test"}]
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -749,8 +821,9 @@ async fn _disabled_test_chat_handler_concurrent_requests() {
     let mut handles = Vec::new();
     for i in 0..5 {
         let app_clone = app.clone();
-        let handle = tokio::spawn(async move {
-            let response = app_clone
+        let handle =
+            tokio::spawn(async move {
+                let response = app_clone
                 .oneshot(
                     Request::builder()
                         .method("POST")
@@ -765,8 +838,8 @@ async fn _disabled_test_chat_handler_concurrent_requests() {
                 .await
                 .unwrap();
 
-            assert_eq!(response.status(), StatusCode::OK);
-        });
+                assert_eq!(response.status(), StatusCode::OK);
+            });
         handles.push(handle);
     }
 

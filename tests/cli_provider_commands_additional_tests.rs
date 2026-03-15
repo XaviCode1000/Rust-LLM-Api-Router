@@ -2,13 +2,13 @@
 //!
 //! These tests cover edge cases and error scenarios not covered in main test files.
 
-use tempfile::TempDir;
 use rust_llm_api_router::cli::provider_commands::{
-    AddProviderArgs, EnableProviderArgs, DisableProviderArgs,
-    cmd_add_provider, cmd_enable_provider, cmd_disable_provider,
+    cmd_add_provider, cmd_disable_provider, cmd_enable_provider, AddProviderArgs,
+    DisableProviderArgs, EnableProviderArgs,
 };
 use rust_llm_api_router::domain::traits::ProviderRepository;
 use rust_llm_api_router::infrastructure::JsonProviderRepository;
+use tempfile::TempDir;
 
 fn create_test_repo() -> (TempDir, JsonProviderRepository) {
     let temp_dir = TempDir::new().unwrap();
@@ -93,7 +93,9 @@ async fn test_cli_add_provider_duplicate_id() {
 #[tokio::test]
 async fn test_cli_enable_non_existent_provider() {
     let (_temp_dir, repo) = create_test_repo();
-    let args = EnableProviderArgs { id: "non-existent".to_string() };
+    let args = EnableProviderArgs {
+        id: "non-existent".to_string(),
+    };
     let result = cmd_enable_provider(args, &repo).await;
     assert!(result.is_err());
 }
@@ -101,7 +103,9 @@ async fn test_cli_enable_non_existent_provider() {
 #[tokio::test]
 async fn test_cli_disable_non_existent_provider() {
     let (_temp_dir, repo) = create_test_repo();
-    let args = DisableProviderArgs { id: "non-existent".to_string() };
+    let args = DisableProviderArgs {
+        id: "non-existent".to_string(),
+    };
     let result = cmd_disable_provider(args, &repo).await;
     assert!(result.is_err());
 }
@@ -118,7 +122,9 @@ async fn test_cli_enable_already_enabled_provider() {
         interactive: false,
     };
     cmd_add_provider(add_args, &repo).await.unwrap();
-    let enable_args = EnableProviderArgs { id: "already-enabled".to_string() };
+    let enable_args = EnableProviderArgs {
+        id: "already-enabled".to_string(),
+    };
     let result = cmd_enable_provider(enable_args, &repo).await;
     assert!(result.is_ok());
     let provider = repo.find_by_id("already-enabled").await.unwrap();
@@ -137,7 +143,9 @@ async fn test_cli_disable_already_disabled_provider() {
         interactive: false,
     };
     cmd_add_provider(add_args, &repo).await.unwrap();
-    let disable_args = DisableProviderArgs { id: "already-disabled".to_string() };
+    let disable_args = DisableProviderArgs {
+        id: "already-disabled".to_string(),
+    };
     let result = cmd_disable_provider(disable_args, &repo).await;
     assert!(result.is_ok());
     let provider = repo.find_by_id("already-disabled").await.unwrap();
@@ -219,15 +227,21 @@ async fn test_cli_provider_enable_disable_cycle() {
     cmd_add_provider(add_args, &repo).await.unwrap();
     let provider = repo.find_by_id("cycle-provider").await.unwrap();
     assert!(provider.enabled);
-    let disable_args = DisableProviderArgs { id: "cycle-provider".to_string() };
+    let disable_args = DisableProviderArgs {
+        id: "cycle-provider".to_string(),
+    };
     cmd_disable_provider(disable_args, &repo).await.unwrap();
     let provider = repo.find_by_id("cycle-provider").await.unwrap();
     assert!(!provider.enabled);
-    let enable_args = EnableProviderArgs { id: "cycle-provider".to_string() };
+    let enable_args = EnableProviderArgs {
+        id: "cycle-provider".to_string(),
+    };
     cmd_enable_provider(enable_args, &repo).await.unwrap();
     let provider = repo.find_by_id("cycle-provider").await.unwrap();
     assert!(provider.enabled);
-    let disable_args2 = DisableProviderArgs { id: "cycle-provider".to_string() };
+    let disable_args2 = DisableProviderArgs {
+        id: "cycle-provider".to_string(),
+    };
     cmd_disable_provider(disable_args2, &repo).await.unwrap();
     let provider = repo.find_by_id("cycle-provider").await.unwrap();
     assert!(!provider.enabled);
@@ -288,9 +302,15 @@ async fn test_cli_add_provider_error_contains_id() {
 #[tokio::test]
 async fn test_cli_enable_error_contains_id() {
     let (_temp_dir, repo) = create_test_repo();
-    let args = EnableProviderArgs { id: "missing-provider".to_string() };
+    let args = EnableProviderArgs {
+        id: "missing-provider".to_string(),
+    };
     let result = cmd_enable_provider(args, &repo).await;
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
-    assert!(err_msg.contains("missing-provider") || err_msg.contains("not found") || err_msg.contains("exist"));
+    assert!(
+        err_msg.contains("missing-provider")
+            || err_msg.contains("not found")
+            || err_msg.contains("exist")
+    );
 }

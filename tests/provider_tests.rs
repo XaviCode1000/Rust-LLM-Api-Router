@@ -3,10 +3,10 @@
 //! Tests verify correct HTTP headers, endpoints, and response parsing
 //! using wiremock for HTTP mocking.
 
-use wiremock::{MockServer, Mock, ResponseTemplate};
-use wiremock::matchers::{method, path, header};
 use serde_json::json;
 use std::sync::Arc;
+use wiremock::matchers::{header, method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use rust_llm_api_router::domain::traits::LlmProvider;
 use rust_llm_api_router::infrastructure::http_client::HttpClient;

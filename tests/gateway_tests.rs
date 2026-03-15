@@ -9,8 +9,7 @@ use rust_llm_api_router::domain::traits::{AccountRepository, LlmGateway};
 use rust_llm_api_router::domain::Account;
 use rust_llm_api_router::infrastructure::{
     gateway::{LlmGatewayImpl, ProviderConfig},
-    HttpClient,
-    JsonAccountRepository,
+    HttpClient, JsonAccountRepository,
 };
 
 // ============================================================================
@@ -19,12 +18,7 @@ use rust_llm_api_router::infrastructure::{
 
 #[test]
 fn test_provider_config_creation() {
-    let config = ProviderConfig::new(
-        "openai",
-        "OpenAI",
-        "https://api.openai.com/v1",
-        "/models",
-    );
+    let config = ProviderConfig::new("openai", "OpenAI", "https://api.openai.com/v1", "/models");
 
     assert_eq!(config.id, "openai");
     assert_eq!(config.name, "OpenAI");
@@ -37,7 +31,12 @@ fn test_provider_config_builder() {
     let config = ProviderConfig::builder()
         .with_provider("openai", "OpenAI", "https://api.openai.com/v1", "/models")
         .with_provider("groq", "Groq", "https://api.groq.com/openai/v1", "/models")
-        .with_provider("anthropic", "Anthropic", "https://api.anthropic.com/v1", "/models")
+        .with_provider(
+            "anthropic",
+            "Anthropic",
+            "https://api.anthropic.com/v1",
+            "/models",
+        )
         .build();
 
     assert_eq!(config.len(), 3);
@@ -59,7 +58,7 @@ fn test_provider_config_builder_simple() {
         .build();
 
     assert_eq!(config.len(), 2);
-    
+
     let openai_config = config.get("openai").unwrap();
     assert_eq!(openai_config.id, "openai");
     assert_eq!(openai_config.base_url, "https://api.openai.com/v1");
@@ -68,10 +67,7 @@ fn test_provider_config_builder_simple() {
 
 #[test]
 fn test_provider_config_default_with_url() {
-    let config = ProviderConfig::default_with_url(
-        "https://custom.api.com/v1",
-        "sk-custom-key",
-    );
+    let config = ProviderConfig::default_with_url("https://custom.api.com/v1", "sk-custom-key");
 
     assert_eq!(config.len(), 1);
     assert!(config.contains_key("default"));
@@ -91,8 +87,18 @@ fn test_provider_config_builder_empty() {
 fn test_provider_config_builder_overwrite() {
     // Adding same provider twice should overwrite
     let config = ProviderConfig::builder()
-        .with_provider("openai", "OpenAI v1", "https://api.openai.com/v1", "/models")
-        .with_provider("openai", "OpenAI v2", "https://api.openai.com/v2", "/v2/models")
+        .with_provider(
+            "openai",
+            "OpenAI v1",
+            "https://api.openai.com/v1",
+            "/models",
+        )
+        .with_provider(
+            "openai",
+            "OpenAI v2",
+            "https://api.openai.com/v2",
+            "/v2/models",
+        )
         .build();
 
     assert_eq!(config.len(), 1);
@@ -128,15 +134,15 @@ async fn test_gateway_with_custom_config() {
     let http_client = Arc::new(HttpClient::new().unwrap());
 
     let custom_config = ProviderConfig::builder()
-        .with_provider("test-provider", "Test Provider", "https://test.api.com/v1", "/models")
+        .with_provider(
+            "test-provider",
+            "Test Provider",
+            "https://test.api.com/v1",
+            "/models",
+        )
         .build();
 
-    let gateway = LlmGatewayImpl::with_config(
-        http_client,
-        repo,
-        custom_config,
-        3600,
-    );
+    let gateway = LlmGatewayImpl::with_config(http_client, repo, custom_config, 3600);
 
     // Verify custom config was set
     let providers = gateway.providers();
@@ -155,9 +161,24 @@ async fn test_gateway_with_multiple_custom_providers() {
     let http_client = Arc::new(HttpClient::new().unwrap());
 
     let custom_config = ProviderConfig::builder()
-        .with_provider("provider-a", "Provider A", "https://a.api.com/v1", "/models")
-        .with_provider("provider-b", "Provider B", "https://b.api.com/v1", "/models")
-        .with_provider("provider-c", "Provider C", "https://c.api.com/v1", "/models")
+        .with_provider(
+            "provider-a",
+            "Provider A",
+            "https://a.api.com/v1",
+            "/models",
+        )
+        .with_provider(
+            "provider-b",
+            "Provider B",
+            "https://b.api.com/v1",
+            "/models",
+        )
+        .with_provider(
+            "provider-c",
+            "Provider C",
+            "https://c.api.com/v1",
+            "/models",
+        )
         .build();
 
     let gateway = LlmGatewayImpl::with_config(
@@ -215,7 +236,7 @@ async fn test_gateway_list_models_with_no_accounts() {
     // List models with no accounts configured
     // This should return empty list (no enabled providers)
     let result = gateway.list_models("sk-test-key").await;
-    
+
     assert!(result.is_ok());
     assert!(result.unwrap().is_empty());
 }
@@ -238,7 +259,7 @@ async fn test_gateway_list_models_with_active_accounts() {
 
     // List models - will fail to fetch from actual APIs but should handle gracefully
     let result = gateway.list_models("sk-test-key").await;
-    
+
     // Result depends on network - just verify it doesn't panic
     // In real tests, you'd use wiremock to mock the HTTP calls
     assert!(result.is_ok() || result.is_err());
@@ -259,7 +280,7 @@ async fn test_gateway_list_models_with_inactive_accounts() {
 
     // List models - should return empty (no active providers)
     let result = gateway.list_models("sk-test-key").await;
-    
+
     assert!(result.is_ok());
     assert!(result.unwrap().is_empty());
 }
@@ -329,7 +350,7 @@ async fn test_gateway_with_very_long_ttl() {
 fn test_provider_config_empty_strings() {
     // Empty strings should be accepted (validation is elsewhere)
     let config = ProviderConfig::new("", "", "", "");
-    
+
     assert_eq!(config.id, "");
     assert_eq!(config.name, "");
     assert_eq!(config.base_url, "");

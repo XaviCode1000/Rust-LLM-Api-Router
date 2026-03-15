@@ -1,7 +1,7 @@
 //! Tests for error types
 
-use rust_llm_api_router::Error;
 use rust_llm_api_router::domain::errors::DomainError;
+use rust_llm_api_router::Error;
 
 #[test]
 fn test_error_display_provider_not_found() {
@@ -39,7 +39,9 @@ fn test_error_from_io() {
 #[test]
 fn test_error_from_string_utf8() {
     // Test that we can convert from String::from_utf8 error
-    let _error: Error = String::from_utf8(vec![0, 159, 146, 150]).unwrap_err().into();
+    let _error: Error = String::from_utf8(vec![0, 159, 146, 150])
+        .unwrap_err()
+        .into();
 }
 
 #[test]

@@ -188,7 +188,10 @@ pub async fn cmd_list_accounts(repo: &JsonAccountRepository) -> Result<()> {
 }
 
 /// Remove an account
-pub async fn cmd_remove_account(args: RemoveAccountArgs, repo: &JsonAccountRepository) -> Result<()> {
+pub async fn cmd_remove_account(
+    args: RemoveAccountArgs,
+    repo: &JsonAccountRepository,
+) -> Result<()> {
     // Delete account (this now persists automatically)
     repo.delete(&args.id)
         .await
@@ -265,7 +268,9 @@ mod tests {
         repo.save(account).await.unwrap();
 
         // Remove account
-        let args = RemoveAccountArgs { id: "test-1".to_string() };
+        let args = RemoveAccountArgs {
+            id: "test-1".to_string(),
+        };
         cmd_remove_account(args, &repo).await.unwrap();
 
         // Verify deleted
@@ -283,7 +288,9 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
 
-        let args = RemoveAccountArgs { id: "non-existent".to_string() };
+        let args = RemoveAccountArgs {
+            id: "non-existent".to_string(),
+        };
         let result = cmd_remove_account(args, &repo).await;
 
         assert!(result.is_err());
@@ -356,7 +363,9 @@ mod tests {
         let account = Account::new("test-validate", "openai", "sk-valid-key-123");
         repo.save(account).await.unwrap();
 
-        let args = ValidateAccountArgs { id: "test-validate".to_string() };
+        let args = ValidateAccountArgs {
+            id: "test-validate".to_string(),
+        };
         let result = cmd_validate_account(args, &repo).await;
 
         assert!(result.is_ok());
@@ -371,7 +380,9 @@ mod tests {
         let account = Account::new("test-short", "openai", "short");
         repo.save(account).await.unwrap();
 
-        let args = ValidateAccountArgs { id: "test-short".to_string() };
+        let args = ValidateAccountArgs {
+            id: "test-short".to_string(),
+        };
         let result = cmd_validate_account(args, &repo).await;
 
         assert!(result.is_ok());
@@ -382,7 +393,9 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
 
-        let args = ValidateAccountArgs { id: "non-existent".to_string() };
+        let args = ValidateAccountArgs {
+            id: "non-existent".to_string(),
+        };
         let result = cmd_validate_account(args, &repo).await;
 
         assert!(result.is_err());

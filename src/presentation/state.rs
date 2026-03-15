@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use crate::config::Settings;
 use crate::domain::traits::AccountRepository;
-use crate::infrastructure::{HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics};
 use crate::infrastructure::gateway::llm_gateway::ProviderConfig;
+use crate::infrastructure::{HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -27,7 +27,8 @@ impl AppState {
         );
 
         // Create LLM Gateway with default providers and 1 hour cache TTL
-        let provider_config = Arc::new(crate::infrastructure::gateway::llm_gateway::default_providers());
+        let provider_config =
+            Arc::new(crate::infrastructure::gateway::llm_gateway::default_providers());
         let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
             http_client.clone(),
             account_repo.clone(),

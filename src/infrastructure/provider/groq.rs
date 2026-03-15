@@ -2,7 +2,9 @@
 
 use async_trait::async_trait;
 
-use crate::domain::entities::{LlmRequest, LlmResponse, OpenAIChatRequest, OpenAIChatResponse, OpenAIMessage};
+use crate::domain::entities::{
+    LlmRequest, LlmResponse, OpenAIChatRequest, OpenAIChatResponse, OpenAIMessage,
+};
 use crate::domain::traits::LlmProvider;
 use crate::domain::Model;
 use crate::error::{Error, Result};
@@ -33,7 +35,7 @@ impl GroqProvider {
     /// Groq uses OpenAI-compatible API format
     pub async fn chat(&self, request: &OpenAIChatRequest) -> Result<OpenAIChatResponse> {
         let url = format!("{}/v1/chat/completions", self.api_url);
-        
+
         let response = self
             .http_client
             .client()
@@ -46,7 +48,9 @@ impl GroqProvider {
             .map_err(|e| Error::Internal(format!("Failed to send Groq request: {}", e)))?;
 
         if response.status().is_success() {
-            let chat_response: OpenAIChatResponse = response.json().await
+            let chat_response: OpenAIChatResponse = response
+                .json()
+                .await
                 .map_err(|e| Error::Internal(format!("Failed to parse Groq response: {}", e)))?;
             Ok(chat_response)
         } else {
@@ -69,34 +73,42 @@ impl LlmProvider for GroqProvider {
         // Convert LlmRequest to OpenAIChatRequest (Groq uses OpenAI-compatible format)
         let openai_request = OpenAIChatRequest::new(
             request.model,
-            request.messages.into_iter().map(|m| OpenAIMessage {
-                role: m.role,
-                content: m.content,
-                name: None,
-            }).collect(),
+            request
+                .messages
+                .into_iter()
+                .map(|m| OpenAIMessage {
+                    role: m.role,
+                    content: m.content,
+                    name: None,
+                })
+                .collect(),
         );
-        
+
         // Use the typed chat method
         let openai_response = self.chat(&openai_request).await?;
-        
+
         // Convert OpenAIChatResponse to LlmResponse
         let response = LlmResponse {
             id: openai_response.id,
-            choices: openai_response.choices.into_iter().map(|c| crate::domain::Choice {
-                index: c.index,
-                message: crate::domain::Message {
-                    role: c.message.role,
-                    content: c.message.content,
-                },
-                finish_reason: c.finish_reason,
-            }).collect(),
+            choices: openai_response
+                .choices
+                .into_iter()
+                .map(|c| crate::domain::Choice {
+                    index: c.index,
+                    message: crate::domain::Message {
+                        role: c.message.role,
+                        content: c.message.content,
+                    },
+                    finish_reason: c.finish_reason,
+                })
+                .collect(),
             usage: crate::domain::Usage {
                 prompt_tokens: openai_response.usage.prompt_tokens,
                 completion_tokens: openai_response.usage.completion_tokens,
                 total_tokens: openai_response.usage.total_tokens,
             },
         };
-        
+
         Ok(response)
     }
 
@@ -110,9 +122,7 @@ impl LlmProvider for GroqProvider {
             .header("Authorization", format!("Bearer {}", api_key))
             .send()
             .await
-            .map_err(|e| {
-                Error::Internal(format!("Failed to fetch models from Groq: {}", e))
-            })?;
+            .map_err(|e| Error::Internal(format!("Failed to fetch models from Groq: {}", e)))?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -127,9 +137,10 @@ impl LlmProvider for GroqProvider {
         }
 
         // Parse response - Groq uses OpenAI-compatible format: {"data": [{"id": "...", "object": "model", ...}]}
-        let json: serde_json::Value = response.json().await.map_err(|e| {
-            Error::Internal(format!("Failed to parse Groq models response: {}", e))
-        })?;
+        let json: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| Error::Internal(format!("Failed to parse Groq models response: {}", e)))?;
 
         let mut models = Vec::new();
         let data_array = json
@@ -145,7 +156,11 @@ impl LlmProvider for GroqProvider {
                     .and_then(|v: &serde_json::Value| v.as_str())
                     .unwrap_or(id);
 
-                models.push(Model::new(id.to_string(), name.to_string(), self.name.clone()));
+                models.push(Model::new(
+                    id.to_string(),
+                    name.to_string(),
+                    self.name.clone(),
+                ));
             }
         }
 
@@ -161,8 +176,8 @@ impl LlmProvider for GroqProvider {
 mod tests {
     use super::*;
     use crate::infrastructure::http_client::HttpClient;
-    use std::sync::Arc;
     use crate::infrastructure::http_client::SharedHttpClient;
+    use std::sync::Arc;
 
     #[test]
     fn test_groq_provider_creation() {

@@ -57,12 +57,7 @@ fn test_chat_response_format() {
 
     let usage = OpenAIUsage::new(10, 20, 30);
 
-    let response = OpenAIChatResponse::new(
-        "chatcmpl-123456789",
-        "gpt-4",
-        choices,
-        usage,
-    );
+    let response = OpenAIChatResponse::new("chatcmpl-123456789", "gpt-4", choices, usage);
 
     // Snapshot the response structure (excluding dynamic timestamp)
     // Using a helper struct to exclude the 'created' field which varies
@@ -142,10 +137,8 @@ fn test_domain_error_serialization() {
 fn test_openai_error_response() {
     use rust_llm_api_router::domain::OpenAIErrorResponse;
 
-    let error_response = OpenAIErrorResponse::new(
-        "authentication_error",
-        "Invalid API key provided",
-    );
+    let error_response =
+        OpenAIErrorResponse::new("authentication_error", "Invalid API key provided");
 
     assert_json_snapshot!("openai_error_response", error_response);
 }

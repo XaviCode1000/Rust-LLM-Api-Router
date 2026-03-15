@@ -80,7 +80,13 @@ impl ProviderConfigBuilder {
     }
 
     /// Add a provider to the builder
-    pub fn with_provider(mut self, id: &str, name: &str, base_url: &str, models_endpoint: &str) -> Self {
+    pub fn with_provider(
+        mut self,
+        id: &str,
+        name: &str,
+        base_url: &str,
+        models_endpoint: &str,
+    ) -> Self {
         let config = ProviderConfig::new(id, name, base_url, models_endpoint);
         self.providers.insert(id.to_string(), config);
         self
@@ -219,7 +225,14 @@ impl LlmGatewayImpl {
             DomainError::ProviderNotFound(format!("Provider '{}' not configured", provider_id))
         })?;
 
-        let url = format!("{}{}", self.http_client.mock_base_url().map(|url| url.to_string()).unwrap_or_else(|| config.base_url.clone()), config.models_endpoint);
+        let url = format!(
+            "{}{}",
+            self.http_client
+                .mock_base_url()
+                .map(|url| url.to_string())
+                .unwrap_or_else(|| config.base_url.clone()),
+            config.models_endpoint
+        );
 
         let response = self
             .http_client
@@ -414,15 +427,15 @@ mod tests {
         let http_client = Arc::new(HttpClient::new().unwrap());
 
         let config = ProviderConfig::builder()
-            .with_provider("test-provider", "Test", "https://test.api.com/v1", "/models")
+            .with_provider(
+                "test-provider",
+                "Test",
+                "https://test.api.com/v1",
+                "/models",
+            )
             .build();
 
-        let gateway = LlmGatewayImpl::with_config(
-            http_client,
-            repo,
-            config,
-            3600,
-        );
+        let gateway = LlmGatewayImpl::with_config(http_client, repo, config, 3600);
 
         // Verify custom config was set
         assert_eq!(gateway.providers().len(), 1);

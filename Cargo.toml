@@ -10,7 +10,7 @@ rust-version = "1.75"
 [dependencies]
 # Web
 axum = "0.7"
-tower = "0.4"
+tower = "0.5"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 
 # HTTP Client
@@ -51,9 +51,14 @@ clap = { version = "4.4", features = ["derive"] }
 dirs = "5.0"
 
 [dev-dependencies]
-mockall = "0.12"
+mockall = "0.13"
 tokio-test = "0.4"
 tempfile = "3.10"
+proptest = "1.4"
+turmoil = "0.7.1"
+insta = { version = "1.46.3", features = ["json", "redactions"] }
+testcontainers = "0.23.1"
+wiremock = "0.6.5"
 
 [lib]
 name = "rust_llm_api_router"

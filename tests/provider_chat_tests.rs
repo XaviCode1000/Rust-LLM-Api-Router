@@ -3,14 +3,16 @@
 //! Tests para verificar la implementación de las funciones chat()
 //! en OpenAI, Groq y Anthropic providers usando wiremock.
 
-use wiremock::{MockServer, Mock, ResponseTemplate};
-use wiremock::matchers::{method, path, header, header_exists};
 use serde_json::json;
+use wiremock::matchers::{header, header_exists, method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use rust_llm_api_router::domain::entities::{OpenAIChatRequest, OpenAIMessage};
 use rust_llm_api_router::domain::traits::LlmProvider;
 use rust_llm_api_router::infrastructure::http_client::HttpClient;
-use rust_llm_api_router::infrastructure::provider::{OpenAiProvider, GroqProvider, AnthropicProvider};
+use rust_llm_api_router::infrastructure::provider::{
+    AnthropicProvider, GroqProvider, OpenAiProvider,
+};
 use std::sync::Arc;
 
 // ============================================================================
@@ -20,7 +22,7 @@ use std::sync::Arc;
 #[tokio::test]
 async fn test_openai_chat_function_success() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
         .and(header_exists("Authorization"))
@@ -46,38 +48,34 @@ async fn test_openai_chat_function_success() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = OpenAiProvider::new(
-        mock_server.uri(),
-        "sk-test-key".to_string(),
-        client,
-    );
-    
-    let request = OpenAIChatRequest::new(
-        "gpt-4",
-        vec![OpenAIMessage::user("Hello")],
-    );
-    
+    let provider = OpenAiProvider::new(mock_server.uri(), "sk-test-key".to_string(), client);
+
+    let request = OpenAIChatRequest::new("gpt-4", vec![OpenAIMessage::user("Hello")]);
+
     let response = provider.chat(&request).await.unwrap();
-    
+
     assert_eq!(response.id, "chatcmpl-test-123");
     assert_eq!(response.model, "gpt-4");
     assert_eq!(response.choices.len(), 1);
-    assert_eq!(response.choices[0].message.content, "Hello! How can I help you?");
+    assert_eq!(
+        response.choices[0].message.content,
+        "Hello! How can I help you?"
+    );
     assert_eq!(response.choices[0].message.role, "assistant");
     assert_eq!(response.choices[0].finish_reason, Some("stop".to_string()));
     assert_eq!(response.usage.prompt_tokens, 10);
     assert_eq!(response.usage.completion_tokens, 15);
     assert_eq!(response.usage.total_tokens, 25);
-    
+
     mock_server.verify().await;
 }
 
 #[tokio::test]
 async fn test_openai_chat_function_with_system_message() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
@@ -102,14 +100,10 @@ async fn test_openai_chat_function_with_system_message() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = OpenAiProvider::new(
-        mock_server.uri(),
-        "sk-test-key".to_string(),
-        client,
-    );
-    
+    let provider = OpenAiProvider::new(mock_server.uri(), "sk-test-key".to_string(), client);
+
     let request = OpenAIChatRequest::new(
         "gpt-4",
         vec![
@@ -117,19 +111,22 @@ async fn test_openai_chat_function_with_system_message() {
             OpenAIMessage::user("Who are you?"),
         ],
     );
-    
+
     let response = provider.chat(&request).await.unwrap();
-    
+
     assert_eq!(response.id, "chatcmpl-system-test");
-    assert_eq!(response.choices[0].message.content, "I am a helpful assistant.");
-    
+    assert_eq!(
+        response.choices[0].message.content,
+        "I am a helpful assistant."
+    );
+
     mock_server.verify().await;
 }
 
 #[tokio::test]
 async fn test_openai_chat_function_error_401() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
         .respond_with(ResponseTemplate::new(401).set_body_json(json!({
@@ -141,57 +138,49 @@ async fn test_openai_chat_function_error_401() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = OpenAiProvider::new(
-        mock_server.uri(),
-        "sk-invalid-key".to_string(),
-        client,
-    );
-    
+    let provider = OpenAiProvider::new(mock_server.uri(), "sk-invalid-key".to_string(), client);
+
     let request = OpenAIChatRequest::new("gpt-4", vec![OpenAIMessage::user("Hello")]);
     let result = provider.chat(&request).await;
-    
+
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
     assert!(error_msg.contains("401"));
     assert!(error_msg.contains("Invalid API key"));
-    
+
     mock_server.verify().await;
 }
 
 #[tokio::test]
 async fn test_openai_chat_function_error_500() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
         .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = OpenAiProvider::new(
-        mock_server.uri(),
-        "sk-test-key".to_string(),
-        client,
-    );
-    
+    let provider = OpenAiProvider::new(mock_server.uri(), "sk-test-key".to_string(), client);
+
     let request = OpenAIChatRequest::new("gpt-4", vec![OpenAIMessage::user("Hello")]);
     let result = provider.chat(&request).await;
-    
+
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
     assert!(error_msg.contains("500"));
-    
+
     mock_server.verify().await;
 }
 
 #[tokio::test]
 async fn test_openai_chat_function_error_429_rate_limit() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
         .respond_with(ResponseTemplate::new(429).set_body_json(json!({
@@ -203,29 +192,25 @@ async fn test_openai_chat_function_error_429_rate_limit() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = OpenAiProvider::new(
-        mock_server.uri(),
-        "sk-test-key".to_string(),
-        client,
-    );
-    
+    let provider = OpenAiProvider::new(mock_server.uri(), "sk-test-key".to_string(), client);
+
     let request = OpenAIChatRequest::new("gpt-4", vec![OpenAIMessage::user("Hello")]);
     let result = provider.chat(&request).await;
-    
+
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
     assert!(error_msg.contains("429"));
     assert!(error_msg.contains("Rate limit exceeded"));
-    
+
     mock_server.verify().await;
 }
 
 #[tokio::test]
 async fn test_openai_chat_function_multiple_choices() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
@@ -260,22 +245,18 @@ async fn test_openai_chat_function_multiple_choices() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = OpenAiProvider::new(
-        mock_server.uri(),
-        "sk-test-key".to_string(),
-        client,
-    );
-    
+    let provider = OpenAiProvider::new(mock_server.uri(), "sk-test-key".to_string(), client);
+
     let request = OpenAIChatRequest::new("gpt-4", vec![OpenAIMessage::user("Hello")]);
     let response = provider.chat(&request).await.unwrap();
-    
+
     assert_eq!(response.id, "chatcmpl-multi-choice");
     assert_eq!(response.choices.len(), 2);
     assert_eq!(response.choices[0].message.content, "First choice");
     assert_eq!(response.choices[1].message.content, "Second choice");
-    
+
     mock_server.verify().await;
 }
 
@@ -286,7 +267,7 @@ async fn test_openai_chat_function_multiple_choices() {
 #[tokio::test]
 async fn test_groq_chat_function_success() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
         .and(header_exists("Authorization"))
@@ -312,33 +293,29 @@ async fn test_groq_chat_function_success() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = GroqProvider::new(
-        mock_server.uri(),
-        "sk-groq-key".to_string(),
-        client,
-    );
-    
+    let provider = GroqProvider::new(mock_server.uri(), "sk-groq-key".to_string(), client);
+
     let request = OpenAIChatRequest::new(
         "llama-3.1-70b-versatile",
         vec![OpenAIMessage::user("Hello")],
     );
-    
+
     let response = provider.chat(&request).await.unwrap();
-    
+
     assert_eq!(response.id, "groq-chat-test");
     assert_eq!(response.model, "llama-3.1-70b-versatile");
     assert_eq!(response.choices[0].message.content, "Groq is fast!");
     assert_eq!(response.usage.total_tokens, 13);
-    
+
     mock_server.verify().await;
 }
 
 #[tokio::test]
 async fn test_groq_chat_function_error_401() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
         .respond_with(ResponseTemplate::new(401).set_body_json(json!({
@@ -350,49 +327,41 @@ async fn test_groq_chat_function_error_401() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = GroqProvider::new(
-        mock_server.uri(),
-        "sk-invalid-key".to_string(),
-        client,
-    );
-    
+    let provider = GroqProvider::new(mock_server.uri(), "sk-invalid-key".to_string(), client);
+
     let request = OpenAIChatRequest::new("llama-3.1-70b", vec![OpenAIMessage::user("Hello")]);
     let result = provider.chat(&request).await;
-    
+
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
     assert!(error_msg.contains("401"));
-    
+
     mock_server.verify().await;
 }
 
 #[tokio::test]
 async fn test_groq_chat_function_error_500() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
         .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = GroqProvider::new(
-        mock_server.uri(),
-        "sk-groq-key".to_string(),
-        client,
-    );
-    
+    let provider = GroqProvider::new(mock_server.uri(), "sk-groq-key".to_string(), client);
+
     let request = OpenAIChatRequest::new("llama-3.1-70b", vec![OpenAIMessage::user("Hello")]);
     let result = provider.chat(&request).await;
-    
+
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
     assert!(error_msg.contains("500"));
-    
+
     mock_server.verify().await;
 }
 
@@ -403,7 +372,7 @@ async fn test_groq_chat_function_error_500() {
 #[tokio::test]
 async fn test_anthropic_chat_function_success() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/messages"))
         .and(header("x-api-key", "sk-anthropic-key"))
@@ -429,38 +398,38 @@ async fn test_anthropic_chat_function_success() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = AnthropicProvider::new(
-        mock_server.uri(),
-        "sk-anthropic-key".to_string(),
-        client,
-    );
-    
+    let provider =
+        AnthropicProvider::new(mock_server.uri(), "sk-anthropic-key".to_string(), client);
+
     let request = OpenAIChatRequest::new(
         "claude-3-sonnet-20240229",
         vec![OpenAIMessage::user("Hello")],
     );
-    
+
     let response = provider.chat(&request).await.unwrap();
-    
+
     assert_eq!(response.id, "msg-anthropic-test-123");
     assert_eq!(response.model, "claude-3-sonnet-20240229");
     assert_eq!(response.choices.len(), 1);
     assert_eq!(response.choices[0].message.content, "Hello from Claude!");
     assert_eq!(response.choices[0].message.role, "assistant");
-    assert_eq!(response.choices[0].finish_reason, Some("end_turn".to_string()));
+    assert_eq!(
+        response.choices[0].finish_reason,
+        Some("end_turn".to_string())
+    );
     assert_eq!(response.usage.prompt_tokens, 12);
     assert_eq!(response.usage.completion_tokens, 10);
     assert_eq!(response.usage.total_tokens, 22);
-    
+
     mock_server.verify().await;
 }
 
 #[tokio::test]
 async fn test_anthropic_chat_function_with_system_message() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/messages"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
@@ -484,14 +453,11 @@ async fn test_anthropic_chat_function_with_system_message() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = AnthropicProvider::new(
-        mock_server.uri(),
-        "sk-anthropic-key".to_string(),
-        client,
-    );
-    
+    let provider =
+        AnthropicProvider::new(mock_server.uri(), "sk-anthropic-key".to_string(), client);
+
     let request = OpenAIChatRequest::new(
         "claude-3-sonnet-20240229",
         vec![
@@ -499,19 +465,22 @@ async fn test_anthropic_chat_function_with_system_message() {
             OpenAIMessage::user("Who are you?"),
         ],
     );
-    
+
     let response = provider.chat(&request).await.unwrap();
-    
+
     assert_eq!(response.id, "msg-system-test");
-    assert_eq!(response.choices[0].message.content, "I am Claude, a helpful assistant.");
-    
+    assert_eq!(
+        response.choices[0].message.content,
+        "I am Claude, a helpful assistant."
+    );
+
     mock_server.verify().await;
 }
 
 #[tokio::test]
 async fn test_anthropic_chat_function_error_401() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/messages"))
         .respond_with(ResponseTemplate::new(401).set_body_json(json!({
@@ -523,57 +492,50 @@ async fn test_anthropic_chat_function_error_401() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = AnthropicProvider::new(
-        mock_server.uri(),
-        "sk-invalid-key".to_string(),
-        client,
-    );
-    
+    let provider = AnthropicProvider::new(mock_server.uri(), "sk-invalid-key".to_string(), client);
+
     let request = OpenAIChatRequest::new("claude-3", vec![OpenAIMessage::user("Hello")]);
     let result = provider.chat(&request).await;
-    
+
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
     assert!(error_msg.contains("401"));
     assert!(error_msg.contains("Invalid API key"));
-    
+
     mock_server.verify().await;
 }
 
 #[tokio::test]
 async fn test_anthropic_chat_function_error_500() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/messages"))
         .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = AnthropicProvider::new(
-        mock_server.uri(),
-        "sk-anthropic-key".to_string(),
-        client,
-    );
-    
+    let provider =
+        AnthropicProvider::new(mock_server.uri(), "sk-anthropic-key".to_string(), client);
+
     let request = OpenAIChatRequest::new("claude-3", vec![OpenAIMessage::user("Hello")]);
     let result = provider.chat(&request).await;
-    
+
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
     assert!(error_msg.contains("500"));
-    
+
     mock_server.verify().await;
 }
 
 #[tokio::test]
 async fn test_anthropic_chat_function_error_429_rate_limit() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/messages"))
         .respond_with(ResponseTemplate::new(429).set_body_json(json!({
@@ -585,29 +547,26 @@ async fn test_anthropic_chat_function_error_429_rate_limit() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = AnthropicProvider::new(
-        mock_server.uri(),
-        "sk-anthropic-key".to_string(),
-        client,
-    );
-    
+    let provider =
+        AnthropicProvider::new(mock_server.uri(), "sk-anthropic-key".to_string(), client);
+
     let request = OpenAIChatRequest::new("claude-3", vec![OpenAIMessage::user("Hello")]);
     let result = provider.chat(&request).await;
-    
+
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
     assert!(error_msg.contains("429"));
     assert!(error_msg.contains("Rate limit exceeded"));
-    
+
     mock_server.verify().await;
 }
 
 #[tokio::test]
 async fn test_anthropic_chat_function_empty_content() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/messages"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
@@ -626,22 +585,19 @@ async fn test_anthropic_chat_function_empty_content() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
+
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider = AnthropicProvider::new(
-        mock_server.uri(),
-        "sk-anthropic-key".to_string(),
-        client,
-    );
-    
+    let provider =
+        AnthropicProvider::new(mock_server.uri(), "sk-anthropic-key".to_string(), client);
+
     let request = OpenAIChatRequest::new("claude-3", vec![OpenAIMessage::user("Hello")]);
     let response = provider.chat(&request).await.unwrap();
-    
+
     assert_eq!(response.id, "msg-empty-content");
     // Empty content should default to empty string, not panic
     assert_eq!(response.choices[0].message.content, "");
     assert_eq!(response.usage.completion_tokens, 0);
-    
+
     mock_server.verify().await;
 }
 
@@ -657,7 +613,7 @@ fn test_openai_provider_creation() {
         "sk-test-key".to_string(),
         client,
     );
-    
+
     assert_eq!(provider.name(), "openai");
 }
 
@@ -669,7 +625,7 @@ fn test_groq_provider_creation() {
         "sk-groq-key".to_string(),
         client,
     );
-    
+
     assert_eq!(provider.name(), "groq");
 }
 
@@ -681,6 +637,6 @@ fn test_anthropic_provider_creation() {
         "sk-anthropic-key".to_string(),
         client,
     );
-    
+
     assert_eq!(provider.name(), "anthropic");
 }

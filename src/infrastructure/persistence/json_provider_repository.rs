@@ -187,7 +187,7 @@ impl ProviderRepository for JsonProviderRepository {
 
     async fn delete(&self, id: &str) -> DomainResult<()> {
         let providers = self.read_providers().await?;
-        
+
         // Verify provider exists
         let exists = providers.iter().any(|p| p.id == id);
         if !exists {

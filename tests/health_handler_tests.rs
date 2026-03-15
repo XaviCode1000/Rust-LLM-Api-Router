@@ -7,31 +7,28 @@ use std::sync::Arc;
 use tempfile::TempDir;
 use tower::util::ServiceExt;
 
+use rust_llm_api_router::config::Settings;
 use rust_llm_api_router::domain::{Account, AccountRepository};
-use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics};
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
+use rust_llm_api_router::infrastructure::{
+    HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
+};
 use rust_llm_api_router::interfaces::handlers::health_handler::{
     health, health_detail, list_accounts,
 };
 use rust_llm_api_router::presentation::AppState;
-use rust_llm_api_router::config::Settings;
 
 /// Setup test app with health routes
 fn setup_health_app() -> (Router, TempDir) {
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path())
-            .expect("Should create repository"),
+        JsonAccountRepository::with_config_dir(temp_dir.path()).expect("Should create repository"),
     );
 
     let http_client = Arc::new(HttpClient::new().expect("Should create HTTP client"));
     let metrics = Arc::new(Metrics::new().expect("Should create metrics"));
 
-    let llm_gateway = Arc::new(LlmGatewayImpl::new(
-        http_client.clone(),
-        repo.clone(),
-        3600,
-    ));
+    let llm_gateway = Arc::new(LlmGatewayImpl::new(http_client.clone(), repo.clone(), 3600));
 
     let settings = Settings::default();
     let provider_config = Arc::new(default_providers());
@@ -57,8 +54,7 @@ fn setup_health_app() -> (Router, TempDir) {
 async fn setup_health_app_with_accounts() -> (Router, TempDir) {
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path())
-            .expect("Should create repository"),
+        JsonAccountRepository::with_config_dir(temp_dir.path()).expect("Should create repository"),
     );
 
     // Create test accounts
@@ -73,11 +69,7 @@ async fn setup_health_app_with_accounts() -> (Router, TempDir) {
     let http_client = Arc::new(HttpClient::new().expect("Should create HTTP client"));
     let metrics = Arc::new(Metrics::new().expect("Should create metrics"));
 
-    let llm_gateway = Arc::new(LlmGatewayImpl::new(
-        http_client.clone(),
-        repo.clone(),
-        3600,
-    ));
+    let llm_gateway = Arc::new(LlmGatewayImpl::new(http_client.clone(), repo.clone(), 3600));
 
     let settings = Settings::default();
     let provider_config = Arc::new(default_providers());
@@ -101,8 +93,7 @@ async fn setup_health_app_with_accounts() -> (Router, TempDir) {
 async fn setup_accounts_app() -> (Router, TempDir) {
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let repo: Arc<dyn AccountRepository> = Arc::new(
-        JsonAccountRepository::with_config_dir(temp_dir.path())
-            .expect("Should create repository"),
+        JsonAccountRepository::with_config_dir(temp_dir.path()).expect("Should create repository"),
     );
 
     let account = Account::new("test-acc-1", "openai", "sk-test-key-12345678");
@@ -111,12 +102,8 @@ async fn setup_accounts_app() -> (Router, TempDir) {
     let http_client = Arc::new(HttpClient::new().expect("Should create HTTP client"));
     let metrics = Arc::new(Metrics::new().expect("Should create metrics"));
 
-    let llm_gateway = Arc::new(LlmGatewayImpl::new(
-        http_client.clone(),
-        repo.clone(),
-        3600,
-    ));
-    
+    let llm_gateway = Arc::new(LlmGatewayImpl::new(http_client.clone(), repo.clone(), 3600));
+
     let settings = Settings::default();
     let provider_config = Arc::new(default_providers());
     let state = Arc::new(AppState {

@@ -10,8 +10,8 @@
 #![cfg(test)]
 
 use super::account_rotation::{
-    AccountSelector, LatencyStrategy, RotationStrategy, RoundRobinStrategy,
-    UserAffinityStrategy, WeightedStrategy,
+    AccountSelector, LatencyStrategy, RotationStrategy, RoundRobinStrategy, UserAffinityStrategy,
+    WeightedStrategy,
 };
 use crate::domain::Account;
 use std::sync::Arc;
@@ -80,9 +80,7 @@ fn test_round_robin_atomic_increment() {
     for _ in 0..100 {
         let strategy = strategy.clone();
         let accounts = accounts.clone();
-        let handle = std::thread::spawn(move || {
-            strategy.select(&accounts).unwrap().id.clone()
-        });
+        let handle = std::thread::spawn(move || strategy.select(&accounts).unwrap().id.clone());
         handles.push(handle);
     }
 
@@ -102,7 +100,13 @@ fn test_round_robin_fair_distribution() {
     let mut counts = [0; 3];
     for _ in 0..300 {
         let account = strategy.select(&accounts).unwrap();
-        let index = account.id.split('-').last().unwrap().parse::<usize>().unwrap();
+        let index = account
+            .id
+            .split('-')
+            .last()
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
         counts[index] += 1;
     }
 
@@ -197,8 +201,16 @@ fn test_user_affinity_independent_users() {
     let strategy = UserAffinityStrategy::new();
     let accounts = create_accounts(3);
 
-    let user1_account = strategy.select_for_user(&accounts, "user-1").unwrap().id.clone();
-    let user2_account = strategy.select_for_user(&accounts, "user-2").unwrap().id.clone();
+    let user1_account = strategy
+        .select_for_user(&accounts, "user-1")
+        .unwrap()
+        .id
+        .clone();
+    let user2_account = strategy
+        .select_for_user(&accounts, "user-2")
+        .unwrap()
+        .id
+        .clone();
 
     // Different users may get different accounts (depends on implementation)
     assert_eq!(user1_account, "account-0");
@@ -248,7 +260,9 @@ fn test_user_affinity_concurrent_access() {
         let accounts = accounts.clone();
         let handle = std::thread::spawn(move || {
             let user_id = format!("user-{}", i % 10);
-            strategy.select_for_user(&accounts, &user_id).map(|a| a.id.clone())
+            strategy
+                .select_for_user(&accounts, &user_id)
+                .map(|a| a.id.clone())
         });
         handles.push(handle);
     }
@@ -301,9 +315,7 @@ fn test_round_robin_high_concurrency() {
     for _ in 0..1000 {
         let strategy = strategy.clone();
         let accounts = accounts.clone();
-        let handle = std::thread::spawn(move || {
-            strategy.select(&accounts).map(|a| a.id.clone())
-        });
+        let handle = std::thread::spawn(move || strategy.select(&accounts).map(|a| a.id.clone()));
         handles.push(handle);
     }
 

@@ -3,8 +3,8 @@
 //! Comprehensive tests for CLI command handlers.
 
 use rust_llm_api_router::cli::account_commands::{
+    cmd_add_account, cmd_list_accounts, cmd_remove_account, cmd_set_priority, cmd_validate_account,
     AddAccountArgs, RemoveAccountArgs, SetPriorityArgs, ValidateAccountArgs,
-    cmd_add_account, cmd_remove_account, cmd_set_priority, cmd_validate_account, cmd_list_accounts,
 };
 use rust_llm_api_router::domain::{Account, AccountRepository};
 use rust_llm_api_router::infrastructure::JsonAccountRepository;
@@ -152,7 +152,9 @@ async fn test_cmd_remove_account_success() {
         .unwrap();
 
     // Remove account
-    let args = RemoveAccountArgs { id: "test-remove".to_string() };
+    let args = RemoveAccountArgs {
+        id: "test-remove".to_string(),
+    };
     let result = cmd_remove_account(args, &repo).await;
     assert!(result.is_ok());
 
@@ -172,13 +174,15 @@ async fn test_cmd_remove_account_persists_to_file() {
         .unwrap();
 
     // Remove account
-    let args = RemoveAccountArgs { id: "test-persist".to_string() };
+    let args = RemoveAccountArgs {
+        id: "test-persist".to_string(),
+    };
     cmd_remove_account(args, &repo).await.unwrap();
 
     // Create new repo instance (simulates restart)
     let repo2 = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
     let find_result = repo2.find_by_id("test-persist").await;
-    
+
     // Should still be deleted in new instance
     assert!(find_result.is_err());
 }
@@ -188,7 +192,9 @@ async fn test_cmd_remove_account_not_found() {
     let temp_dir = TempDir::new().unwrap();
     let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
 
-    let args = RemoveAccountArgs { id: "non-existent".to_string() };
+    let args = RemoveAccountArgs {
+        id: "non-existent".to_string(),
+    };
     let result = cmd_remove_account(args, &repo).await;
 
     assert!(result.is_err());
@@ -204,18 +210,26 @@ async fn test_cmd_remove_account_multiple() {
     let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
 
     // Add multiple accounts
-    repo.save(Account::new("acc-1", "openai", "sk-1")).await.unwrap();
-    repo.save(Account::new("acc-2", "groq", "sk-2")).await.unwrap();
-    repo.save(Account::new("acc-3", "anthropic", "sk-3")).await.unwrap();
+    repo.save(Account::new("acc-1", "openai", "sk-1"))
+        .await
+        .unwrap();
+    repo.save(Account::new("acc-2", "groq", "sk-2"))
+        .await
+        .unwrap();
+    repo.save(Account::new("acc-3", "anthropic", "sk-3"))
+        .await
+        .unwrap();
 
     // Remove middle one
-    let args = RemoveAccountArgs { id: "acc-2".to_string() };
+    let args = RemoveAccountArgs {
+        id: "acc-2".to_string(),
+    };
     cmd_remove_account(args, &repo).await.unwrap();
 
     // Verify others remain
     assert!(repo.find_by_id("acc-1").await.is_ok());
     assert!(repo.find_by_id("acc-3").await.is_ok());
-    
+
     // Verify removed
     assert!(repo.find_by_id("acc-2").await.is_err());
 
@@ -318,7 +332,9 @@ async fn test_cmd_validate_account_valid_key() {
         .await
         .unwrap();
 
-    let args = ValidateAccountArgs { id: "test-valid".to_string() };
+    let args = ValidateAccountArgs {
+        id: "test-valid".to_string(),
+    };
     let result = cmd_validate_account(args, &repo).await;
 
     assert!(result.is_ok());
@@ -333,7 +349,9 @@ async fn test_cmd_validate_account_short_key() {
         .await
         .unwrap();
 
-    let args = ValidateAccountArgs { id: "test-short".to_string() };
+    let args = ValidateAccountArgs {
+        id: "test-short".to_string(),
+    };
     let result = cmd_validate_account(args, &repo).await;
 
     assert!(result.is_ok());
@@ -348,7 +366,9 @@ async fn test_cmd_validate_account_empty_key() {
         .await
         .unwrap();
 
-    let args = ValidateAccountArgs { id: "test-empty".to_string() };
+    let args = ValidateAccountArgs {
+        id: "test-empty".to_string(),
+    };
     let result = cmd_validate_account(args, &repo).await;
 
     assert!(result.is_ok());
@@ -359,7 +379,9 @@ async fn test_cmd_validate_account_not_found() {
     let temp_dir = TempDir::new().unwrap();
     let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
 
-    let args = ValidateAccountArgs { id: "non-existent".to_string() };
+    let args = ValidateAccountArgs {
+        id: "non-existent".to_string(),
+    };
     let result = cmd_validate_account(args, &repo).await;
 
     assert!(result.is_err());
@@ -384,8 +406,12 @@ async fn test_cmd_list_accounts_with_data() {
     let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
 
     // Add accounts
-    repo.save(Account::new("acc-1", "openai", "sk-key-1")).await.unwrap();
-    repo.save(Account::new("acc-2", "groq", "sk-key-2")).await.unwrap();
+    repo.save(Account::new("acc-1", "openai", "sk-key-1"))
+        .await
+        .unwrap();
+    repo.save(Account::new("acc-2", "groq", "sk-key-2"))
+        .await
+        .unwrap();
 
     let result = cmd_list_accounts(&repo).await;
     assert!(result.is_ok());
@@ -446,14 +472,18 @@ async fn test_cli_full_workflow() {
     assert_eq!(account.priority, 20);
 
     // 5. Validate account
-    let validate_args = ValidateAccountArgs { id: "workflow-acc".to_string() };
+    let validate_args = ValidateAccountArgs {
+        id: "workflow-acc".to_string(),
+    };
     cmd_validate_account(validate_args, &repo).await.unwrap();
 
     // 6. List accounts (should show 1)
     cmd_list_accounts(&repo).await.unwrap();
 
     // 7. Remove account
-    let remove_args = RemoveAccountArgs { id: "workflow-acc".to_string() };
+    let remove_args = RemoveAccountArgs {
+        id: "workflow-acc".to_string(),
+    };
     cmd_remove_account(remove_args, &repo).await.unwrap();
 
     // 8. Verify removed

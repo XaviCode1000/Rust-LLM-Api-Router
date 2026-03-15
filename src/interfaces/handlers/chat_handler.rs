@@ -6,14 +6,17 @@
 use axum::{
     extract::State,
     http::{header, HeaderValue, StatusCode},
-    response::{sse::{Event, Sse}, IntoResponse, Response},
+    response::{
+        sse::{Event, Sse},
+        IntoResponse, Response,
+    },
     Json,
 };
 use bytes::Bytes;
 use futures::Stream;
 use futures::TryStreamExt;
-use std::convert::Infallible;
 use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
 use std::sync::Arc;
 use tokio_stream::StreamExt as TokioStreamExt;
 
@@ -33,7 +36,9 @@ pub async fn chat_completions(
 ) -> Response {
     // Handle streaming vs non-streaming
     if request.stream.unwrap_or(false) {
-        return stream_chat_request(State(state), request).await.into_response();
+        return stream_chat_request(State(state), request)
+            .await
+            .into_response();
     }
 
     // Process non-streaming request
@@ -62,7 +67,10 @@ async fn stream_chat_request(
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "provider_error",
-                format!("Failed to get accounts for provider '{}': {}", provider_id, e),
+                format!(
+                    "Failed to get accounts for provider '{}': {}",
+                    provider_id, e
+                ),
             );
         }
     };
@@ -82,7 +90,14 @@ async fn stream_chat_request(
     let chat_request = convert_to_chat_request(&request, &model_name);
 
     // Make streaming request to provider using ProviderConfig
-    match make_streaming_provider_request(&state.http_client, &state.provider_config, &account, &chat_request).await {
+    match make_streaming_provider_request(
+        &state.http_client,
+        &state.provider_config,
+        &account,
+        &chat_request,
+    )
+    .await
+    {
         Ok(stream) => {
             // Convert the provider stream to SSE events
             let sse_stream = stream_to_sse_events(stream);
@@ -95,14 +110,12 @@ async fn stream_chat_request(
                 header::CONTENT_TYPE,
                 HeaderValue::from_static("text/event-stream"),
             );
-            response.headers_mut().insert(
-                header::CACHE_CONTROL,
-                HeaderValue::from_static("no-cache"),
-            );
-            response.headers_mut().insert(
-                header::CONNECTION,
-                HeaderValue::from_static("keep-alive"),
-            );
+            response
+                .headers_mut()
+                .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+            response
+                .headers_mut()
+                .insert(header::CONNECTION, HeaderValue::from_static("keep-alive"));
 
             response
         }
@@ -156,7 +169,14 @@ async fn process_chat_request(
     let chat_request = convert_to_chat_request(&openai_request, &model_name);
 
     // Make request to provider using ProviderConfig
-    match make_provider_request(&state.http_client, &state.provider_config, &account, &chat_request).await {
+    match make_provider_request(
+        &state.http_client,
+        &state.provider_config,
+        &account,
+        &chat_request,
+    )
+    .await
+    {
         Ok(provider_response) => {
             // Convert provider response to OpenAI format
             Ok(convert_to_openai_response(
@@ -224,7 +244,10 @@ fn convert_to_chat_request(openai_request: &OpenAIChatRequest, model_name: &str)
 /// Falls back to mock URL if configured for testing, then to hardcoded URLs.
 fn get_provider_base_url(
     http_client: &HttpClient,
-    provider_config: &std::collections::HashMap<String, crate::infrastructure::gateway::llm_gateway::ProviderConfig>,
+    provider_config: &std::collections::HashMap<
+        String,
+        crate::infrastructure::gateway::llm_gateway::ProviderConfig,
+    >,
     provider_id: &str,
 ) -> String {
     // Check if mock URL is configured (for testing) - highest priority
@@ -252,7 +275,10 @@ fn get_provider_base_url(
 /// Make HTTP request to the provider.
 async fn make_provider_request(
     http_client: &HttpClient,
-    provider_config: &std::collections::HashMap<String, crate::infrastructure::gateway::llm_gateway::ProviderConfig>,
+    provider_config: &std::collections::HashMap<
+        String,
+        crate::infrastructure::gateway::llm_gateway::ProviderConfig,
+    >,
     account: &Account,
     chat_request: &ChatRequest,
 ) -> Result<ChatResponse, String> {
@@ -305,7 +331,10 @@ async fn make_provider_request(
 /// Make HTTP streaming request to the provider.
 async fn make_streaming_provider_request(
     http_client: &HttpClient,
-    provider_config: &std::collections::HashMap<String, crate::infrastructure::gateway::llm_gateway::ProviderConfig>,
+    provider_config: &std::collections::HashMap<
+        String,
+        crate::infrastructure::gateway::llm_gateway::ProviderConfig,
+    >,
     account: &Account,
     chat_request: &ChatRequest,
 ) -> Result<impl Stream<Item = Result<Bytes, String>>, String> {
@@ -347,7 +376,9 @@ async fn make_streaming_provider_request(
     }
 
     // Get the streaming body and convert error type from reqwest::Error to String
-    let bytes_stream = response.bytes_stream().map_err(|e| format!("Stream error: {}", e));
+    let bytes_stream = response
+        .bytes_stream()
+        .map_err(|e| format!("Stream error: {}", e));
 
     Ok(bytes_stream)
 }
@@ -374,7 +405,10 @@ fn stream_to_sse_events(
                     }
                     Err(_) => {
                         // Binary data or invalid UTF-8 - convert to hex representation
-                        let hex = bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+                        let hex = bytes
+                            .iter()
+                            .map(|b| format!("{:02x}", b))
+                            .collect::<String>();
                         Ok(Event::default().data(format!("[binary: {}]", hex)))
                     }
                 }
@@ -505,9 +539,9 @@ mod tests {
     fn test_get_provider_base_url_uses_mock_url() {
         let http_client = HttpClient::with_mock_url("http://localhost:8080").unwrap();
         let provider_config = HashMap::new();
-        
+
         let url = get_provider_base_url(&http_client, &provider_config, "openai");
-        
+
         // Mock URL should take precedence
         assert_eq!(url, "http://localhost:8080/v1");
     }
@@ -520,9 +554,9 @@ mod tests {
             "custom".to_string(),
             ProviderConfig::new("custom", "Custom", "https://custom.api.com/v1", "/models"),
         );
-        
+
         let url = get_provider_base_url(&http_client, &provider_config, "custom");
-        
+
         assert_eq!(url, "https://custom.api.com/v1");
     }
 
@@ -530,9 +564,9 @@ mod tests {
     fn test_get_provider_base_url_fallback_hardcoded() {
         let http_client = HttpClient::new().unwrap();
         let provider_config = HashMap::new();
-        
+
         let url = get_provider_base_url(&http_client, &provider_config, "openai");
-        
+
         // Should fallback to hardcoded URL
         assert_eq!(url, "https://api.openai.com/v1");
     }
@@ -541,9 +575,9 @@ mod tests {
     fn test_get_provider_base_url_unknown_provider() {
         let http_client = HttpClient::new().unwrap();
         let provider_config = HashMap::new();
-        
+
         let url = get_provider_base_url(&http_client, &provider_config, "unknown-provider");
-        
+
         // Unknown provider returns the provider ID as-is
         assert_eq!(url, "unknown-provider");
     }
