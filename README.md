@@ -379,13 +379,20 @@ cargo fmt
 - [x] **Chat Handler**: 85.80% coverage
 - [x] **Repository**: 80.72% coverage
 
-### Pending
+### Completed ✅
 
-- [ ] Streaming (SSE) para /v1/chat/completions
-- [ ] Endpoint /v1/models con lista real
-- [ ] Adapters para Anthropic, Google, Cohere
+- [x] **Streaming (SSE)** para /v1/chat/completions
+- [x] **Endpoint /v1/models** con lista real de modelos
+- [x] **Adapters para Anthropic** (formato diferente)
+- [x] **Providers soportados**: Groq, OpenRouter, Mistral, Cerebras, Cloudflare, Anthropic, OpenAI
+- [x] **80.35% Code Coverage** con 492 tests
+
+### Pending 🔄
+
 - [ ] Docker + Kubernetes manifests
-- [ ] CI/CD pipeline
+- [ ] CI/CD pipeline completo (GitHub Actions)
+- [ ] Adapters para Google AI Studio, Cohere, AI21, DeepSeek
+- [ ] NVIDIA NIM, Hugging Face inference endpoints
 
 ## Issues
 
