@@ -174,7 +174,7 @@ impl LlmProvider for OpenAiProvider {
 mod tests {
     use super::*;
     use crate::infrastructure::http_client::HttpClient;
-    use crate::infrastructure::http_client::SharedHttpClient;
+    
     use std::sync::Arc;
 
     #[test]

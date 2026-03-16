@@ -4,6 +4,14 @@ description: Code reviewer for Rust best practices
 mode: subagent
 model:opencode/minimax-m2.5-free
 temperature: 0.1
+permission:
+  bash:
+    "cargo clippy*": allow
+    "cargo check*": allow
+    "cargo nextest*": allow
+    "cargo llvm-cov*": allow
+    "cargo watch*": allow
+    "sccache *": allow
 tools:
   github_*: true
   context7_*: true
@@ -63,6 +71,30 @@ Respondo con:
 - **WARNING**: Debería corregirse
 - **SUGGESTION**: Mejora opcional
 - **PRAISE**: Código excelente
+
+---
+
+## HERRAMIENTAS (STACK 2026)
+
+```bash
+# Development con watch (clippy + nextest)
+./scripts/dev.sh
+
+# Coverage LLVM (10x más rápido que tarpaulin)
+cargo llvm-cov --html --output-dir coverage-llvm
+
+# Tests con nextest (4x más rápido)
+cargo nextest run --test-threads 2
+```
+
+### Stack 2026
+
+| Herramienta | Versión | Propósito |
+|-------------|---------|-----------|
+| cargo-nextest | 0.9.130 | Test runner (4x faster) |
+| cargo-llvm-cov | 0.8.4 | Cobertura LLVM (10x faster) |
+| sccache | 0.14.0 | Cache compilación (6x faster) |
+| cargo-watch | 8.5.3 | Auto-recompilar |
 
 ---
 

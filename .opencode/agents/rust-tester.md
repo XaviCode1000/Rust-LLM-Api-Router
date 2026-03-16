@@ -4,6 +4,16 @@ description: Testing specialist - unit tests, integration tests, TDD
 mode: subagent
 model:opencode/minimax-m2.5-free
 temperature: 0.2
+permission:
+  bash:
+    "cargo test*": allow
+    "cargo nextest*": allow
+    "cargo bench*": allow
+    "cargo clippy*": allow
+    "cargo fmt*": allow
+    "cargo llvm-cov*": allow
+    "cargo watch*": allow
+    "sccache *": allow
 tools:
   github_*: true
   context7_*: true
@@ -81,12 +91,33 @@ async fn test_create_user() {
 
 ---
 
-## HERRAMIENTAS
+## HERRAMIENTAS (STACK 2026)
 
-- `cargo test` - Run tests
-- `cargo test -- --nocapture` - Show output
-- `cargo tarpaulin` - Coverage
-- `cargo bench` - Benchmarks
+```bash
+# Tests tradicionales (lento)
+cargo test -- --test-threads 2
+
+# Nextest (4x más rápido) ✅
+cargo nextest run --test-threads 2
+
+# Watch mode (auto-rerun en cambios)
+./scripts/dev.sh
+
+# Coverage LLVM (10x más rápido que tarpaulin)
+cargo llvm-cov --html --output-dir coverage-llvm
+
+# Clippy con warnings como errores
+cargo clippy -- -D warnings
+```
+
+### Stack 2026
+
+| Herramienta | Versión | Propósito |
+|-------------|---------|-----------|
+| cargo-nextest | 0.9.130 | Test runner (4x faster) |
+| cargo-llvm-cov | 0.8.4 | Cobertura LLVM (10x faster) |
+| sccache | 0.14.0 | Cache compilación (6x faster) |
+| cargo-watch | 8.5.3 | Auto-recompilar |
 
 ---
 

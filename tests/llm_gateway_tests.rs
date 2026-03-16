@@ -3,6 +3,8 @@
 //! Tests verify the LlmGatewayImpl behavior including:
 //! - Model listing with caching
 //! - Multi-provider aggregation
+
+#![allow(dead_code)]
 //! - Error handling and resilience
 //! - Cache TTL behavior
 
@@ -12,7 +14,7 @@ use std::sync::Arc;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use rust_llm_api_router::domain::entities::{ChatRequest, Message, Model};
+use rust_llm_api_router::domain::entities::{ChatRequest, Message};
 use rust_llm_api_router::domain::traits::{AccountRepository, LlmGateway};
 use rust_llm_api_router::domain::Account;
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::{LlmGatewayImpl, ProviderConfig};

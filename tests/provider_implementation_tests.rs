@@ -5,7 +5,7 @@
 
 use serde_json::json;
 use std::sync::Arc;
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use rust_llm_api_router::domain::traits::LlmProvider;

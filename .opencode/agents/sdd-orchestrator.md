@@ -4,6 +4,16 @@ description: Spec-Driven Development orchestrator - coordinates sub-agents
 mode: primary
 model:opencode/minimax-m2.5-free
 temperature: 0.2
+permission:
+  bash:
+    "cargo *": allow
+    "cargo nextest*": allow
+    "cargo llvm-cov*": allow
+    "cargo watch*": allow
+    "cargo clippy*": allow
+    "cargo fmt*": allow
+    "sccache *": allow
+    "pre-commit *": allow
 tools:
   github_*: true
   context7_*: true
@@ -123,3 +133,63 @@ Shared files under `.opencode/skills/_shared/` provide full reference documentat
 - `persistence-contract.md` - Mode resolution rules
 - `engram-convention.md` - Engram naming & recovery
 - `openspec-convention.md` - Filesystem paths
+
+---
+
+## HERRAMIENTAS DE DESARROLLO (STACK 2026)
+
+Este proyecto usa un stack optimizado para desarrollo rápido:
+
+### Comandos
+
+```bash
+# Desarrollo con watch (auto-rerun tests + clippy)
+./scripts/dev.sh
+
+# Coverage report LLVM (10x más rápido que tarpaulin)
+./scripts/coverage.sh
+
+# Tests con nextest (4x más rápido que cargo test)
+cargo nextest run --test-threads 2
+
+# Coverage manual
+cargo llvm-cov --html --output-dir coverage-llvm
+```
+
+### Stack Óptimo 2026
+
+| Herramienta | Versión | Propósito |
+|-------------|---------|-----------|
+| cargo-nextest | 0.9.130 | Test runner (4x faster) |
+| cargo-llvm-cov | 0.8.4 | Cobertura LLVM (10x faster) |
+| sccache | 0.14.0 | Cache compilación (6x faster) |
+| cargo-watch | 8.5.3 | Auto-recompilar |
+
+### Archivos de Configuración
+
+- `.cargo/config.toml` - sccache wrapper + profiles
+- `scripts/dev.sh` - Watch mode con clippy + nextest
+- `scripts/coverage.sh` - LLVM coverage report
+- `.pre-commit-config.yaml` - Hooks de formato y linting
+
+### Pre-commit Hook (OBLIGATORIO)
+
+Este proyecto usa pre-commit para evitar errores de formato y clippy antes de cada commit:
+
+```bash
+# Verificar todo antes de commitear
+pre-commit run --all-files
+
+# Auto-formatear si falla rustfmt
+cargo fmt
+
+# Luego commitear
+git add . && git commit -m "feat: ..."
+```
+
+**El hook verifica:**
+- ✅ `cargo fmt --check` - Formato
+- ✅ `cargo clippy --all-targets -- -D warnings` - Linting
+- ✅ Archivos vacíos, YAML válido, etc.
+
+**Importante:** Si clippy falla, el commit no pasa. Hay que fixear los errores primero.

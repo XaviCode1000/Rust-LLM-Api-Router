@@ -4,7 +4,7 @@
 //! para gestión de providers, incluyendo validación y persistencia.
 
 use rust_llm_api_router::cli::provider_commands::*;
-use rust_llm_api_router::domain::{Provider, ProviderRepository};
+use rust_llm_api_router::domain::ProviderRepository;
 use rust_llm_api_router::infrastructure::JsonProviderRepository;
 use rust_llm_api_router::Error;
 use tempfile::TempDir;

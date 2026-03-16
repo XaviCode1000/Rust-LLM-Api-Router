@@ -7,7 +7,6 @@
 //! - set-priority: Update priority
 //! - validate: Validate API keys
 
-use std::io::{self, Write};
 use tempfile::TempDir;
 
 use rust_llm_api_router::cli::account_commands::{
@@ -435,7 +434,7 @@ async fn test_cli_validate_account_minimum_length_key() {
 
 #[tokio::test]
 async fn test_handle_account_command_add() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, _repo) = create_test_repo();
 
     let cmd = AccountCommands::Add(AddAccountArgs {
         id: "cmd-test".to_string(),

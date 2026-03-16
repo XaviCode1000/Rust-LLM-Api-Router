@@ -3,6 +3,8 @@
 //! These helpers use testcontainers to spin up mock API servers.
 //! Tests will skip if Docker is not available.
 
+#![allow(dead_code)]
+
 use serde_json::json;
 use wiremock::matchers::{method, path};
 use wiremock::MockServer;

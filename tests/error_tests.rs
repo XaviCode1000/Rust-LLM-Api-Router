@@ -33,7 +33,7 @@ fn test_error_from_envy() {
 #[test]
 fn test_error_from_io() {
     // Test that we can convert from io error
-    let _error: Error = std::io::Error::new(std::io::ErrorKind::Other, "test").into();
+    let _error: Error = std::io::Error::other("test").into();
 }
 
 #[test]

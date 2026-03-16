@@ -606,7 +606,7 @@ fn test_account_debug_output() {
 
 use proptest::prelude::*;
 
-/// Property: Health score never causes panic (no division by zero)
+// Property: Health score never causes panic (no division by zero)
 proptest! {
     #[test]
     fn prop_health_score_never_panics(
@@ -628,7 +628,7 @@ proptest! {
     }
 }
 
-/// Property: Success rate never causes panic
+// Property: Success rate never causes panic
 proptest! {
     #[test]
     fn prop_success_rate_never_panics(
@@ -649,7 +649,7 @@ proptest! {
     }
 }
 
-/// Property: No input causes infinite loop
+// Property: No input causes infinite loop
 proptest! {
     #[test]
     fn prop_no_infinite_loop(

@@ -103,7 +103,7 @@ fn test_round_robin_fair_distribution() {
         let index = account
             .id
             .split('-')
-            .last()
+            .next_back()
             .unwrap()
             .parse::<usize>()
             .unwrap();

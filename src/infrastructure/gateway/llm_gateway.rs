@@ -56,7 +56,7 @@ impl ProviderConfig {
     }
 
     /// Create default config with URL (for backward compatibility)
-    pub fn default_with_url(base_url: &str, api_key: &str) -> HashMap<String, Self> {
+    pub fn default_with_url(base_url: &str, _api_key: &str) -> HashMap<String, Self> {
         let mut providers = HashMap::new();
         providers.insert(
             "default".to_string(),

@@ -9,16 +9,13 @@ use axum::{
     Router,
 };
 use serde_json::json;
-use std::collections::HashMap;
 use std::sync::Arc;
 use tempfile::TempDir;
 use tower::util::ServiceExt;
 
 use rust_llm_api_router::config::Settings;
 use rust_llm_api_router::domain::{Account, AccountRepository};
-use rust_llm_api_router::infrastructure::gateway::llm_gateway::{
-    default_providers, ProviderConfig,
-};
+use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
 use rust_llm_api_router::infrastructure::{
     HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
 };

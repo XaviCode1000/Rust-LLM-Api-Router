@@ -2,6 +2,8 @@
 //!
 //! Comprehensive tests for all error types in the domain layer.
 
+#![allow(clippy::unnecessary_literal_unwrap)]
+
 use crate::domain::errors::{DomainError, DomainResult};
 
 // ============================================================================
@@ -285,7 +287,7 @@ fn test_domain_result_or() {
     let ok1: DomainResult<i32> = Ok(1);
     let ok2: DomainResult<i32> = Ok(2);
 
-    assert_eq!(ok1.or::<DomainError>(Ok(2)).unwrap(), 1);
+    assert_eq!(ok1.unwrap_or(2), 1);
     assert!(Err::<i32, _>(DomainError::Internal("e".to_string()))
         .or(ok2)
         .is_ok());
@@ -300,7 +302,7 @@ fn test_domain_result_is_ok() {
     let err: DomainResult<i32> = Err(DomainError::Internal("error".to_string()));
 
     assert!(ok.is_ok());
-    assert!(!err.is_ok());
+    assert!(err.is_err());
 }
 
 #[test]
@@ -308,7 +310,7 @@ fn test_domain_result_is_err() {
     let ok: DomainResult<i32> = Ok(42);
     let err: DomainResult<i32> = Err(DomainError::Internal("error".to_string()));
 
-    assert!(!ok.is_err());
+    assert!(ok.is_ok());
     assert!(err.is_err());
 }
 

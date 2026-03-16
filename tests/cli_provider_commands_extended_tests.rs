@@ -6,12 +6,11 @@
 use tempfile::TempDir;
 
 use rust_llm_api_router::cli::provider_commands::{
-    cmd_add_provider, cmd_disable_provider, cmd_enable_provider, cmd_list_providers,
-    cmd_remove_provider, cmd_validate_provider, AddProviderArgs, DisableProviderArgs,
-    EnableProviderArgs, ProviderCommands, RemoveProviderArgs, ValidateProviderArgs,
+    cmd_add_provider, cmd_disable_provider, cmd_enable_provider,
+    cmd_remove_provider, AddProviderArgs, DisableProviderArgs,
+    EnableProviderArgs, RemoveProviderArgs,
 };
 use rust_llm_api_router::domain::traits::ProviderRepository;
-use rust_llm_api_router::domain::Provider;
 use rust_llm_api_router::infrastructure::JsonProviderRepository;
 
 // ============================================================================
@@ -71,7 +70,7 @@ async fn test_cli_remove_provider_from_single_provider_list() {
 #[tokio::test]
 async fn test_cli_remove_provider_last_one_with_error_handling() {
     // Test that removing last provider doesn't cause errors
-    let (temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo) = create_test_repo();
 
     // Add single provider
     let add_args = AddProviderArgs {

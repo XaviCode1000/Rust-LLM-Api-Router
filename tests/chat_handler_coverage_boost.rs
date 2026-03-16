@@ -25,8 +25,7 @@ use rust_llm_api_router::infrastructure::{
     HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
 };
 use rust_llm_api_router::interfaces::handlers::chat_handler::{
-    chat_completions, convert_to_openai_response, get_api_key_for_models, list_models, parse_model,
-    OpenAIModelInfo, OpenAIModelsResponse,
+    chat_completions, convert_to_openai_response, list_models, parse_model,
 };
 use rust_llm_api_router::presentation::state::AppState;
 

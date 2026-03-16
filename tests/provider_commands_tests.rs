@@ -51,11 +51,7 @@ async fn handle_provider_command_with_dir(
     match cmd {
         ProviderCommands::Add(args) => {
             // Get API key (from args or interactive)
-            let api_key = if args.interactive {
-                args.api_key.unwrap_or_default()
-            } else {
-                args.api_key.unwrap_or_default()
-            };
+            let api_key = args.api_key.unwrap_or_default();
 
             if api_key.is_empty() && !args.interactive {
                 eprintln!("Warning: No API key provided. Use --api-key or --interactive.");

@@ -1,5 +1,7 @@
 //! Common test utilities for integration tests
 
+#![allow(dead_code)]
+
 pub mod containers;
 
 use rust_llm_api_router::app::services::{AccountSelector, FailoverManager};
@@ -16,7 +18,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Create a failover manager with a test account pointing to a mock endpoint
-pub async fn create_manager_with_provider(provider_id: &str, endpoint: &str) -> FailoverManager {
+pub async fn create_manager_with_provider(provider_id: &str, _endpoint: &str) -> FailoverManager {
     let repo: Arc<dyn AccountRepository> =
         Arc::new(JsonAccountRepository::new().expect("Should create repository"));
 

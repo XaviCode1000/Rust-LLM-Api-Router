@@ -3,6 +3,8 @@
 //! These tests verify the complete flow from HTTP request to provider response,
 //! including failover, rate limiting, validation, and CORS.
 
+#![allow(dead_code)]
+
 use axum::{
     body::Body,
     http::{Request, StatusCode},
