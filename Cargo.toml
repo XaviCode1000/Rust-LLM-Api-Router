@@ -50,6 +50,15 @@ clap = { version = "4.4", features = ["derive"] }
 # Directories
 dirs = "5.0"
 
+# OAuth 2.1 / PKCE
+oauth2 = { version = "5.0", features = ["pkce-plain"] }
+keyring = "2.0"
+zeroize = { version = "1.7", features = ["derive"] }
+uuid = { version = "1.0", features = ["v4"] }
+urlencoding = "2.1"
+url = { version = "2.4", features = ["serde"] }
+zeroize_derive = "1.4"
+
 [dev-dependencies]
 mockall = "0.13"
 tokio-test = "0.4"

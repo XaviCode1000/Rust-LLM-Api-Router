@@ -5,14 +5,18 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod account;
 pub mod account_health;
 pub mod openai_types;
+pub mod provider;
 
+pub use account::Account;
 pub use account_health::AccountHealth;
 pub use openai_types::{
     OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice, OpenAIError, OpenAIErrorResponse,
     OpenAIMessage, OpenAIUsage,
 };
+pub use provider::Provider;
 
 /// Chat request sent to an LLM provider.
 ///
@@ -142,112 +146,6 @@ impl Usage {
             completion_tokens,
             total_tokens,
         }
-    }
-}
-
-/// LLM Provider configuration.
-///
-/// # Fields
-/// * `id` - Unique provider identifier
-/// * `name` - Human-readable provider name
-/// * `base_url` - Base URL for API requests
-/// * `enabled` - Whether the provider is active
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Provider {
-    pub id: String,
-    pub name: String,
-    pub base_url: String,
-    pub enabled: bool,
-}
-
-impl Provider {
-    /// Creates a new `Provider`.
-    pub fn new(
-        id: impl Into<String>,
-        name: impl Into<String>,
-        base_url: impl Into<String>,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            name: name.into(),
-            base_url: base_url.into(),
-            enabled: true,
-        }
-    }
-
-    /// Creates a disabled provider.
-    pub fn disabled(
-        id: impl Into<String>,
-        name: impl Into<String>,
-        base_url: impl Into<String>,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            name: name.into(),
-            base_url: base_url.into(),
-            enabled: false,
-        }
-    }
-}
-
-/// Account credentials for an LLM provider.
-///
-/// # Fields
-/// * `id` - Unique account identifier
-/// * `provider_id` - Reference to the provider
-/// * `api_key` - API key for authentication
-/// * `is_active` - Whether the account is active
-/// * `priority` - Priority for load balancing (lower = higher priority)
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Account {
-    pub id: String,
-    pub provider_id: String,
-    pub api_key: String,
-    pub is_active: bool,
-    pub priority: i32,
-}
-
-impl Account {
-    /// Creates a new `Account`.
-    pub fn new(
-        id: impl Into<String>,
-        provider_id: impl Into<String>,
-        api_key: impl Into<String>,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            provider_id: provider_id.into(),
-            api_key: api_key.into(),
-            is_active: true,
-            priority: 0,
-        }
-    }
-
-    /// Creates an inactive account.
-    pub fn inactive(
-        id: impl Into<String>,
-        provider_id: impl Into<String>,
-        api_key: impl Into<String>,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            provider_id: provider_id.into(),
-            api_key: api_key.into(),
-            is_active: false,
-            priority: 0,
-        }
-    }
-
-    /// Sets the priority of the account.
-    pub fn with_priority(mut self, priority: i32) -> Self {
-        self.priority = priority;
-        self
-    }
-
-    /// Sets the active state of the account.
-    pub fn with_active(mut self, active: bool) -> Self {
-        self.is_active = active;
-        self
     }
 }
 

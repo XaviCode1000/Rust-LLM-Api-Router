@@ -26,7 +26,7 @@ use tokio::sync::RwLock;
 
 use crate::domain::entities::{ChatRequest, ChatResponse, Model};
 use crate::domain::errors::DomainError;
-use crate::domain::errors::DomainResult;
+use crate::domain::traits::DomainResult;
 use crate::domain::traits::{AccountRepository, LlmGateway};
 use crate::infrastructure::http_client::SharedHttpClient;
 
@@ -341,7 +341,7 @@ impl LlmGateway for LlmGatewayImpl {
             .await?
             .into_iter()
             .filter(|a| a.is_active)
-            .map(|a| a.provider_id)
+            .map(|a| a.provider_id.clone())
             .collect::<std::collections::HashSet<_>>();
 
         if enabled_providers.is_empty() {

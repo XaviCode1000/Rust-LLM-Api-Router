@@ -57,3 +57,9 @@ impl From<std::io::Error> for Error {
         Error::Internal(e.to_string())
     }
 }
+
+impl From<url::ParseError> for Error {
+    fn from(e: url::ParseError) -> Self {
+        Error::Internal(e.to_string())
+    }
+}

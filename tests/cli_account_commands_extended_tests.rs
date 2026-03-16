@@ -35,7 +35,7 @@ async fn test_cmd_add_account_basic() {
     let account = repo.find_by_id("test-basic").await.unwrap();
     assert_eq!(account.id, "test-basic");
     assert_eq!(account.provider_id, "openai");
-    assert_eq!(account.api_key, "sk-test-key-123");
+    assert_eq!(account.api_key, Some("sk-test-key-123".to_string()));
     assert!(account.is_active);
     assert_eq!(account.priority, 0);
 }
@@ -100,7 +100,7 @@ async fn test_cmd_add_account_empty_api_key() {
 
     // Account should be created with empty key
     let account = repo.find_by_id("test-empty-key").await.unwrap();
-    assert_eq!(account.api_key, "");
+    assert_eq!(account.api_key, Some("".to_string()));
 }
 
 #[tokio::test]
@@ -133,7 +133,7 @@ async fn test_cmd_add_account_duplicate_id() {
     // Should update existing account
     let account = repo.find_by_id("test-dup").await.unwrap();
     assert_eq!(account.provider_id, "groq");
-    assert_eq!(account.api_key, "sk-key-2");
+    assert_eq!(account.api_key, Some("sk-key-2".to_string()));
     assert_eq!(account.priority, 5);
 }
 

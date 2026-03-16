@@ -4,6 +4,6 @@ expression: error_json
 ---
 {
   "error_type": "authentication_error",
-  "message": "Domain error: authentication error: Invalid API key: sk-abc123xyz789",
+  "message": "Domain error: Invalid credentials",
   "source": "domain"
 }

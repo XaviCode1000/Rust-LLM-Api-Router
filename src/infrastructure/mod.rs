@@ -7,6 +7,7 @@
 //! - Persistence mechanisms for configuration storage
 //! - Logging and metrics collection
 
+pub mod auth;
 pub mod gateway;
 pub mod http_client;
 pub mod logging;

@@ -21,11 +21,20 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use rust_llm_api_router::config::Settings;
 use rust_llm_api_router::domain::{Account, AccountRepository};
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
-use rust_llm_api_router::infrastructure::{
-    HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
-};
+use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, Metrics};
 use rust_llm_api_router::interfaces::handlers::chat_handler::chat_completions;
 use rust_llm_api_router::presentation::AppState;
+
+/// Helper function to create AppState with required fields
+fn create_test_app_state(
+    temp_dir: &TempDir,
+    http_client: Arc<HttpClient>,
+    account_repo: Arc<dyn AccountRepository>,
+    provider_config: std::collections::HashMap<String, rust_llm_api_router::infrastructure::gateway::llm_gateway::ProviderConfig>,
+) -> Arc<AppState> {
+    let settings = Settings::default();
+    Arc::new(AppState::with_provider_config(settings, http_client, account_repo, provider_config).unwrap())
+}
 
 /// Setup complete test environment with mock servers
 async fn setup_full_test_env() -> (Router, MockServer, MockServer, TempDir) {
@@ -47,26 +56,10 @@ async fn setup_full_test_env() -> (Router, MockServer, MockServer, TempDir) {
 
     // Create HTTP client with mock URL
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_primary.uri()).unwrap());
-    let metrics = Arc::new(Metrics::new().unwrap());
 
     // Create provider config
-    let provider_config = Arc::new(default_providers());
-    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
-        http_client.clone(),
-        repo.clone(),
-        (*provider_config).clone(),
-        3600,
-    ));
-
-    let settings = Settings::default();
-    let state = Arc::new(AppState {
-        config: settings,
-        http_client,
-        metrics,
-        account_repo: repo.clone(),
-        llm_gateway,
-        provider_config,
-    });
+    let provider_config = default_providers();
+    let state = create_test_app_state(&temp_dir, http_client, repo, provider_config);
 
     let app = Router::new()
         .route("/v1/chat/completions", post(chat_completions))
@@ -87,26 +80,8 @@ async fn setup_single_mock_env() -> (Router, MockServer, TempDir) {
     repo.save(account).await.unwrap();
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    let metrics = Arc::new(Metrics::new().unwrap());
-
-    // Create provider config
-    let provider_config = Arc::new(default_providers());
-    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
-        http_client.clone(),
-        repo.clone(),
-        (*provider_config).clone(),
-        3600,
-    ));
-
-    let settings = Settings::default();
-    let state = Arc::new(AppState {
-        config: settings,
-        http_client,
-        metrics,
-        account_repo: repo.clone(),
-        llm_gateway,
-        provider_config,
-    });
+    let provider_config = default_providers();
+    let state = create_test_app_state(&temp_dir, http_client, repo, provider_config);
 
     let app = Router::new()
         .route("/v1/chat/completions", post(chat_completions))
@@ -487,26 +462,8 @@ async fn test_chat_handler_no_active_accounts() {
         Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    let metrics = Arc::new(Metrics::new().unwrap());
-
-    // Create provider config
-    let provider_config = Arc::new(default_providers());
-    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
-        http_client.clone(),
-        repo.clone(),
-        (*provider_config).clone(),
-        3600,
-    ));
-
-    let settings = Settings::default();
-    let state = Arc::new(AppState {
-        config: settings,
-        http_client,
-        metrics,
-        account_repo: repo.clone(),
-        llm_gateway,
-        provider_config,
-    });
+    let provider_config = default_providers();
+    let state = create_test_app_state(&temp_dir, http_client, repo, provider_config);
 
     let app = Router::new()
         .route("/v1/chat/completions", post(chat_completions))
@@ -649,26 +606,8 @@ async fn test_chat_handler_round_robin_selection() {
         .unwrap();
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    let metrics = Arc::new(Metrics::new().unwrap());
-
-    // Create provider config
-    let provider_config = Arc::new(default_providers());
-    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
-        http_client.clone(),
-        repo.clone(),
-        (*provider_config).clone(),
-        3600,
-    ));
-
-    let settings = Settings::default();
-    let state = Arc::new(AppState {
-        config: settings,
-        http_client,
-        metrics,
-        account_repo: repo.clone(),
-        llm_gateway,
-        provider_config,
-    });
+    let provider_config = default_providers();
+    let state = create_test_app_state(&temp_dir, http_client, repo, provider_config);
 
     let app = Router::new()
         .route("/v1/chat/completions", post(chat_completions))

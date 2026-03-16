@@ -13,7 +13,7 @@ use rust_llm_api_router::domain::{Account, AccountRepository};
 use rust_llm_api_router::domain::{ChatResponse, Choice, Message, Usage};
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
 use rust_llm_api_router::infrastructure::{
-    HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
+    HttpClient, JsonAccountRepository, Metrics,
 };
 use rust_llm_api_router::interfaces::handlers::chat_handler::{
     convert_to_openai_response, get_api_key_for_models, list_models, parse_model, OpenAIModelInfo,
@@ -195,23 +195,11 @@ async fn setup_app_state_with_accounts_in_temp(
     let http_client = Arc::new(HttpClient::new().unwrap());
     let metrics = Arc::new(Metrics::new().unwrap());
 
-    let provider_config = Arc::new(default_providers());
-    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
-        http_client.clone(),
-        repo.clone(),
-        (*provider_config).clone(),
-        3600,
-    ));
-
+    let provider_config = default_providers();
     let settings = Settings::default();
-    Arc::new(AppState {
-        config: settings,
-        http_client,
-        metrics,
-        account_repo: repo,
-        llm_gateway,
-        provider_config,
-    })
+
+    // Use the with_provider_config constructor which handles llm_router
+    Arc::new(AppState::with_provider_config(settings, http_client, repo, provider_config).unwrap())
 }
 
 #[tokio::test]
@@ -273,14 +261,7 @@ async fn test_streaming_with_empty_chunk() {
         body::Body,
         http::{Request, StatusCode},
     };
-    use rust_llm_api_router::config::Settings;
-    use rust_llm_api_router::domain::AccountRepository;
-    use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
-    use rust_llm_api_router::infrastructure::{
-        HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
-    };
     use rust_llm_api_router::interfaces::handlers::chat_handler::chat_completions;
-    use rust_llm_api_router::presentation::state::AppState;
     use serde_json::json;
     use tower::util::ServiceExt;
     use wiremock::matchers::{method, path};
@@ -295,23 +276,13 @@ async fn test_streaming_with_empty_chunk() {
     repo.save(account).await.unwrap();
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    let metrics = Arc::new(Metrics::new().unwrap());
-    let provider_config = Arc::new(default_providers());
-    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
-        http_client.clone(),
-        repo.clone(),
-        (*provider_config).clone(),
-        3600,
-    ));
-    let settings = Settings::default();
-    let state = Arc::new(AppState {
-        config: settings,
+    let provider_config = default_providers();
+    let state = Arc::new(AppState::with_provider_config(
+        Settings::default(),
         http_client,
-        metrics,
-        account_repo: repo.clone(),
-        llm_gateway,
+        repo,
         provider_config,
-    });
+    ).unwrap());
 
     let app = axum::Router::new()
         .route(
@@ -361,14 +332,7 @@ async fn test_streaming_with_valid_utf8_handling() {
         body::Body,
         http::{Request, StatusCode},
     };
-    use rust_llm_api_router::config::Settings;
-    use rust_llm_api_router::domain::AccountRepository;
-    use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
-    use rust_llm_api_router::infrastructure::{
-        HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
-    };
     use rust_llm_api_router::interfaces::handlers::chat_handler::chat_completions;
-    use rust_llm_api_router::presentation::state::AppState;
     use serde_json::json;
     use tower::util::ServiceExt;
     use wiremock::matchers::{method, path};
@@ -383,23 +347,13 @@ async fn test_streaming_with_valid_utf8_handling() {
     repo.save(account).await.unwrap();
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
-    let metrics = Arc::new(Metrics::new().unwrap());
-    let provider_config = Arc::new(default_providers());
-    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
-        http_client.clone(),
-        repo.clone(),
-        (*provider_config).clone(),
-        3600,
-    ));
-    let settings = Settings::default();
-    let state = Arc::new(AppState {
-        config: settings,
+    let provider_config = default_providers();
+    let state = Arc::new(AppState::with_provider_config(
+        Settings::default(),
         http_client,
-        metrics,
-        account_repo: repo.clone(),
-        llm_gateway,
+        repo,
         provider_config,
-    });
+    ).unwrap());
 
     let app = axum::Router::new()
         .route(

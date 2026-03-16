@@ -7,7 +7,8 @@
 
 use async_trait::async_trait;
 use mockall::predicate::*;
-use rust_llm_api_router::app::services::{AccountSelector, FailoverManager};
+use rust_llm_api_router::app::services::failover::FailoverManager;
+use rust_llm_api_router::app::services::account_rotation::AccountSelector;
 use rust_llm_api_router::domain::traits::AccountRepository;
 use rust_llm_api_router::domain::{Account, DomainError};
 use std::sync::Arc;
@@ -423,7 +424,7 @@ fn test_repository_error_handling() {
         .expect_find_active_by_provider()
         .with(eq("openai"))
         .times(1)
-        .returning(|_| Err(DomainError::NoAvailableAccounts("openai".to_string())));
+        .returning(|_| Err(DomainError::AccountNotFound("openai".to_string())));
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 

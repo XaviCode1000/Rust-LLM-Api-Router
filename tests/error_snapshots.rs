@@ -23,7 +23,7 @@ use rust_llm_api_router::{
 #[test]
 fn test_error_format_no_api_key_leak() {
     // Create an authentication error that might contain sensitive data
-    let auth_error = DomainError::authentication_error("Invalid API key: sk-abc123xyz789");
+    let auth_error = DomainError::InvalidCredentials;
 
     // Convert to application error
     let app_error: Error = auth_error.into();
@@ -114,15 +114,17 @@ fn test_frontmatter_generation() {
 #[test]
 fn test_domain_error_serialization() {
     let errors = vec![
-        DomainError::invalid_request("Missing required field: model"),
-        DomainError::provider_not_found("openai"),
-        DomainError::provider_disabled("anthropic"),
-        DomainError::account_not_found("acc_123"),
-        DomainError::account_inactive("acc_456"),
-        DomainError::model_not_found("gpt-5"),
-        DomainError::authentication_error("Invalid credentials"),
-        DomainError::rate_limited("Too many requests"),
-        DomainError::validation_error("Temperature must be between 0 and 2"),
+        DomainError::DomainError("Missing required field: model".to_string()),
+        DomainError::ProviderNotFound("openai".to_string()),
+        DomainError::ProviderDisabled("anthropic".to_string()),
+        DomainError::AccountNotFound("acc_123".to_string()),
+        DomainError::AccountDisabled("acc_456".to_string()),
+        DomainError::DomainError("model_not_found: gpt-5".to_string()),
+        DomainError::InvalidCredentials,
+        DomainError::ExternalServiceError("Too many requests".to_string()),
+        DomainError::DomainError(
+            "validation_error: Temperature must be between 0 and 2".to_string(),
+        ),
     ];
 
     let serialized: Vec<String> = errors.iter().map(|e| format!("{}", e)).collect();

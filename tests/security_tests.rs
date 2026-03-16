@@ -10,7 +10,8 @@
 
 use async_trait::async_trait;
 use mockall::predicate::*;
-use rust_llm_api_router::app::services::{AccountSelector, FailoverManager};
+use rust_llm_api_router::app::services::failover::FailoverManager;
+use rust_llm_api_router::app::services::account_rotation::AccountSelector;
 use rust_llm_api_router::domain::entities::AccountHealth;
 use rust_llm_api_router::domain::traits::AccountRepository;
 use rust_llm_api_router::domain::{Account, DomainError};
@@ -282,7 +283,7 @@ async fn test_concurrent_health_map_no_race() {
 /// Vulnerability: CWE-362 (Race Condition in Atomic Operations)
 #[test]
 fn test_atomic_counter_correctness() {
-    use rust_llm_api_router::app::services::{RotationStrategy, RoundRobinStrategy};
+    use rust_llm_api_router::app::services::account_rotation::{RotationStrategy, RoundRobinStrategy};
 
     let strategy = Arc::new(RoundRobinStrategy::new());
     let accounts: Vec<Account> = (0..10)
@@ -312,7 +313,7 @@ fn test_atomic_counter_correctness() {
 /// Vulnerability: CWE-362 (Lock Poisoning)
 #[tokio::test]
 async fn test_mutex_poisoning_recovery() {
-    use rust_llm_api_router::app::services::UserAffinityStrategy;
+    use rust_llm_api_router::app::services::account_rotation::UserAffinityStrategy;
 
     let strategy = Arc::new(UserAffinityStrategy::new());
     let accounts = vec![
@@ -338,7 +339,7 @@ async fn test_mutex_poisoning_recovery() {
         handles.push(handle);
     }
 
-    let results: Vec<_> = futures::future::join_all(handles).await;
+    let results: Vec<Result<Option<&Account>, _>> = futures::future::join_all(handles).await;
 
     // All should succeed (no poisoning)
     assert!(results.iter().all(|r| r.as_ref().unwrap().is_some()));
@@ -527,7 +528,7 @@ async fn test_empty_api_key_handling() {
     assert!(result.is_ok());
 
     let retrieved = repo.find_by_id("test-account").await.expect("Should find");
-    assert_eq!(retrieved.api_key, "");
+    assert_eq!(retrieved.api_key, Some("".to_string()));
 
     // Note: API key validation should happen at use time, not storage
 }
@@ -546,7 +547,7 @@ async fn test_null_byte_in_api_key() {
     assert!(result.is_ok(), "Should handle null byte safely");
 
     let retrieved = repo.find_by_id("test-account").await.expect("Should find");
-    assert_eq!(retrieved.api_key, api_key_with_null);
+    assert_eq!(retrieved.api_key, Some(api_key_with_null.to_string()));
 
     // JSON handles null bytes correctly
 }

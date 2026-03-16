@@ -3,13 +3,13 @@ source: tests/error_snapshots.rs
 expression: serialized
 ---
 [
-  "invalid request: Missing required field: model",
-  "provider not found: openai",
-  "provider disabled: anthropic",
-  "account not found: acc_123",
-  "account inactive: acc_456",
-  "model not found: gpt-5",
-  "authentication error: Invalid credentials",
-  "rate limited: Too many requests",
-  "validation error: Temperature must be between 0 and 2"
+  "Domain error: Missing required field: model",
+  "Provider not found: openai",
+  "Provider disabled: anthropic",
+  "Account not found: acc_123",
+  "Account disabled: acc_456",
+  "Domain error: model_not_found: gpt-5",
+  "Invalid credentials",
+  "External service error: Too many requests",
+  "Domain error: validation_error: Temperature must be between 0 and 2"
 ]

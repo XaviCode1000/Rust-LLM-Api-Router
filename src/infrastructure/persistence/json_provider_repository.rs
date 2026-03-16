@@ -19,6 +19,24 @@ struct ProviderData {
     name: String,
     base_url: String,
     enabled: bool,
+    /// OAuth 2.0 client ID for authentication flows
+    #[serde(skip_serializing_if = "Option::is_none")]
+    client_id: Option<String>,
+    /// OAuth 2.0 client secret for authentication flows (kept confidential)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    client_secret: Option<String>,
+    /// Authorization endpoint URL for OAuth flows
+    #[serde(skip_serializing_if = "Option::is_none")]
+    auth_url: Option<String>,
+    /// Token endpoint URL for OAuth flows
+    #[serde(skip_serializing_if = "Option::is_none")]
+    token_url: Option<String>,
+    /// Redirect URI for OAuth 2.1 PKCE flow
+    #[serde(skip_serializing_if = "Option::is_none")]
+    redirect_uri: Option<String>,
+    /// Device authorization endpoint for OAuth 2.0 Device Flow
+    #[serde(skip_serializing_if = "Option::is_none")]
+    device_auth_url: Option<String>,
 }
 
 impl From<&Provider> for ProviderData {
@@ -28,6 +46,12 @@ impl From<&Provider> for ProviderData {
             name: provider.name.clone(),
             base_url: provider.base_url.clone(),
             enabled: provider.enabled,
+            client_id: provider.client_id.clone(),
+            client_secret: provider.client_secret.clone(),
+            auth_url: provider.auth_url.clone(),
+            token_url: provider.token_url.clone(),
+            redirect_uri: provider.redirect_uri.clone(),
+            device_auth_url: provider.device_auth_url.clone(),
         }
     }
 }
@@ -39,6 +63,12 @@ impl From<ProviderData> for Provider {
             name: data.name,
             base_url: data.base_url,
             enabled: data.enabled,
+            client_id: data.client_id,
+            client_secret: data.client_secret,
+            auth_url: data.auth_url,
+            token_url: data.token_url,
+            redirect_uri: data.redirect_uri,
+            device_auth_url: data.device_auth_url,
         }
     }
 }
@@ -215,12 +245,7 @@ mod tests {
         let repo = JsonProviderRepository::with_config_dir(temp_dir.path()).unwrap();
 
         // Add a provider first
-        let provider = Provider {
-            id: "test-provider".to_string(),
-            name: "Test".to_string(),
-            base_url: "https://test.api.com".to_string(),
-            enabled: true,
-        };
+        let provider = Provider::new("test-provider", "Test", "https://test.api.com");
         repo.save(provider).await.unwrap();
 
         // Delete the provider

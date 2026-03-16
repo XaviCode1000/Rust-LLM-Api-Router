@@ -19,13 +19,34 @@ use crate::Result;
 struct AccountData {
     id: String,
     provider_id: String,
-    api_key: String,
-    is_active: bool,
-    priority: i32,
+    /// Legacy API key for authentication (kept for backward compatibility)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    api_key: Option<String>,
+    /// OAuth 2.0 access token (never serialized to disk for security)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    access_token: Option<String>,
+    /// OAuth 2.0 refresh token for obtaining new access tokens
+    #[serde(skip_serializing_if = "Option::is_none")]
+    refresh_token: Option<String>,
+    /// OpenID Connect ID token (if applicable)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id_token: Option<String>,
+    /// Token expiration timestamp (seconds since UNIX epoch)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    token_expires_at: Option<u64>,
+    /// Whether the account is active and can be used
+    pub is_active: bool,
+    /// Priority for load balancing (lower = higher priority)
+    pub priority: i32,
+    /// Timestamp when the account was created
     #[serde(default)]
-    created_at: Option<u64>,
+    pub created_at: Option<u64>,
+    /// Timestamp when the account was last used
     #[serde(default)]
-    last_used_at: Option<u64>,
+    pub last_used_at: Option<u64>,
+    /// Type of authentication strategy used for this account
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub auth_strategy_type: String,
 }
 
 impl From<&Account> for AccountData {
@@ -34,10 +55,15 @@ impl From<&Account> for AccountData {
             id: account.id.clone(),
             provider_id: account.provider_id.clone(),
             api_key: account.api_key.clone(),
+            access_token: account.access_token.clone(),
+            refresh_token: account.refresh_token.clone(),
+            id_token: account.id_token.clone(),
+            token_expires_at: account.token_expires_at,
             is_active: account.is_active,
             priority: account.priority,
-            created_at: None,
-            last_used_at: None,
+            created_at: account.created_at,
+            last_used_at: account.last_used_at,
+            auth_strategy_type: account.auth_strategy_type.clone(),
         }
     }
 }
@@ -48,8 +74,15 @@ impl From<AccountData> for Account {
             id: data.id,
             provider_id: data.provider_id,
             api_key: data.api_key,
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
+            id_token: data.id_token,
+            token_expires_at: data.token_expires_at,
             is_active: data.is_active,
             priority: data.priority,
+            created_at: data.created_at,
+            last_used_at: data.last_used_at,
+            auth_strategy_type: data.auth_strategy_type,
         }
     }
 }
@@ -108,13 +141,13 @@ impl JsonAccountRepository {
         if let Some(parent) = self.file_path.parent() {
             fs::create_dir_all(parent)
                 .await
-                .map_err(|e| crate::domain::DomainError::io(e.to_string()))?;
+                .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
         }
 
         if !self.file_path.exists() {
             fs::write(&self.file_path, "[]")
                 .await
-                .map_err(|e| crate::domain::DomainError::io(e.to_string()))?;
+                .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
         }
 
         Ok(())
@@ -128,15 +161,15 @@ impl JsonAccountRepository {
             .read(true)
             .open(&self.file_path)
             .await
-            .map_err(|e| crate::domain::DomainError::io(e.to_string()))?;
+            .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
 
         let mut contents = String::new();
         file.read_to_string(&mut contents)
             .await
-            .map_err(|e| crate::domain::DomainError::io(e.to_string()))?;
+            .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
 
         let accounts: Vec<AccountData> = serde_json::from_str(&contents)
-            .map_err(|e| crate::domain::DomainError::serialization(e.to_string()))?;
+            .map_err(|e| crate::domain::DomainError::Serialization(e.to_string()))?;
 
         Ok(accounts)
     }
@@ -146,11 +179,11 @@ impl JsonAccountRepository {
         self.ensure_file_exists().await?;
 
         let json = serde_json::to_string_pretty(accounts)
-            .map_err(|e| crate::domain::DomainError::serialization(e.to_string()))?;
+            .map_err(|e| crate::domain::DomainError::Serialization(e.to_string()))?;
 
         fs::write(&self.file_path, json)
             .await
-            .map_err(|e| crate::domain::DomainError::io(e.to_string()))?;
+            .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
 
         Ok(())
     }

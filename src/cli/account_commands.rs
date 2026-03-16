@@ -121,20 +121,20 @@ pub async fn handle_account_command(cmd: AccountCommands) -> Result<()> {
 /// Add a new account
 pub async fn cmd_add_account(args: AddAccountArgs, repo: &JsonAccountRepository) -> Result<()> {
     // Get API key (from args or interactive)
-    let api_key = if args.interactive {
-        read_api_key_interactive()?
+    let api_key: Option<String> = if args.interactive {
+        Some(read_api_key_interactive()?)
     } else {
-        args.api_key.unwrap_or_default()
+        args.api_key
     };
 
-    if api_key.is_empty() && !args.interactive {
+    if api_key.is_none() && !args.interactive {
         eprintln!("Warning: No API key provided. Use --api-key or --interactive.");
     }
 
     let account = if args.inactive {
-        Account::inactive(&args.id, &args.provider, &api_key)
+        Account::inactive(&args.id, &args.provider, api_key.unwrap_or_default())
     } else {
-        Account::new(&args.id, &args.provider, &api_key)
+        Account::new_api_key(&args.id, &args.provider, api_key.unwrap_or_default())
     }
     .with_priority(args.priority);
 
@@ -173,10 +173,14 @@ pub async fn cmd_list_accounts(repo: &JsonAccountRepository) -> Result<()> {
         } else {
             "✗ Inactive"
         };
-        let api_key_display = if account.api_key.len() > 8 {
-            format!("{}...", &account.api_key[..8])
+        let api_key_display = if let Some(ref key) = account.api_key {
+            if key.len() > 8 {
+                format!("{}...", &key[..8])
+            } else {
+                "****".to_string()
+            }
         } else {
-            "****".to_string()
+            "None".to_string()
         };
         println!(
             "{:<20} {:<20} {:<10} {:<8} {}",
@@ -233,19 +237,22 @@ pub async fn cmd_validate_account(
         account.id, account.provider_id
     );
 
-    if account.api_key.is_empty() {
-        println!("⚠ Account has no API key set");
-        return Ok(());
-    }
+    let api_key = match &account.api_key {
+        Some(key) => key,
+        None => {
+            println!("⚠ Account has no API key set");
+            return Ok(());
+        }
+    };
 
     // TODO: Make actual API call to validate the key
     // For now, just check key format
-    if account.api_key.len() < 8 {
+    if api_key.len() < 8 {
         println!("✗ API key too short (min 8 chars)");
     } else {
         println!(
             "✓ API key format looks valid (length: {})",
-            account.api_key.len()
+            api_key.len()
         );
         println!("Note: Full validation will be done on first request");
     }
@@ -264,7 +271,7 @@ mod tests {
         let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
 
         // Add account
-        let account = Account::new("test-1", "openai", "sk-test-key");
+        let account = Account::new_api_key("test-1", "openai", "sk-test-key");
         repo.save(account).await.unwrap();
 
         // Remove account
@@ -319,7 +326,7 @@ mod tests {
         // Verify account was added
         let account = repo.find_by_id("test-add").await.unwrap();
         assert_eq!(account.provider_id, "openai");
-        assert_eq!(account.api_key, "sk-test-key");
+        assert_eq!(account.api_key, Some("sk-test-key".to_string()));
         assert!(account.is_active);
     }
 
@@ -339,7 +346,7 @@ mod tests {
         let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
 
         // Add account
-        let account = Account::new("test-priority", "groq", "sk-key");
+        let account = Account::new_api_key("test-priority", "groq", "sk-key");
         repo.save(account).await.unwrap();
 
         // Set priority
@@ -360,7 +367,7 @@ mod tests {
         let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
 
         // Add account with valid key
-        let account = Account::new("test-validate", "openai", "sk-valid-key-123");
+        let account = Account::new_api_key("test-validate", "openai", "sk-valid-key-123");
         repo.save(account).await.unwrap();
 
         let args = ValidateAccountArgs {
@@ -377,7 +384,7 @@ mod tests {
         let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
 
         // Add account with short key
-        let account = Account::new("test-short", "openai", "short");
+        let account = Account::new_api_key("test-short", "openai", "short");
         repo.save(account).await.unwrap();
 
         let args = ValidateAccountArgs {

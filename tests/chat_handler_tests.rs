@@ -16,11 +16,19 @@ use tower::util::ServiceExt;
 use rust_llm_api_router::config::Settings;
 use rust_llm_api_router::domain::{Account, AccountRepository};
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
-use rust_llm_api_router::infrastructure::{
-    HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics,
-};
+use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, Metrics};
 use rust_llm_api_router::interfaces::handlers::chat_handler::chat_completions;
 use rust_llm_api_router::presentation::state::AppState;
+
+/// Helper function to create AppState with llm_router
+fn create_test_app_state(
+    http_client: Arc<HttpClient>,
+    account_repo: Arc<dyn AccountRepository>,
+    provider_config: std::collections::HashMap<String, rust_llm_api_router::infrastructure::gateway::llm_gateway::ProviderConfig>,
+) -> Arc<AppState> {
+    let settings = Settings::default();
+    Arc::new(AppState::with_provider_config(settings, http_client, account_repo, provider_config).unwrap())
+}
 
 /// Setup test fixtures with in-memory repository
 async fn setup_test_app() -> (Router, TempDir) {
@@ -39,26 +47,10 @@ async fn setup_test_app() -> (Router, TempDir) {
     repo.save(account_groq).await.expect("Should save account");
 
     let http_client = Arc::new(HttpClient::new().expect("Should create HTTP client"));
-    let metrics = Arc::new(Metrics::new().expect("Should create metrics"));
 
     // Create provider config with default providers
-    let provider_config = Arc::new(default_providers());
-    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
-        http_client.clone(),
-        repo.clone(),
-        (*provider_config).clone(),
-        3600,
-    ));
-
-    let settings = Settings::default();
-    let state = Arc::new(AppState {
-        config: settings,
-        http_client,
-        metrics,
-        account_repo: repo.clone(),
-        llm_gateway,
-        provider_config,
-    });
+    let provider_config = default_providers();
+    let state = create_test_app_state(http_client, repo, provider_config);
 
     let app = Router::new()
         .route("/v1/chat/completions", post(chat_completions))
@@ -195,25 +187,9 @@ async fn test_chat_handler_no_accounts_for_provider() {
     // No accounts created - provider has no accounts
 
     let http_client = Arc::new(HttpClient::new().expect("Should create HTTP client"));
-    let metrics = Arc::new(Metrics::new().expect("Should create metrics"));
 
-    let provider_config = Arc::new(default_providers());
-    let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
-        http_client.clone(),
-        repo.clone(),
-        (*provider_config).clone(),
-        3600,
-    ));
-
-    let settings = Settings::default();
-    let state = Arc::new(AppState {
-        config: settings,
-        http_client,
-        metrics,
-        account_repo: repo.clone(),
-        llm_gateway,
-        provider_config,
-    });
+    let provider_config = default_providers();
+    let state = create_test_app_state(http_client, repo, provider_config);
 
     let app = Router::new()
         .route("/v1/chat/completions", post(chat_completions))

@@ -3,6 +3,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::app::router::llm_router::LlmRouter;
+use crate::app::services::execution_plan::ExecutionPlannerConfig;
 use crate::config::Settings;
 use crate::domain::traits::AccountRepository;
 use crate::infrastructure::gateway::llm_gateway::ProviderConfig;
@@ -16,6 +18,8 @@ pub struct AppState {
     pub account_repo: Arc<dyn AccountRepository>,
     pub llm_gateway: Arc<LlmGatewayImpl>,
     pub provider_config: Arc<HashMap<String, ProviderConfig>>,
+    /// LLM Router with ExecutionPlanner for intelligent request routing
+    pub llm_router: Arc<LlmRouter<dyn AccountRepository>>,
 }
 
 impl AppState {
@@ -36,6 +40,15 @@ impl AppState {
             3600, // 1 hour cache TTL
         ));
 
+        // Create LLM Router with ExecutionPlanner
+        let planner_config = ExecutionPlannerConfig::default();
+        let llm_router = Arc::new(LlmRouter::new(
+            http_client.clone(),
+            account_repo.clone(),
+            provider_config.clone(),
+            planner_config,
+        ));
+
         Ok(Self {
             config,
             http_client,
@@ -43,6 +56,7 @@ impl AppState {
             account_repo,
             llm_gateway,
             provider_config,
+            llm_router,
         })
     }
 
@@ -58,8 +72,17 @@ impl AppState {
         let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
             http_client.clone(),
             account_repo.clone(),
-            provider_config,
+            provider_config.clone(),
             3600, // 1 hour cache TTL
+        ));
+
+        // Create LLM Router with ExecutionPlanner for testing
+        let planner_config = ExecutionPlannerConfig::default();
+        let llm_router = Arc::new(LlmRouter::new(
+            http_client.clone(),
+            account_repo.clone(),
+            provider_config_arc.clone(),
+            planner_config,
         ));
 
         Ok(Self {
@@ -69,6 +92,7 @@ impl AppState {
             account_repo,
             llm_gateway,
             provider_config: provider_config_arc,
+            llm_router,
         })
     }
 }

@@ -94,10 +94,14 @@ async fn handle_account_command_with_dir(
                 } else {
                     "✗ Inactive"
                 };
-                let api_key_display = if account.api_key.len() > 8 {
-                    format!("{}...", &account.api_key[..8])
+                let api_key_display = if let Some(ref key) = account.api_key {
+                    if key.len() > 8 {
+                        format!("{}...", &key[..8])
+                    } else {
+                        "****".to_string()
+                    }
                 } else {
-                    "****".to_string()
+                    "(no key)".to_string()
                 };
                 println!(
                     "{:<20} {:<20} {:<10} {:<8} {}",
@@ -157,22 +161,28 @@ async fn handle_account_command_with_dir(
                 account.id, account.provider_id
             );
 
-            if account.api_key.is_empty() {
-                println!("⚠ Account has no API key set");
-                return Ok(());
+            match &account.api_key {
+                None => {
+                    println!("⚠ Account has no API key set");
+                    Ok(())
+                }
+                Some(key) if key.is_empty() => {
+                    println!("⚠ Account has no API key set");
+                    Ok(())
+                }
+                Some(key) if key.len() < 8 => {
+                    println!("✗ API key too short (min 8 chars)");
+                    Ok(())
+                }
+                Some(key) => {
+                    println!(
+                        "✓ API key format looks valid (length: {})",
+                        key.len()
+                    );
+                    println!("Note: Full validation will be done on first request");
+                    Ok(())
+                }
             }
-
-            if account.api_key.len() < 8 {
-                println!("✗ API key too short (min 8 chars)");
-            } else {
-                println!(
-                    "✓ API key format looks valid (length: {})",
-                    account.api_key.len()
-                );
-                println!("Note: Full validation will be done on first request");
-            }
-
-            Ok(())
         }
     }
 }

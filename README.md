@@ -1,59 +1,79 @@
 # LLM API Router
 
-Proxy/router de API LLM con arquitectura limpia en Rust. Permite usar múltiples proveedores (Groq, OpenRouter, Mistral, etc.) con rotación automática de cuentas y failover.
+<p align="center">
+  <a href="https://github.com/XaviCode1000/Rust-LLM-Api-Router/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/XaviCode1000/Rust-LLM-Api-Router/ci.yml?branch=main&label=CI" alt="CI Status">
+  </a>
+  <a href="https://codecov.io/gh/XaviCode1000/Rust-LLM-Api-Router">
+    <img src="https://img.shields.io/codecov/c/github/XaviCode1000/Rust-LLM-Api-Router?label=Coverage" alt="Coverage">
+  </a>
+  <a href="https://crates.io/crates/rust-llm-api-router">
+    <img src="https://img.shields.io/crates/v/rust-llm-api-router" alt="Crate">
+  </a>
+  <a href="https://docs.rs/rust-llm-api-router">
+    <img src="https://img.shields.io/docsrs/rust-llm-api-router" alt="Documentation">
+  </a>
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT">
+  </a>
+</p>
 
-## Características
+A high-performance LLM proxy/router built with Clean Architecture in Rust. Route requests across multiple providers and accounts with automatic failover, health monitoring, and intelligent account selection.
 
-- ✅ **Multi-proveedor**: Soporta 12+ proveedores LLM gratuitos
-- ✅ **Multi-cuenta**: Múltiples API keys por proveedor con rotación automática
-- ✅ **Failover automático**: Circuit breaker y reintentos inteligentes
-- ✅ **Streaming SSE**: Respuestas en tiempo real token a token
-- ✅ **API OpenAI-compatible**: Usa clientes OpenAI sin cambios
-- ✅ **Health checks**: Monitoreo completo del sistema
-- ✅ **CLI integrada**: Gestión de proveedores y cuentas desde terminal
+## Features
 
-## Inicio Rápido
+- **Multi-Provider Support**: Connect to 12+ LLM providers (Groq, OpenRouter, Mistral, Cerebras, Cloudflare, Anthropic, OpenAI, and more)
+- **Multi-Account Routing**: Register multiple API keys per provider with automatic rotation
+- **Automatic Failover**: Circuit breaker pattern with intelligent retry logic
+- **Streaming (SSE)**: Real-time token-by-token streaming responses
+- **OpenAI-Compatible API**: Drop-in replacement for OpenAI clients
+- **Health Monitoring**: Real-time health checks and metrics
+- **Integrated CLI**: Manage providers and accounts from the terminal
+- **Execution Planning**: Proactive planning with multiple strategies (Standard, Failover, Load Balanced, Cost Optimized)
+- **OAuth 2.1 / PKCE**: Secure authentication flow support
 
-### 1. Compilar
+## Quick Start
+
+### 1. Build
 
 ```bash
 cargo build --release
 ```
 
-### 2. Registrar Proveedores
+### 2. Register Providers
 
 ```bash
-# Registrar un proveedor
+# Register a provider
 ./target/release/llm-router provider add \
   --id groq \
   --name "Groq" \
   --base-url "https://api.groq.com/openai/v1"
 
-# Listar proveedores
+# List providers
 ./target/release/llm-router provider list
 ```
 
-### 3. Registrar Cuentas con API Keys
+### 3. Register Accounts with API Keys
 
 ```bash
-# Registrar cuenta con API key
+# Register account with API key
 ./target/release/llm-router account add \
   --id groq-1 \
   --provider groq \
-  --api-key "tu-api-key-aqui" \
+  --api-key "your-api-key-here" \
   --priority 0
 
-# Listar cuentas
+# List accounts
 ./target/release/llm-router account list
 ```
 
-### 4. Iniciar Servidor
+### 4. Start Server
 
 ```bash
 ./target/release/llm-router --port 8080
 ```
 
-### 5. Probar API
+### 5. Test the API
 
 ```bash
 curl -X POST http://localhost:8080/v1/chat/completions \
@@ -61,39 +81,61 @@ curl -X POST http://localhost:8080/v1/chat/completions \
   -H "Authorization: Bearer <your-test-api-key>" \
   -d '{
     "model": "groq:llama-3.3-70b-versatile",
-    "messages": [{"role": "user", "content": "Hola!"}]
+    "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
 
-> **Nota**: Los modelos deben especificarse con el prefijo del proveedor (ej: `groq:model-name`, `openai:gpt-3.5-turbo`)
+> **Note**: Models must be specified with the provider prefix (e.g., `groq:model-name`, `openai:gpt-3.5-turbo`)
 
 ### Streaming (SSE)
 
 ```bash
-# Streaming con respuesta en tiempo real (token a token)
 curl -N -X POST http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <your-test-api-key>" \
   -d '{
     "model": "groq:llama-3.3-70b-versatile",
-    "messages": [{"role": "user", "content": "Hola!"}],
+    "messages": [{"role": "user", "content": "Hello!"}],
     "stream": true,
     "max_tokens": 50
   }'
 ```
 
+## Architecture
+
+This project follows **Clean Architecture** and **Domain-Driven Design (DDD)** principles:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 Presentation Layer                           │
+│  (HTTP Handlers, Routes, CLI, Middleware)                  │
+├─────────────────────────────────────────────────────────────┤
+│                 Application Layer                            │
+│  (Use Cases, Services, Rotation Strategies, Execution Plans)│
+├─────────────────────────────────────────────────────────────┤
+│                   Domain Layer                               │
+│  (Entities, Traits/Ports, Domain Errors, Auth Strategies)  │
+├─────────────────────────────────────────────────────────────┤
+│              Infrastructure Layer                            │
+│  (HTTP Client, JSON Persistence, Provider Adapters, Auth)   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+For detailed architecture documentation, see [docs/architecture.md](docs/architecture.md).
+
 ## API Reference
 
 ### POST /v1/chat/completions
 
-Endpoint compatible con OpenAI.
+OpenAI-compatible chat completions endpoint.
 
 **Request:**
+
 ```json
 {
   "model": "groq:llama-3.3-70b-versatile",
   "messages": [
-    {"role": "user", "content": "Hola!"}
+    {"role": "user", "content": "Hello!"}
   ],
   "temperature": 0.7,
   "max_tokens": 1024
@@ -101,6 +143,7 @@ Endpoint compatible con OpenAI.
 ```
 
 **Response:**
+
 ```json
 {
   "id": "chatcmpl-xxx",
@@ -111,7 +154,7 @@ Endpoint compatible con OpenAI.
     "index": 0,
     "message": {
       "role": "assistant",
-      "content": "¡Hola! ¿Cómo puedo ayudarte?"
+      "content": "Hello! How can I help you?"
     },
     "finish_reason": "stop"
   }],
@@ -125,7 +168,7 @@ Endpoint compatible con OpenAI.
 
 ### GET /health
 
-Health check básico.
+Basic health check endpoint.
 
 ```bash
 curl http://localhost:8080/health
@@ -134,15 +177,23 @@ curl http://localhost:8080/health
 
 ### GET /health/detail
 
-Estado detallado del sistema.
+Detailed system health status.
 
 ```bash
 curl http://localhost:8080/health/detail
 ```
 
+### GET /v1/models
+
+List available models from all providers.
+
+```bash
+curl http://localhost:8080/v1/models
+```
+
 ### GET /accounts
 
-Lista de cuentas registradas (API keys enmascaradas).
+List registered accounts (masked API keys).
 
 ```bash
 curl http://localhost:8080/accounts
@@ -150,7 +201,7 @@ curl http://localhost:8080/accounts
 
 ### GET /metrics
 
-Métricas Prometheus.
+Prometheus metrics endpoint.
 
 ```bash
 curl http://localhost:8080/metrics
@@ -158,32 +209,32 @@ curl http://localhost:8080/metrics
 
 ## CLI Reference
 
-### Proveedores
+### Providers
 
 ```bash
-# Agregar proveedor
-llm-router provider add --id <id> --name <nombre> --base-url <url> [--disabled]
+# Add provider
+llm-router provider add --id <id> --name <name> --base-url <url> [--disabled]
 
-# Listar proveedores
+# List providers
 llm-router provider list
 
-# Habilitar proveedor
+# Enable provider
 llm-router provider enable --id <id>
 
-# Deshabilitar proveedor
+# Disable provider
 llm-router provider disable --id <id>
 
-# Eliminar proveedor
+# Remove provider
 llm-router provider remove --id <id>
 
-# Validar proveedor
+# Validate provider
 llm-router provider validate --id <id>
 ```
 
-### Cuentas
+### Accounts
 
 ```bash
-# Agregar cuenta
+# Add account
 llm-router account add \
   --id <id> \
   --provider <provider_id> \
@@ -191,129 +242,117 @@ llm-router account add \
   [--priority <n>] \
   [--interactive]
 
-# Listar cuentas
+# List accounts
 llm-router account list
 
-# Cambiar prioridad
+# Set priority
 llm-router account set-priority --id <id> --priority <n>
 
-# Eliminar cuenta
+# Remove account
 llm-router account remove --id <id>
 
-# Validar cuenta
+# Validate account
 llm-router account validate --id <id>
 ```
 
-## Proveedores Soportados
+## Supported Providers
 
-| Proveedor | Base URL | Estado |
-|-----------|----------|--------|
-| Groq | https://api.groq.com/openai/v1 | ✅ |
-| OpenRouter | https://openrouter.ai/api/v1 | ✅ |
-| Mistral AI | https://api.mistral.ai/v1 | ✅ |
-| Cerebras | https://api.cerebras.ai/v1 | ✅ |
-| Cloudflare Workers AI | https://api.cloudflare.com/client/v4/accounts | ✅ |
-| NVIDIA NIM | https://integrate.api.nvidia.com/v1 | 🔄 |
-| Hugging Face | https://api-inference.huggingface.co/models | 🔄 |
-| DeepSeek | https://api.deepseek.com/v1 | 🔄 |
-| xAI (Grok) | https://api.x.ai/v1 | 🔄 |
-| Cohere | https://api.cohere.ai/v1 | 🔄 |
-| AI21 | https://api.ai21.com/studio/v1 | 🔄 |
-| Google AI Studio | https://generativelanguage.googleapis.com/v1beta | 🔄 |
+| Provider | Base URL | Status |
+|----------|----------|--------|
+| Groq | https://api.groq.com/openai/v1 | ✅ Tested |
+| OpenRouter | https://openrouter.ai/api/v1 | ✅ Tested |
+| Mistral AI | https://api.mistral.ai/v1 | ✅ Tested |
+| Cerebras | https://api.cerebras.ai/v1 | ✅ Tested |
+| Cloudflare Workers AI | https://api.cloudflare.com/client/v4/accounts | ✅ Tested |
+| Anthropic | https://api.anthropic.com/v1 | ✅ Tested |
+| OpenAI | https://api.openai.com/v1 | ✅ Tested |
+| NVIDIA NIM | https://integrate.api.nvidia.com/v1 | 🔄 Supported |
+| Hugging Face | https://api-inference.huggingface.co/models | 🔄 Supported |
+| DeepSeek | https://api.deepseek.com/v1 | 🔄 Supported |
+| xAI (Grok) | https://api.x.ai/v1 | 🔄 Supported |
+| Cohere | https://api.cohere.ai/v1 | 🔄 Supported |
+| AI21 | https://api.ai21.com/studio/v1 | 🔄 Supported |
+| Google AI Studio | https://generativelanguage.googleapis.com/v1beta | 🔄 Supported |
 
-✅ = Probado | 🔄 = Soportado (pendiente test)
+✅ = Tested | 🔄 = Supported (pending test)
 
-## Modelos Funcionales Verificados
+## Verified Working Models
 
-### Groq (con cuenta <your-groq-api-key>):
+### Groq
+
 - `llama-3.3-70b-versatile`
 - `llama-3.1-8b-instant`
 - `groq/compound`
 - `groq/compound-mini`
 
-## Estrategias de Rotación
+## Rotation Strategies
 
-El sistema soporta 4 estrategias de rotación de cuentas:
+The system supports 4 account rotation strategies:
 
-1. **Round-Robin**: Rotación secuencial entre cuentas
-2. **Weighted**: Basado en prioridad (menor número = mayor prioridad)
-3. **Latency**: Selecciona cuenta con menor latencia (WIP)
-4. **User-Affinity**: Misma cuenta por usuario (WIP)
+1. **Round-Robin**: Sequential rotation across accounts
+2. **Weighted**: Based on priority (lower number = higher priority)
+3. **Latency**: Selects account with lowest latency (WIP)
+4. **User-Affinity**: Same account per user (WIP)
 
-## Failover Automático
+## Execution Planning
 
-- **Circuit Breaker**: Se abre tras 5 fallos consecutivos
-- **Auto-cierre**: Reintenta después de 30 segundos
-- **Health Scoring**: Puntuación 0-100 basada en éxito/latencia
+The **Execution Plan** module transforms the system from reactive failover to proactive planning:
 
-## Configuración
+- **Proactive Planning**: Select optimal account before first request
+- **Multiple Strategies**: Standard, Failover, Load Balanced, Cost Optimized
+- **Intelligent Rotation**: RoundRobin, HealthWeighted, Priority, LRU
+- **Integrated Metrics**: Prometheus metrics for monitoring
+- **Distributed Tracing**: OpenTelemetry for debugging
 
-### Variables de Entorno
+See [src/app/services/execution_plan/README.md](src/app/services/execution_plan/README.md) for detailed documentation.
+
+### Execution Strategy Types
+
+| Type | Description |
+|------|-------------|
+| `Standard` | Single account execution |
+| `Failover` | Secondary accounts on failure |
+| `LoadBalanced` | Round-robin distribution |
+| `CostOptimized` | Lowest cost selection |
+
+## Failover
+
+- **Circuit Breaker**: Opens after 5 consecutive failures
+- **Auto-Close**: Retries after 30 seconds
+- **Health Scoring**: 0-100 score based on success/latency
+
+## Configuration
+
+### Environment Variables
 
 ```bash
-# Puerto del servidor (default: 8080)
+# Server port (default: 8080)
 PORT=8080
 
 # Host (default: 0.0.0.0)
 HOST=0.0.0.0
 
-# Nivel de log (trace, debug, info, warn, error)
+# Log level (trace, debug, info, warn, error)
 LOG_LEVEL=info
+
+# Planning timeout (default: 5000ms)
+PLANNING_TIMEOUT_MS=5000
+
+# Max accounts per plan (default: 3)
+MAX_ACCOUNTS_PER_PLAN=3
 ```
 
-### Archivos de Configuración
+### Configuration Files
 
-Los datos se guardan en el directorio de configuración XDG:
+Configuration is stored in the XDG config directory:
 
 ```
 ~/.config/rust-llm-api-router/
-├── providers.json    # Proveedores registrados
-└── accounts.json     # Cuentas con API keys
+├── providers.json    # Registered providers
+└── accounts.json    # Accounts with API keys
 ```
 
-## Scripts de Bootstrap
-
-### register-providers.sh
-
-Registra 12+ proveedores automáticamente:
-
-```bash
-./scripts/register-providers.sh
-```
-
-### register-accounts.sh
-
-Registra proveedores y cuentas usando API keys de copyq:
-
-```bash
-./scripts/register-accounts.sh
-```
-
-## Arquitectura
-
-El sistema sigue **Clean Architecture**:
-
-```
-Domain Layer        (Entidades, Traits, Errores)
-    ↓
-Application Layer   (Servicios, Rotación, Failover)
-    ↓
-Infrastructure      (HTTP Client, Persistencia JSON)
-    ↓
-Presentation        (Handlers HTTP, Routes)
-```
-
-### Dependencias
-
-- **Web Framework**: Axum 0.7
-- **HTTP Client**: reqwest 0.11
-- **Async Runtime**: tokio 1.x
-- **Serialización**: serde + serde_json
-- **CLI**: clap 4.4
-- **Métricas**: prometheus 0.13
-- **Logs**: tracing + tracing-subscriber
-
-## Desarrollo
+## Development
 
 ### Build
 
@@ -323,39 +362,39 @@ cargo build
 
 ### Tests & Coverage
 
-**¡Logro alcanzado! 🎉** Cobertura de **80.35%** con **492 tests passing**.
+**Achievement: 80.35% Code Coverage with 492 tests passing.**
 
 ```bash
-# Correr todos los tests (4x más rápido con nextest)
+# Run all tests (4x faster with nextest)
 cargo nextest run --test-threads 2
 
-# Generar reporte de cobertura (10x más rápido que tarpaulin)
+# Generate coverage report (10x faster than tarpaulin)
 cargo llvm-cov --html --output-dir coverage-llvm
 
-# Ver resumen de cobertura
+# View coverage summary
 cargo llvm-cov --summary-only
 ```
 
 #### Testing Journey
 
-- **Inicio**: 32.02% coverage (104 tests)
-- **Actual**: 80.35% coverage (492 tests)
-- **Progreso**: +48.33% coverage, +388 tests agregados
+- **Initial**: 32.02% coverage (104 tests)
+- **Current**: 80.35% coverage (492 tests)
+- **Progress**: +48.33% coverage, +388 tests added
 
-Ver [`docs/TESTING_JOURNEY.md`](docs/TESTING_JOURNEY.md) para más detalles.
+See [docs/TESTING_JOURNEY.md](docs/TESTING_JOURNEY.md) for more details.
 
-#### Stack Óptimo 2025-26
+#### Optimal Development Stack 2025-26
 
-El proyecto usa el stack óptimo de desarrollo Rust 2025-26:
+The project uses the optimal Rust development stack:
 
-- **cargo-nextest**: Test runner (4x más rápido)
-- **cargo-llvm-cov**: Cobertura nativa LLVM (10x más rápido)
-- **sccache**: Cache de compilación (6x más rápido)
-- **cargo-watch**: Auto-recompilar en cambios
-- **wiremock**: HTTP mocking para tests de integración
-- **mockall**: Mocking de traits
+- **cargo-nextest**: Test runner (4x faster)
+- **cargo-llvm-cov**: Native LLVM coverage (10x faster)
+- **sccache**: Build cache (6x faster)
+- **cargo-watch**: Auto-rebuild on changes
+- **wiremock**: HTTP mocking for integration tests
+- **mockall**: Trait mocking
 
-Ver [`DEVELOPMENT.md`](DEVELOPMENT.md) para la guía completa.
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the complete guide.
 
 ### Lint
 
@@ -363,6 +402,23 @@ Ver [`DEVELOPMENT.md`](DEVELOPMENT.md) para la guía completa.
 cargo clippy
 cargo fmt
 ```
+
+### Security
+
+```bash
+cargo audit
+cargo deny check
+```
+
+## Contributing
+
+Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## Roadmap
 
@@ -381,28 +437,59 @@ cargo fmt
 
 ### Completed ✅
 
-- [x] **Streaming (SSE)** para /v1/chat/completions
-- [x] **Endpoint /v1/models** con lista real de modelos
-- [x] **Adapters para Anthropic** (formato diferente)
-- [x] **Providers soportados**: Groq, OpenRouter, Mistral, Cerebras, Cloudflare, Anthropic, OpenAI
-- [x] **80.35% Code Coverage** con 492 tests
+- [x] **Streaming (SSE)** for /v1/chat/completions
+- [x] **Endpoint /v1/models** with real model list
+- [x] **Anthropic Adapters** (different format)
+- [x] **Supported Providers**: Groq, OpenRouter, Mistral, Cerebras, Cloudflare, Anthropic, OpenAI
+- [x] **80.35% Code Coverage** with 492 tests
+- [x] **Execution Planning Module** with proactive failover
 
 ### Pending 🔄
 
 - [ ] Docker + Kubernetes manifests
-- [ ] CI/CD pipeline completo (GitHub Actions)
-- [ ] Adapters para Google AI Studio, Cohere, AI21, DeepSeek
+- [ ] Complete CI/CD pipeline (GitHub Actions)
+- [ ] Additional Provider Adapters: Google AI Studio, Cohere, AI21, DeepSeek
 - [ ] NVIDIA NIM, Hugging Face inference endpoints
 
-## Issues
+## Project Structure
 
-- [Issue #6](https://github.com/XaviCode1000/Rust-LLM-Api-Router/issues/11) - Deployment (Docker, K8s)
-- [Issue #10](https://github.com/XaviCode1000/Rust-LLM-Api-Router/issues/10) - Future Improvements
+```
+src/
+├── domain/           # Domain layer (entities, traits, errors)
+│   ├── entities/     # Core business entities
+│   ├── traits/       # Ports/interfaces
+│   ├── errors/      # Domain errors
+│   └── services/    # Domain services
+├── app/             # Application layer (use cases, services)
+│   ├── services/    # Application services
+│   │   ├── account_rotation.rs
+│   │   ├── execution_plan/
+│   │   ├── failover.rs
+│   │   └── auth/
+│   ├── router/     # Internal routing
+│   └── health.rs   # Health service
+├── infrastructure/ # Infrastructure layer (implementations)
+│   ├── http_client.rs
+│   ├── logging.rs
+│   ├── metrics.rs
+│   ├── persistence/   # JSON file storage
+│   ├── provider/     # Provider adapters
+│   ├── gateway/      # LLM gateway
+│   └── auth/         # Authentication strategies
+├── presentation/   # Presentation layer
+│   ├── handlers/   # HTTP handlers
+│   ├── routes.rs   # Route definitions
+│   ├── state.rs    # Application state
+│   └── cli/        # CLI commands
+├── config/         # Configuration
+├── lib.rs          # Library root
+└── main.rs         # Binary entry point
+```
 
-## Licencia
+## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
 
-## Autores
+## Acknowledgments
 
-Desarrollado con Arquitectura Limpia y patrones DDD en Rust.
+Built with Clean Architecture and DDD patterns in Rust.

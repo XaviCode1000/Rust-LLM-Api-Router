@@ -1,7 +1,7 @@
 //! Chat completion handler for OpenAI-compatible API
 //!
 //! This handler processes POST /v1/chat/completions requests.
-//! Refactored to use ProviderConfig for testability.
+//! Uses LlmRouter with ExecutionPlanner for intelligent request routing.
 
 use axum::{
     extract::State,
@@ -20,10 +20,11 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use tokio_stream::StreamExt as TokioStreamExt;
 
-use crate::domain::traits::LlmGateway;
+use crate::domain::traits::{AccountRepository, LlmGateway};
 use crate::domain::{
-    Account, ChatRequest, ChatResponse, Message, OpenAIChatRequest, OpenAIChatResponse,
-    OpenAIChoice, OpenAIErrorResponse, OpenAIMessage, OpenAIUsage,
+    Account, ChatRequest as DomainChatRequest, ChatResponse as DomainChatResponse, Message,
+    OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice, OpenAIErrorResponse, OpenAIMessage,
+    OpenAIUsage,
 };
 use crate::infrastructure::HttpClient;
 use crate::presentation::AppState;
@@ -89,7 +90,9 @@ async fn stream_chat_request(
     // Convert OpenAI request to internal ChatRequest
     let chat_request = convert_to_chat_request(&request, &model_name);
 
-    // Make streaming request to provider using ProviderConfig
+    // Make streaming request to provider using LlmRouter
+    // For streaming, we still use the direct provider call since LlmRouter 
+    // doesn't have streaming support yet - this is a fallback to existing behavior
     match make_streaming_provider_request(
         &state.http_client,
         &state.provider_config,
@@ -140,43 +143,17 @@ async fn process_chat_request(
     // Extract model name (format: "provider:model" or just "model")
     let (provider_id, model_name) = parse_model(&openai_request.model);
 
-    // Get active accounts for the provider
-    let accounts = state
-        .account_repo
-        .find_active_by_provider(&provider_id)
-        .await
-        .map_err(|e| {
-            OpenAIErrorResponse::new(
-                "provider_error",
-                format!(
-                    "Failed to get accounts for provider '{}': {}",
-                    provider_id, e
-                ),
-            )
-        })?;
-
-    if accounts.is_empty() {
-        return Err(OpenAIErrorResponse::new(
-            "no_accounts",
-            format!("No active accounts found for provider '{}'", provider_id),
-        ));
-    }
-
-    // Select account using round-robin (from FailoverManager or simple selection)
-    let account = select_account(&accounts, &state);
-
     // Convert OpenAI request to internal ChatRequest
     let chat_request = convert_to_chat_request(&openai_request, &model_name);
 
-    // Make request to provider using ProviderConfig
-    match make_provider_request(
-        &state.http_client,
-        &state.provider_config,
-        &account,
-        &chat_request,
-    )
-    .await
-    {
+    // Use LlmRouter with ExecutionPlanner for intelligent routing
+    let preferred_providers = if provider_id != "default" {
+        vec![provider_id]
+    } else {
+        vec![]
+    };
+
+    match state.llm_router.route_request(chat_request, preferred_providers).await {
         Ok(provider_response) => {
             // Convert provider response to OpenAI format
             Ok(convert_to_openai_response(
@@ -184,10 +161,13 @@ async fn process_chat_request(
                 &openai_request.model,
             ))
         }
-        Err(e) => Err(OpenAIErrorResponse::new(
-            "provider_error",
-            format!("Request to provider failed: {}", e),
-        )),
+        Err(e) => {
+            tracing::error!("LlmRouter request failed: {}", e);
+            Err(OpenAIErrorResponse::new(
+                "provider_error",
+                format!("Request to provider failed: {}", e),
+            ))
+        }
     }
 }
 
@@ -222,7 +202,7 @@ fn select_account(accounts: &[Account], _state: &AppState) -> Account {
 }
 
 /// Convert OpenAI request to internal ChatRequest format.
-fn convert_to_chat_request(openai_request: &OpenAIChatRequest, model_name: &str) -> ChatRequest {
+fn convert_to_chat_request(openai_request: &OpenAIChatRequest, model_name: &str) -> DomainChatRequest {
     let messages: Vec<Message> = openai_request
         .messages
         .iter()
@@ -234,7 +214,7 @@ fn convert_to_chat_request(openai_request: &OpenAIChatRequest, model_name: &str)
 
     // Use the full model string (provider:model) as the model for the provider
     // The provider will understand its own model names
-    ChatRequest::new(model_name, messages)
+    DomainChatRequest::new(model_name, messages)
         .with_temperature(openai_request.temperature.unwrap_or(0.7))
         .with_max_tokens(openai_request.max_tokens.unwrap_or(1024))
         .with_stream(openai_request.stream.unwrap_or(false))
@@ -280,8 +260,8 @@ async fn make_provider_request(
         crate::infrastructure::gateway::llm_gateway::ProviderConfig,
     >,
     account: &Account,
-    chat_request: &ChatRequest,
-) -> Result<ChatResponse, String> {
+    chat_request: &DomainChatRequest,
+) -> Result<DomainChatResponse, String> {
     // Build provider URL using ProviderConfig
     let base_url = get_provider_base_url(http_client, provider_config, &account.provider_id);
     let url = format!("{}/chat/completions", base_url);
@@ -299,10 +279,14 @@ async fn make_provider_request(
     });
 
     // Make HTTP POST request
+    let access_token = account.get_access_token().ok_or_else(|| {
+        format!("No authentication credentials available for account '{}'", account.id)
+    })?;
+    
     let response = http_client
         .client()
         .post(&url)
-        .header("Authorization", format!("Bearer {}", account.api_key))
+        .header("Authorization", format!("Bearer {}", access_token))
         .header("Content-Type", "application/json")
         .json(&body)
         .send()
@@ -320,7 +304,7 @@ async fn make_provider_request(
     }
 
     // Parse response
-    let chat_response: ChatResponse = response
+    let chat_response: DomainChatResponse = response
         .json()
         .await
         .map_err(|e| format!("Failed to parse response: {}", e))?;
@@ -336,7 +320,7 @@ async fn make_streaming_provider_request(
         crate::infrastructure::gateway::llm_gateway::ProviderConfig,
     >,
     account: &Account,
-    chat_request: &ChatRequest,
+    chat_request: &DomainChatRequest,
 ) -> Result<impl Stream<Item = Result<Bytes, String>>, String> {
     // Build provider URL using ProviderConfig
     let base_url = get_provider_base_url(http_client, provider_config, &account.provider_id);
@@ -355,10 +339,14 @@ async fn make_streaming_provider_request(
     });
 
     // Make HTTP POST request with streaming
+    let access_token = account.get_access_token().ok_or_else(|| {
+        format!("No authentication credentials available for account '{}'", account.id)
+    })?;
+    
     let response = http_client
         .client()
         .post(&url)
-        .header("Authorization", format!("Bearer {}", account.api_key))
+        .header("Authorization", format!("Bearer {}", access_token))
         .header("Content-Type", "application/json")
         .json(&body)
         .send()
@@ -422,7 +410,7 @@ fn stream_to_sse_events(
 }
 
 /// Convert internal ChatResponse to OpenAI format.
-pub fn convert_to_openai_response(chat_response: ChatResponse, model: &str) -> OpenAIChatResponse {
+pub fn convert_to_openai_response(chat_response: DomainChatResponse, model: &str) -> OpenAIChatResponse {
     let choices: Vec<OpenAIChoice> = chat_response
         .choices
         .into_iter()
@@ -505,7 +493,7 @@ pub async fn list_models(
 /// Helper to get an API key from the first active account
 pub async fn get_api_key_for_models(state: &AppState) -> Option<String> {
     match state.account_repo.find_active().await {
-        Ok(accounts) => accounts.into_iter().next().map(|a| a.api_key),
+        Ok(accounts) => accounts.into_iter().next().and_then(|a| a.api_key.clone()),
         Err(e) => {
             tracing::warn!("Failed to fetch accounts for models endpoint: {}", e);
             None

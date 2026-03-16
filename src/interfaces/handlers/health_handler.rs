@@ -120,11 +120,11 @@ pub async fn list_accounts(
     let account_infos: Vec<AccountInfo> = accounts
         .into_iter()
         .map(|a| AccountInfo {
-            id: a.id,
-            provider_id: a.provider_id,
+            id: a.id.clone(),
+            provider_id: a.provider_id.clone(),
             is_active: a.is_active,
             priority: a.priority,
-            api_key_prefix: a.api_key.chars().take(8).collect(),
+            api_key_prefix: a.api_key.clone().map(|k| k.chars().take(8).collect()).unwrap_or_default(),
         })
         .collect();
 
