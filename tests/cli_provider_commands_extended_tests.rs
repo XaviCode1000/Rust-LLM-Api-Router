@@ -6,9 +6,8 @@
 use tempfile::TempDir;
 
 use rust_llm_api_router::cli::provider_commands::{
-    cmd_add_provider, cmd_disable_provider, cmd_enable_provider,
-    cmd_remove_provider, AddProviderArgs, DisableProviderArgs,
-    EnableProviderArgs, RemoveProviderArgs,
+    cmd_add_provider, cmd_disable_provider, cmd_enable_provider, cmd_remove_provider,
+    AddProviderArgs, DisableProviderArgs, EnableProviderArgs, RemoveProviderArgs,
 };
 use rust_llm_api_router::domain::traits::ProviderRepository;
 use rust_llm_api_router::infrastructure::JsonProviderRepository;

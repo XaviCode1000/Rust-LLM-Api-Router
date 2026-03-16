@@ -43,9 +43,11 @@ fn test_error_format_no_api_key_leak() {
 /// This ensures our response structure remains stable for API consumers.
 #[test]
 fn test_chat_response_format() {
-    let messages = [OpenAIMessage::system("You are a helpful assistant."),
+    let messages = [
+        OpenAIMessage::system("You are a helpful assistant."),
         OpenAIMessage::user("Hello, world!"),
-        OpenAIMessage::assistant("Hello! How can I help you today?")];
+        OpenAIMessage::assistant("Hello! How can I help you today?"),
+    ];
 
     let choices = vec![rust_llm_api_router::domain::OpenAIChoice::new(
         0,

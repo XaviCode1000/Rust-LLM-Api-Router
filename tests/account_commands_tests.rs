@@ -6,8 +6,7 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 
 use rust_llm_api_router::cli::account_commands::{
-    AccountCommands, AddAccountArgs, RemoveAccountArgs, SetPriorityArgs,
-    ValidateAccountArgs,
+    AccountCommands, AddAccountArgs, RemoveAccountArgs, SetPriorityArgs, ValidateAccountArgs,
 };
 use rust_llm_api_router::domain::traits::AccountRepository;
 use rust_llm_api_router::infrastructure::persistence::JsonAccountRepository;

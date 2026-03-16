@@ -176,7 +176,7 @@ impl LlmProvider for GroqProvider {
 mod tests {
     use super::*;
     use crate::infrastructure::http_client::HttpClient;
-    
+
     use std::sync::Arc;
 
     #[test]
