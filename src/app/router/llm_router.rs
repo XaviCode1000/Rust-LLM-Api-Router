@@ -11,8 +11,8 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::app::services::execution_plan::{
-    ExecutionContext, ExecutionOutcome, ExecutionPlanImpl, ExecutionPlanner,
-    ExecutionPlannerConfig, ExecutionPlan, ExecutionPlanStatus, PlanningOptions,
+    ExecutionContext, ExecutionOutcome, ExecutionPlan, ExecutionPlanImpl, ExecutionPlanStatus,
+    ExecutionPlanner, ExecutionPlannerConfig, PlanningOptions,
 };
 use crate::domain::entities::{ChatRequest, ChatResponse, Message};
 use crate::domain::traits::AccountRepository;
@@ -242,10 +242,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
 
                     if !self.config.enable_failover || index >= accounts.len() - 1 {
                         // No more fallback options
-                        plan.set_error(format!(
-                            "All accounts failed. Last error: {}",
-                            e
-                        ));
+                        plan.set_error(format!("All accounts failed. Last error: {}", e));
                         plan.update_status(ExecutionPlanStatus::Failed);
 
                         return Err(e);
@@ -276,15 +273,16 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             .unwrap_or_else(|| "openai".to_string());
 
         // Get provider config
-        let provider_config = self
-            .provider_configs
-            .get(&provider_id)
-            .ok_or_else(|| Error::ProviderNotFound(format!("Provider '{}' not found", provider_id)))?;
+        let provider_config = self.provider_configs.get(&provider_id).ok_or_else(|| {
+            Error::ProviderNotFound(format!("Provider '{}' not found", provider_id))
+        })?;
 
         // Build URL
-        let base_url = self.http_client.mock_base_url().map(|url| {
-            format!("{}/v1", url)
-        }).unwrap_or_else(|| provider_config.base_url.clone());
+        let base_url = self
+            .http_client
+            .mock_base_url()
+            .map(|url| format!("{}/v1", url))
+            .unwrap_or_else(|| provider_config.base_url.clone());
 
         let url = format!("{}/chat/completions", base_url);
 
@@ -314,7 +312,10 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(Error::Internal(format!(
                 "Provider '{}' returned {}: {}",
                 provider_id, status, error_text
@@ -334,11 +335,20 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
     fn infer_provider_from_model(&self, model: &str) -> Option<String> {
         let model_lower = model.to_lowercase();
 
-        if model_lower.starts_with("gpt-") || model_lower.starts_with("o1") || model_lower.starts_with("o3") {
+        if model_lower.starts_with("gpt-")
+            || model_lower.starts_with("o1")
+            || model_lower.starts_with("o3")
+        {
             Some("openai".to_string())
-        } else if model_lower.starts_with("claude-") || model_lower.starts_with("sonnet") || model_lower.starts_with("haiku") {
+        } else if model_lower.starts_with("claude-")
+            || model_lower.starts_with("sonnet")
+            || model_lower.starts_with("haiku")
+        {
             Some("anthropic".to_string())
-        } else if model_lower.contains("llama") || model_lower.contains("mixtral") || model_lower.contains("groq") {
+        } else if model_lower.contains("llama")
+            || model_lower.contains("mixtral")
+            || model_lower.contains("groq")
+        {
             Some("groq".to_string())
         } else {
             None
@@ -388,9 +398,7 @@ pub async fn route_request(
         .and_then(|v| v.as_u64())
         .map(|v| v as u32);
 
-    let stream = request
-        .get("stream")
-        .and_then(|v| v.as_bool());
+    let stream = request.get("stream").and_then(|v| v.as_bool());
 
     let _chat_request = ChatRequest::new(model, messages)
         .with_temperature(temperature.unwrap_or(0.7))
@@ -426,17 +434,38 @@ mod tests {
     fn test_infer_provider_from_model() {
         // Test OpenAI models
         assert_eq!(infer_provider_static("gpt-4"), Some("openai".to_string()));
-        assert_eq!(infer_provider_static("o1-preview"), Some("openai".to_string()));
-        assert_eq!(infer_provider_static("gpt-3.5-turbo"), Some("openai".to_string()));
+        assert_eq!(
+            infer_provider_static("o1-preview"),
+            Some("openai".to_string())
+        );
+        assert_eq!(
+            infer_provider_static("gpt-3.5-turbo"),
+            Some("openai".to_string())
+        );
 
         // Test Anthropic models
-        assert_eq!(infer_provider_static("claude-3-opus"), Some("anthropic".to_string()));
-        assert_eq!(infer_provider_static("claude-3-sonnet"), Some("anthropic".to_string()));
-        assert_eq!(infer_provider_static("haiku"), Some("anthropic".to_string()));
+        assert_eq!(
+            infer_provider_static("claude-3-opus"),
+            Some("anthropic".to_string())
+        );
+        assert_eq!(
+            infer_provider_static("claude-3-sonnet"),
+            Some("anthropic".to_string())
+        );
+        assert_eq!(
+            infer_provider_static("haiku"),
+            Some("anthropic".to_string())
+        );
 
         // Test Groq models
-        assert_eq!(infer_provider_static("llama-3-70b"), Some("groq".to_string()));
-        assert_eq!(infer_provider_static("mixtral-8x7b"), Some("groq".to_string()));
+        assert_eq!(
+            infer_provider_static("llama-3-70b"),
+            Some("groq".to_string())
+        );
+        assert_eq!(
+            infer_provider_static("mixtral-8x7b"),
+            Some("groq".to_string())
+        );
 
         // Unknown model
         assert_eq!(infer_provider_static("unknown-model"), None);
@@ -446,11 +475,20 @@ mod tests {
     fn infer_provider_from_model_static(model: &str) -> Option<String> {
         let model_lower = model.to_lowercase();
 
-        if model_lower.starts_with("gpt-") || model_lower.starts_with("o1") || model_lower.starts_with("o3") {
+        if model_lower.starts_with("gpt-")
+            || model_lower.starts_with("o1")
+            || model_lower.starts_with("o3")
+        {
             Some("openai".to_string())
-        } else if model_lower.starts_with("claude-") || model_lower.starts_with("sonnet") || model_lower.starts_with("haiku") {
+        } else if model_lower.starts_with("claude-")
+            || model_lower.starts_with("sonnet")
+            || model_lower.starts_with("haiku")
+        {
             Some("anthropic".to_string())
-        } else if model_lower.contains("llama") || model_lower.contains("mixtral") || model_lower.contains("groq") {
+        } else if model_lower.contains("llama")
+            || model_lower.contains("mixtral")
+            || model_lower.contains("groq")
+        {
             Some("groq".to_string())
         } else {
             None

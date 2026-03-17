@@ -68,7 +68,7 @@ async fn test_planner_failover_end_to_end() {
         .with_planning_options(PlanningOptions::reliability());
 
     let result = planner.create_plan(context).await;
-    
+
     assert!(result.is_ok(), "Planner should create plan");
 }
 
@@ -96,7 +96,7 @@ async fn test_planner_with_multiple_accounts() {
         .with_planning_options(PlanningOptions::default());
 
     let result = planner.create_plan(context).await;
-    
+
     assert!(result.is_ok());
 }
 
@@ -129,7 +129,7 @@ async fn test_concurrent_planning_requests() {
         let handle = tokio::spawn(async move {
             let context = ExecutionContext::new(format!("req-{}", i), "gpt-4")
                 .with_preferred_providers(vec!["openai".to_string()]);
-            
+
             planner.create_plan(context).await
         });
         handles.push(handle);
@@ -138,7 +138,10 @@ async fn test_concurrent_planning_requests() {
     let results = futures::future::join_all(handles).await;
 
     // All should succeed
-    let success_count = results.iter().filter(|r| r.as_ref().unwrap().is_ok()).count();
+    let success_count = results
+        .iter()
+        .filter(|r| r.as_ref().unwrap().is_ok())
+        .count();
     assert_eq!(success_count, 50);
 }
 
@@ -151,15 +154,17 @@ async fn test_concurrent_multi_provider_planning() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("openai"))
-        .returning(|_| {
-            Ok(vec![Account::new("openai-1", "openai", "sk-openai-key")])
-        });
+        .returning(|_| Ok(vec![Account::new("openai-1", "openai", "sk-openai-key")]));
 
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("anthropic"))
         .returning(|_| {
-            Ok(vec![Account::new("anthropic-1", "anthropic", "sk-anthropic-key")])
+            Ok(vec![Account::new(
+                "anthropic-1",
+                "anthropic",
+                "sk-anthropic-key",
+            )])
         });
 
     let planner = Arc::new(ExecutionPlanner::new(
@@ -169,7 +174,7 @@ async fn test_concurrent_multi_provider_planning() {
 
     // Concurrent planning for different providers
     let mut handles = vec![];
-    
+
     for i in 0..10 {
         let planner = planner.clone();
         let provider = if i % 2 == 0 { "openai" } else { "anthropic" };
@@ -182,9 +187,12 @@ async fn test_concurrent_multi_provider_planning() {
     }
 
     let results = futures::future::join_all(handles).await;
-    
+
     // All should succeed
-    let success_count = results.iter().filter(|r| r.as_ref().unwrap().is_ok()).count();
+    let success_count = results
+        .iter()
+        .filter(|r| r.as_ref().unwrap().is_ok())
+        .count();
     assert_eq!(success_count, 10);
 }
 
@@ -202,10 +210,7 @@ async fn test_planner_repository_error() {
         .with(eq("openai"))
         .returning(|_| Err(DomainError::AccountNotFound("openai".to_string())));
 
-    let planner = ExecutionPlanner::new(
-        Arc::new(mock_repo),
-        ExecutionPlannerConfig::default(),
-    );
+    let planner = ExecutionPlanner::new(Arc::new(mock_repo), ExecutionPlannerConfig::default());
 
     let context = ExecutionContext::new("req-1", "gpt-4")
         .with_preferred_providers(vec!["openai".to_string()]);
@@ -224,10 +229,7 @@ async fn test_planner_empty_provider_list() {
         .with(eq("unknown"))
         .returning(|_| Ok(vec![]));
 
-    let planner = ExecutionPlanner::new(
-        Arc::new(mock_repo),
-        ExecutionPlannerConfig::default(),
-    );
+    let planner = ExecutionPlanner::new(Arc::new(mock_repo), ExecutionPlannerConfig::default());
 
     let context = ExecutionContext::new("req-1", "gpt-4")
         .with_preferred_providers(vec!["unknown".to_string()]);
@@ -248,22 +250,14 @@ async fn test_planner_empty_provider_list() {
 async fn test_config_presets() {
     // Test reliability preset
     let reliability = ExecutionPlannerConfig::reliability();
-    let _planner1 = ExecutionPlanner::new(
-        Arc::new(MockFailoverAccountRepository::new()),
-        reliability,
-    );
+    let _planner1 =
+        ExecutionPlanner::new(Arc::new(MockFailoverAccountRepository::new()), reliability);
 
     // Test cost optimized preset
     let cost = ExecutionPlannerConfig::cost_optimized();
-    let _planner2 = ExecutionPlanner::new(
-        Arc::new(MockFailoverAccountRepository::new()),
-        cost,
-    );
+    let _planner2 = ExecutionPlanner::new(Arc::new(MockFailoverAccountRepository::new()), cost);
 
     // Test low latency preset
     let latency = ExecutionPlannerConfig::low_latency();
-    let _planner3 = ExecutionPlanner::new(
-        Arc::new(MockFailoverAccountRepository::new()),
-        latency,
-    );
+    let _planner3 = ExecutionPlanner::new(Arc::new(MockFailoverAccountRepository::new()), latency);
 }

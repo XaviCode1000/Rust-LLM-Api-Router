@@ -20,10 +20,16 @@ use rust_llm_api_router::presentation::AppState;
 fn create_test_app_state(
     http_client: Arc<HttpClient>,
     account_repo: Arc<dyn AccountRepository>,
-    provider_config: std::collections::HashMap<String, rust_llm_api_router::infrastructure::gateway::llm_gateway::ProviderConfig>,
+    provider_config: std::collections::HashMap<
+        String,
+        rust_llm_api_router::infrastructure::gateway::llm_gateway::ProviderConfig,
+    >,
 ) -> Arc<AppState> {
     let settings = Settings::default();
-    Arc::new(AppState::with_provider_config(settings, http_client, account_repo, provider_config).unwrap())
+    Arc::new(
+        AppState::with_provider_config(settings, http_client, account_repo, provider_config)
+            .unwrap(),
+    )
 }
 
 /// Setup test app with health routes

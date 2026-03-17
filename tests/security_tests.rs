@@ -10,8 +10,8 @@
 
 use async_trait::async_trait;
 use mockall::predicate::*;
-use rust_llm_api_router::app::services::failover::FailoverManager;
 use rust_llm_api_router::app::services::account_rotation::AccountSelector;
+use rust_llm_api_router::app::services::failover::FailoverManager;
 use rust_llm_api_router::domain::entities::AccountHealth;
 use rust_llm_api_router::domain::traits::AccountRepository;
 use rust_llm_api_router::domain::{Account, DomainError};
@@ -283,7 +283,9 @@ async fn test_concurrent_health_map_no_race() {
 /// Vulnerability: CWE-362 (Race Condition in Atomic Operations)
 #[test]
 fn test_atomic_counter_correctness() {
-    use rust_llm_api_router::app::services::account_rotation::{RotationStrategy, RoundRobinStrategy};
+    use rust_llm_api_router::app::services::account_rotation::{
+        RotationStrategy, RoundRobinStrategy,
+    };
 
     let strategy = Arc::new(RoundRobinStrategy::new());
     let accounts: Vec<Account> = (0..10)

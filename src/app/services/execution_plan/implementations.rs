@@ -9,7 +9,9 @@ use crate::domain::traits::AccountRepository;
 use crate::domain::{DomainError, DomainResult};
 
 use super::types::{ExecutionPlanType, PlannedAccount};
-use super::{ExecutionContext, ExecutionOutcome, ExecutionPlan, ExecutionPlanImpl, ExecutionPlanStatus};
+use super::{
+    ExecutionContext, ExecutionOutcome, ExecutionPlan, ExecutionPlanImpl, ExecutionPlanStatus,
+};
 
 /// Provider pricing information for cost optimization.
 #[derive(Debug, Clone)]
@@ -58,13 +60,9 @@ impl StandardExecutionPlan {
             })
             .collect();
 
-        let inner = ExecutionPlanImpl::new(
-            ExecutionPlanType::Standard,
-            context,
-            planned_accounts,
-        )
-        .with_max_retries(3)
-        .with_timeout(60);
+        let inner = ExecutionPlanImpl::new(ExecutionPlanType::Standard, context, planned_accounts)
+            .with_max_retries(3)
+            .with_timeout(60);
 
         Self { inner }
     }
@@ -156,7 +154,7 @@ impl FailoverExecutionPlan {
                 let mut planned = PlannedAccount::new(account.id.clone(), &provider, health)
                     .with_execution_order(idx as u32)
                     .with_priority(account.priority);
-                
+
                 if is_primary {
                     planned.is_primary = true;
                     planned.is_fallback = false;
@@ -277,13 +275,10 @@ impl LoadBalancedExecutionPlan {
             .map(|(_, _, health)| health.health_score())
             .collect();
 
-        let inner = ExecutionPlanImpl::new(
-            ExecutionPlanType::LoadBalanced,
-            context,
-            planned_accounts,
-        )
-        .with_max_retries(2)
-        .with_timeout(45);
+        let inner =
+            ExecutionPlanImpl::new(ExecutionPlanType::LoadBalanced, context, planned_accounts)
+                .with_max_retries(2)
+                .with_timeout(45);
 
         Self { inner, weights }
     }
@@ -432,9 +427,7 @@ impl CostOptimizedExecutionPlan {
             .collect();
 
         // Sort by cost (cheapest first), then by health
-        account_data.sort_by(|a, b| {
-            a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal)
-        });
+        account_data.sort_by(|a, b| a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal));
 
         let planned_accounts: Vec<PlannedAccount> = account_data
             .iter()
@@ -446,22 +439,21 @@ impl CostOptimizedExecutionPlan {
             })
             .collect();
 
-        let inner = ExecutionPlanImpl::new(
-            ExecutionPlanType::CostOptimized,
-            context,
-            planned_accounts,
-        )
-        .with_max_retries(1)
-        .with_timeout(30);
+        let inner =
+            ExecutionPlanImpl::new(ExecutionPlanType::CostOptimized, context, planned_accounts)
+                .with_max_retries(1)
+                .with_timeout(30);
 
         Self { inner, pricing }
     }
 
     /// Returns the cheapest provider for the given model.
     pub fn cheapest_provider(&self) -> Option<&ProviderPricing> {
-        self.pricing
-            .iter()
-            .min_by(|a, b| a.input_price_per_1m.partial_cmp(&b.input_price_per_1m).unwrap())
+        self.pricing.iter().min_by(|a, b| {
+            a.input_price_per_1m
+                .partial_cmp(&b.input_price_per_1m)
+                .unwrap()
+        })
     }
 
     /// Returns pricing for all providers.

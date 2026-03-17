@@ -1,12 +1,9 @@
-use crate::domain::Account;
-use crate::domain::traits::DomainResult;
 use crate::domain::services::auth_strategy::AuthenticationStrategy;
+use crate::domain::traits::DomainResult;
+use crate::domain::Account;
 use crate::error::Result;
 use async_trait::async_trait;
-use oauth2::{
-    AuthUrl, ClientId, ClientSecret,
-    RedirectUrl, Scope, TokenUrl,
-};
+use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, Scope, TokenUrl};
 
 /// OAuth 2.1 PKCE authentication strategy implementation.
 ///
@@ -50,7 +47,8 @@ impl AuthenticationStrategy for PkceAuthStrategy {
     /// For PKCE, this returns a message indicating the user should visit the auth URL.
     async fn initiate_auth(&self) -> DomainResult<String> {
         // Return the authorization URL hint
-        let auth_url = format!("{}?client_id={}", 
+        let auth_url = format!(
+            "{}?client_id={}",
             self.auth_url.as_str(),
             self.client_id.as_str()
         );
@@ -104,7 +102,8 @@ mod tests {
             "https://auth.example.com/oauth2/token",
             "http://localhost:8080/callback",
             vec!["read".to_string(), "write".to_string()],
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(strategy.client_id.to_string(), "test-client-id");
     }
@@ -118,8 +117,9 @@ mod tests {
             "https://auth.example.com/oauth2/token",
             "http://localhost:8080/callback",
             vec!["read".to_string()],
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         assert_eq!(strategy.auth_type(), "pkce");
     }
 }

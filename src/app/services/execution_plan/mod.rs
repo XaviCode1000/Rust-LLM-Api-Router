@@ -20,8 +20,12 @@ pub use implementations::{
 };
 pub use metrics::{ExecutionPlanMetrics, ExecutionPlanMetricsBuilder};
 pub use outcome::ExecutionOutcome;
-pub use plan::{ExecutionPlan, ExecutionPlanBuilder as PlanBuilder, ExecutionPlanImpl, BoxedExecutionPlan};
-pub use planner::{ExecutionPlanner, ExecutionPlannerConfig, ExecutionPlannerBuilder, RotationStrategyType};
+pub use plan::{
+    BoxedExecutionPlan, ExecutionPlan, ExecutionPlanBuilder as PlanBuilder, ExecutionPlanImpl,
+};
+pub use planner::{
+    ExecutionPlanner, ExecutionPlannerBuilder, ExecutionPlannerConfig, RotationStrategyType,
+};
 pub use status::ExecutionPlanStatus;
 pub use tracing::{DecisionLogBuilder, DecisionLogEntry, ExecutionSpan, PlanningSpan};
 pub use types::{ExecutionPlanType, PlannedAccount};

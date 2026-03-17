@@ -1,6 +1,6 @@
-use crate::domain::Account;
-use crate::domain::traits::DomainResult;
 use crate::domain::services::auth_strategy::AuthenticationStrategy;
+use crate::domain::traits::DomainResult;
+use crate::domain::Account;
 use async_trait::async_trait;
 
 /// API Key authentication strategy implementation.
@@ -115,7 +115,7 @@ mod tests {
         let strategy = ApiKeyAuthStrategy::new("test-provider");
         let result = strategy.complete_auth("sk-test-key-123".to_string()).await;
         assert!(result.is_ok());
-        
+
         let account = result.unwrap();
         assert_eq!(account.provider_id, "test-provider");
         assert_eq!(account.api_key, Some("sk-test-key-123".to_string()));

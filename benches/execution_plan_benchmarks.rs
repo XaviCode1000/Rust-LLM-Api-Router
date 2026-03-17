@@ -5,8 +5,8 @@
 use rust_llm_api_router::app::services::execution_plan::{
     ExecutionContext, ExecutionPlanner, ExecutionPlannerConfig, PlanningOptions,
 };
-use rust_llm_api_router::domain::Account;
 use rust_llm_api_router::domain::traits::AccountRepository;
+use rust_llm_api_router::domain::Account;
 use rust_llm_api_router::infrastructure::persistence::JsonAccountRepository;
 use std::sync::Arc;
 
@@ -47,10 +47,7 @@ async fn benchmark_create_standard_plan() {
     let repo = create_test_repo();
     setup_repo_with_accounts(&repo, 5);
 
-    let planner = ExecutionPlanner::new(
-        repo,
-        ExecutionPlannerConfig::default(),
-    );
+    let planner = ExecutionPlanner::new(repo, ExecutionPlannerConfig::default());
 
     let context = ExecutionContext::new("bench-1", "gpt-4")
         .with_preferred_providers(vec!["openai".to_string()]);
@@ -104,8 +101,7 @@ async fn benchmark_create_plan_many_accounts() {
     let repo = create_test_repo();
     setup_repo_with_accounts(&repo, 50);
 
-    let config = ExecutionPlannerConfig::default()
-        .with_max_accounts_per_plan(20);
+    let config = ExecutionPlannerConfig::default().with_max_accounts_per_plan(20);
 
     let planner = ExecutionPlanner::new(repo, config);
 
@@ -119,7 +115,10 @@ async fn benchmark_create_plan_many_accounts() {
     }
     let elapsed = start.elapsed();
 
-    println!("Create plan with 50 accounts: {:?} per iteration", elapsed / 1000);
+    println!(
+        "Create plan with 50 accounts: {:?} per iteration",
+        elapsed / 1000
+    );
 }
 
 // ============================================================================
@@ -132,10 +131,7 @@ async fn benchmark_plan_execution_single_account() {
     let repo = create_test_repo();
     setup_repo_with_accounts(&repo, 1);
 
-    let planner = ExecutionPlanner::new(
-        repo,
-        ExecutionPlannerConfig::default(),
-    );
+    let planner = ExecutionPlanner::new(repo, ExecutionPlannerConfig::default());
 
     let context = ExecutionContext::new("bench-1", "gpt-4")
         .with_preferred_providers(vec!["openai".to_string()]);
@@ -149,7 +145,10 @@ async fn benchmark_plan_execution_single_account() {
     }
     let elapsed = start.elapsed();
 
-    println!("Single account execution: {:?} per iteration", elapsed / 1000);
+    println!(
+        "Single account execution: {:?} per iteration",
+        elapsed / 1000
+    );
 }
 
 /// Benchmark: Plan execution with multiple accounts (failover)
@@ -174,7 +173,10 @@ async fn benchmark_plan_execution_failover() {
     }
     let elapsed = start.elapsed();
 
-    println!("Failover execution (5 accounts): {:?} per iteration", elapsed / 1000);
+    println!(
+        "Failover execution (5 accounts): {:?} per iteration",
+        elapsed / 1000
+    );
 }
 
 /// Benchmark: Plan execution with all accounts failing
@@ -212,7 +214,9 @@ async fn benchmark_config_builder() {
     // Warm up
     for _ in 0..10 {
         let _ = ExecutionPlannerConfig::builder()
-            .with_default_plan_type(rust_llm_api_router::app::services::execution_plan::ExecutionPlanType::Failover)
+            .with_default_plan_type(
+                rust_llm_api_router::app::services::execution_plan::ExecutionPlanType::Failover,
+            )
             .with_max_accounts(10)
             .build();
     }
@@ -221,7 +225,9 @@ async fn benchmark_config_builder() {
     let start = std::time::Instant::now();
     for _ in 0..10000 {
         let _ = ExecutionPlannerConfig::builder()
-            .with_default_plan_type(rust_llm_api_router::app::services::execution_plan::ExecutionPlanType::Failover)
+            .with_default_plan_type(
+                rust_llm_api_router::app::services::execution_plan::ExecutionPlanType::Failover,
+            )
             .with_max_accounts(10)
             .build();
     }
@@ -288,8 +294,8 @@ async fn benchmark_context_with_options() {
 // FAILOVER MANAGER BENCHMARKS
 // ============================================================================
 
-use rust_llm_api_router::app::services::failover::FailoverManager;
 use rust_llm_api_router::app::services::account_rotation::AccountSelector;
+use rust_llm_api_router::app::services::failover::FailoverManager;
 
 /// Benchmark: FailoverManager execution
 #[tokio::test]
@@ -303,14 +309,15 @@ async fn benchmark_failover_manager_execution() {
     let start = std::time::Instant::now();
     for _ in 0..1000 {
         let _ = manager
-            .execute_with_failover("openai", |_| async {
-                Ok("result".to_string())
-            })
+            .execute_with_failover("openai", |_| async { Ok("result".to_string()) })
             .await;
     }
     let elapsed = start.elapsed();
 
-    println!("FailoverManager execution: {:?} per iteration", elapsed / 1000);
+    println!(
+        "FailoverManager execution: {:?} per iteration",
+        elapsed / 1000
+    );
 }
 
 /// Benchmark: FailoverManager with failures
@@ -319,11 +326,7 @@ async fn benchmark_failover_with_failures() {
     let repo = create_test_repo();
     setup_repo_with_accounts(&repo, 5);
 
-    let manager = FailoverManager::new(
-        repo,
-        AccountSelector::round_robin(),
-        3,
-    );
+    let manager = FailoverManager::new(repo, AccountSelector::round_robin(), 3);
 
     // Benchmark - first fails, second succeeds
     let start = std::time::Instant::now();
@@ -354,15 +357,13 @@ async fn benchmark_health_tracking() {
     // Record many requests
     for _ in 0..1000 {
         let _ = manager
-            .execute_with_failover("openai", |_| async {
-                Ok("result".to_string())
-            })
+            .execute_with_failover("openai", |_| async { Ok("result".to_string()) })
             .await;
     }
 
     // Benchmark getting health
     let start = std::time::Instant::now();
-    for _  in 0..10000 {
+    for _ in 0..10000 {
         let _ = manager.get_all_health();
     }
     let elapsed = start.elapsed();
@@ -381,10 +382,7 @@ async fn benchmark_scaling_many_accounts() {
         let repo = create_test_repo();
         setup_repo_with_accounts(&repo, account_count);
 
-        let planner = ExecutionPlanner::new(
-            repo,
-            ExecutionPlannerConfig::default(),
-        );
+        let planner = ExecutionPlanner::new(repo, ExecutionPlannerConfig::default());
 
         let context = ExecutionContext::new("bench", "gpt-4")
             .with_preferred_providers(vec!["openai".to_string()]);
@@ -416,7 +414,7 @@ async fn benchmark_concurrent_planning() {
 
     // Benchmark concurrent planning
     let start = std::time::Instant::now();
-    
+
     let mut handles = vec![];
     for i in 0..100 {
         let planner = planner.clone();
@@ -444,10 +442,7 @@ async fn benchmark_memory_many_plans() {
     let repo = create_test_repo();
     setup_repo_with_accounts(&repo, 10);
 
-    let planner = ExecutionPlanner::new(
-        repo,
-        ExecutionPlannerConfig::default(),
-    );
+    let planner = ExecutionPlanner::new(repo, ExecutionPlannerConfig::default());
 
     // Create many plans
     let context = ExecutionContext::new("bench", "gpt-4")

@@ -57,17 +57,14 @@ async fn test_planner_creates_plan() {
             ])
         });
 
-    let planner = ExecutionPlanner::new(
-        Arc::new(mock_repo),
-        ExecutionPlannerConfig::default(),
-    );
+    let planner = ExecutionPlanner::new(Arc::new(mock_repo), ExecutionPlannerConfig::default());
 
     let context = ExecutionContext::new("req-1", "gpt-4")
         .with_preferred_providers(vec!["openai".to_string()])
         .with_planning_options(PlanningOptions::default());
 
     let result = planner.create_plan(context).await;
-    
+
     assert!(result.is_ok(), "Planner should create plan successfully");
 }
 
@@ -79,16 +76,9 @@ async fn test_planner_with_reliability_context() {
     mock_repo
         .expect_find_active_by_provider()
         .with(mockall::predicate::eq("openai"))
-        .returning(|_| {
-            Ok(vec![
-                Account::new("account-1", "openai", "sk-test-key-1"),
-            ])
-        });
+        .returning(|_| Ok(vec![Account::new("account-1", "openai", "sk-test-key-1")]));
 
-    let planner = ExecutionPlanner::new(
-        Arc::new(mock_repo),
-        ExecutionPlannerConfig::default(),
-    );
+    let planner = ExecutionPlanner::new(Arc::new(mock_repo), ExecutionPlannerConfig::default());
 
     let context = ExecutionContext::new("req-1", "gpt-4")
         .with_preferred_providers(vec!["openai".to_string()])
@@ -107,15 +97,14 @@ async fn test_planner_with_cost_optimized_context() {
         .expect_find_active_by_provider()
         .with(mockall::predicate::eq("groq"))
         .returning(|_| {
-            Ok(vec![
-                Account::new("groq-account-1", "groq", "sk-groq-key-1"),
-            ])
+            Ok(vec![Account::new(
+                "groq-account-1",
+                "groq",
+                "sk-groq-key-1",
+            )])
         });
 
-    let planner = ExecutionPlanner::new(
-        Arc::new(mock_repo),
-        ExecutionPlannerConfig::default(),
-    );
+    let planner = ExecutionPlanner::new(Arc::new(mock_repo), ExecutionPlannerConfig::default());
 
     let context = ExecutionContext::new("req-1", "llama-3")
         .with_preferred_providers(vec!["groq".to_string()])
@@ -140,10 +129,7 @@ async fn test_planner_with_low_latency_context() {
             ])
         });
 
-    let planner = ExecutionPlanner::new(
-        Arc::new(mock_repo),
-        ExecutionPlannerConfig::default(),
-    );
+    let planner = ExecutionPlanner::new(Arc::new(mock_repo), ExecutionPlannerConfig::default());
 
     let context = ExecutionContext::new("req-1", "gpt-4")
         .with_preferred_providers(vec!["openai".to_string()])
@@ -165,11 +151,7 @@ async fn test_planner_reliability_config() {
     mock_repo
         .expect_find_active_by_provider()
         .with(mockall::predicate::eq("openai"))
-        .returning(|_| {
-            Ok(vec![
-                Account::new("account-1", "openai", "sk-test-key-1"),
-            ])
-        });
+        .returning(|_| Ok(vec![Account::new("account-1", "openai", "sk-test-key-1")]));
 
     let config = ExecutionPlannerConfig::reliability();
     let planner = ExecutionPlanner::new(Arc::new(mock_repo), config);
@@ -189,11 +171,7 @@ async fn test_planner_cost_optimized_config() {
     mock_repo
         .expect_find_active_by_provider()
         .with(mockall::predicate::eq("openai"))
-        .returning(|_| {
-            Ok(vec![
-                Account::new("account-1", "openai", "sk-test-key-1"),
-            ])
-        });
+        .returning(|_| Ok(vec![Account::new("account-1", "openai", "sk-test-key-1")]));
 
     let config = ExecutionPlannerConfig::cost_optimized();
     let planner = ExecutionPlanner::new(Arc::new(mock_repo), config);
@@ -213,11 +191,7 @@ async fn test_planner_low_latency_config() {
     mock_repo
         .expect_find_active_by_provider()
         .with(mockall::predicate::eq("openai"))
-        .returning(|_| {
-            Ok(vec![
-                Account::new("account-1", "openai", "sk-test-key-1"),
-            ])
-        });
+        .returning(|_| Ok(vec![Account::new("account-1", "openai", "sk-test-key-1")]));
 
     let config = ExecutionPlannerConfig::low_latency();
     let planner = ExecutionPlanner::new(Arc::new(mock_repo), config);
@@ -242,26 +216,21 @@ async fn test_planner_multiple_provider_preferences() {
     mock_repo
         .expect_find_active_by_provider()
         .with(mockall::predicate::eq("openai"))
-        .returning(|_| {
-            Ok(vec![
-                Account::new("openai-1", "openai", "sk-openai-key"),
-            ])
-        });
+        .returning(|_| Ok(vec![Account::new("openai-1", "openai", "sk-openai-key")]));
 
     // Second call for anthropic
     mock_repo
         .expect_find_active_by_provider()
         .with(mockall::predicate::eq("anthropic"))
         .returning(|_| {
-            Ok(vec![
-                Account::new("anthropic-1", "anthropic", "sk-anthropic-key"),
-            ])
+            Ok(vec![Account::new(
+                "anthropic-1",
+                "anthropic",
+                "sk-anthropic-key",
+            )])
         });
 
-    let planner = ExecutionPlanner::new(
-        Arc::new(mock_repo),
-        ExecutionPlannerConfig::default(),
-    );
+    let planner = ExecutionPlanner::new(Arc::new(mock_repo), ExecutionPlannerConfig::default());
 
     let context = ExecutionContext::new("req-1", "gpt-4")
         .with_preferred_providers(vec!["openai".to_string(), "anthropic".to_string()]);
@@ -284,10 +253,7 @@ async fn test_planner_repository_error() {
         .with(mockall::predicate::eq("openai"))
         .returning(|_| Err(DomainError::AccountNotFound("openai".to_string())));
 
-    let planner = ExecutionPlanner::new(
-        Arc::new(mock_repo),
-        ExecutionPlannerConfig::default(),
-    );
+    let planner = ExecutionPlanner::new(Arc::new(mock_repo), ExecutionPlannerConfig::default());
 
     let context = ExecutionContext::new("req-1", "gpt-4")
         .with_preferred_providers(vec!["openai".to_string()]);
@@ -306,10 +272,7 @@ async fn test_planner_empty_provider_list() {
         .with(mockall::predicate::eq("unknown"))
         .returning(|_| Ok(vec![]));
 
-    let planner = ExecutionPlanner::new(
-        Arc::new(mock_repo),
-        ExecutionPlannerConfig::default(),
-    );
+    let planner = ExecutionPlanner::new(Arc::new(mock_repo), ExecutionPlannerConfig::default());
 
     let context = ExecutionContext::new("req-1", "gpt-4")
         .with_preferred_providers(vec!["unknown".to_string()]);
@@ -330,22 +293,13 @@ async fn test_planner_empty_provider_list() {
 async fn test_config_presets() {
     // Test reliability preset
     let reliability = ExecutionPlannerConfig::reliability();
-    let _planner1 = ExecutionPlanner::new(
-        Arc::new(MockTestAccountRepository::new()),
-        reliability,
-    );
+    let _planner1 = ExecutionPlanner::new(Arc::new(MockTestAccountRepository::new()), reliability);
 
     // Test cost optimized preset
     let cost = ExecutionPlannerConfig::cost_optimized();
-    let _planner2 = ExecutionPlanner::new(
-        Arc::new(MockTestAccountRepository::new()),
-        cost,
-    );
+    let _planner2 = ExecutionPlanner::new(Arc::new(MockTestAccountRepository::new()), cost);
 
     // Test low latency preset
     let latency = ExecutionPlannerConfig::low_latency();
-    let _planner3 = ExecutionPlanner::new(
-        Arc::new(MockTestAccountRepository::new()),
-        latency,
-    );
+    let _planner3 = ExecutionPlanner::new(Arc::new(MockTestAccountRepository::new()), latency);
 }

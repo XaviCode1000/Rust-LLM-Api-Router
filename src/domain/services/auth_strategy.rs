@@ -1,4 +1,5 @@
-use crate::domain::{Account}; use crate::domain::traits::DomainResult;
+use crate::domain::traits::DomainResult;
+use crate::domain::Account;
 use async_trait::async_trait;
 
 /// Authentication strategy trait defining the contract for different authentication methods.

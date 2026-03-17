@@ -255,6 +255,70 @@ llm-router account remove --id <id>
 llm-router account validate --id <id>
 ```
 
+### Authentication (OAuth 2.1 + PKCE)
+
+The router supports secure authentication via OAuth 2.1 with PKCE (Proof Key for Code Exchange) for enhanced security, and Device Flow for headless environments.
+
+#### Login Commands
+
+```bash
+# Login with OAuth 2.1 PKCE (opens browser for authentication)
+llm-router login --provider <provider_id>
+
+# Login with Device Flow (for headless environments)
+llm-router login --provider <provider_id> --device-flow
+
+# Login with specific auth URL (for custom Identity Providers)
+llm-router login --provider <provider_id> \
+  --auth-url "https://auth.provider.com/authorize" \
+  --token-url "https://auth.provider.com/token"
+
+# Interactive login (prompts for credentials)
+llm-router login --interactive
+```
+
+#### Logout Commands
+
+```bash
+# Logout from a specific provider
+llm-router logout --provider <provider_id>
+
+# Logout from all providers
+llm-router logout --all
+
+# Clear stored credentials
+llm-router logout --clear-credentials
+```
+
+#### Authentication Flow
+
+1. **PKCE Flow (Default)**:
+   - Generates cryptographic verifier/challenge
+   - Opens browser for user authorization
+   - Handles callback with authorization code
+   - Exchanges code for access/refresh tokens
+   - Tokens stored securely in system keyring
+
+2. **Device Flow (Headless)**:
+   - Activates automatically in headless environments
+   - Displays verification URL and user code
+   - Polls for authorization completion
+   - Supports timeout handling
+
+#### Environment Variables
+
+```bash
+# Custom Identity Provider
+export OAUTH_CLIENT_ID="your-client-id"
+export OAUTH_CLIENT_SECRET="your-client-secret"
+
+# Use device flow explicitly
+export NO_BROWSER=true
+
+# Custom CA certificate (corporate proxies)
+export CLI_CUSTOM_CA_CERT=/path/to/ca.pem
+```
+
 ## Supported Providers
 
 | Provider | Base URL | Status |

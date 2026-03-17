@@ -1,6 +1,6 @@
-use crate::domain::{Account, DomainResult};
-use crate::domain::traits::{AccountRepository, ProviderRepository};
 use crate::domain::services::auth_strategy::AuthenticationStrategy;
+use crate::domain::traits::{AccountRepository, ProviderRepository};
+use crate::domain::{Account, DomainResult};
 use std::sync::Arc;
 
 /// Service for managing authentication flows and token operations.
@@ -64,11 +64,21 @@ impl AuthService {
                     return Ok(Box::new(strategy));
                 }
             }
-            
+
             // Use PKCE flow
-            if let (Some(client_id), Some(client_secret), Some(auth_url), Some(token_url), Some(redirect_uri)) = 
-                (&provider.client_id, &provider.client_secret, &provider.auth_url, &provider.token_url, &provider.redirect_uri)
-            {
+            if let (
+                Some(client_id),
+                Some(client_secret),
+                Some(auth_url),
+                Some(token_url),
+                Some(redirect_uri),
+            ) = (
+                &provider.client_id,
+                &provider.client_secret,
+                &provider.auth_url,
+                &provider.token_url,
+                &provider.redirect_uri,
+            ) {
                 let strategy = crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
                     client_id,
                     Some(client_secret),
@@ -82,7 +92,8 @@ impl AuthService {
         }
 
         // Fallback to API Key strategy
-        let strategy = crate::infrastructure::auth::api_key_strategy::ApiKeyAuthStrategy::new(provider_id);
+        let strategy =
+            crate::infrastructure::auth::api_key_strategy::ApiKeyAuthStrategy::new(provider_id);
         Ok(Box::new(strategy))
     }
 
@@ -106,13 +117,17 @@ impl AuthService {
     ///
     /// # Returns
     /// A DomainResult containing the authenticated account
-    pub async fn complete_auth(&self, provider_id: &str, response: String) -> DomainResult<Account> {
+    pub async fn complete_auth(
+        &self,
+        provider_id: &str,
+        response: String,
+    ) -> DomainResult<Account> {
         let strategy = self.get_auth_strategy(provider_id).await?;
         let mut account = strategy.complete_auth(response).await?;
-        
+
         // Set the correct provider ID in the account (strategies might use a placeholder)
         account.provider_id = provider_id.to_string();
-        
+
         // Save the account
         self.account_repo.save(account).await
     }
@@ -127,12 +142,17 @@ impl AuthService {
     pub async fn refresh_token(&self, account_id: &str) -> DomainResult<Account> {
         // Get the account
         let account = self.account_repo.find_by_id(account_id).await?;
-        
+
         // Get the provider to determine auth strategy
-        let provider = self.provider_repo.find_enabled_by_id(&account.provider_id).await?;
-        
+        let provider = self
+            .provider_repo
+            .find_enabled_by_id(&account.provider_id)
+            .await?;
+
         // Determine which authentication strategy to use
-        let strategy: Box<dyn AuthenticationStrategy + Send + Sync> = if provider.is_oauth_configured() {
+        let strategy: Box<dyn AuthenticationStrategy + Send + Sync> = if provider
+            .is_oauth_configured()
+        {
             // Check if we should use Device Flow
             if std::env::var("NO_BROWSER").is_ok() {
                 // Use Device Flow
@@ -147,34 +167,42 @@ impl AuthService {
                     )?)
                 } else {
                     // Fallback to PKCE if device auth URL not configured
-                    Box::new(crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
+                    Box::new(
+                        crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
+                            provider.client_id.clone().unwrap_or_default(),
+                            provider.client_secret.clone(),
+                            provider.auth_url.clone().unwrap_or_default(),
+                            provider.token_url.clone().unwrap_or_default(),
+                            provider.redirect_uri.clone().unwrap_or_default(),
+                            vec![],
+                        )?,
+                    )
+                }
+            } else {
+                // Use PKCE flow
+                Box::new(
+                    crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
                         provider.client_id.clone().unwrap_or_default(),
                         provider.client_secret.clone(),
                         provider.auth_url.clone().unwrap_or_default(),
                         provider.token_url.clone().unwrap_or_default(),
                         provider.redirect_uri.clone().unwrap_or_default(),
                         vec![],
-                    )?)
-                }
-            } else {
-                // Use PKCE flow
-                Box::new(crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
-                    provider.client_id.clone().unwrap_or_default(),
-                    provider.client_secret.clone(),
-                    provider.auth_url.clone().unwrap_or_default(),
-                    provider.token_url.clone().unwrap_or_default(),
-                    provider.redirect_uri.clone().unwrap_or_default(),
-                    vec![],
-                )?)
+                    )?,
+                )
             }
         } else {
             // Fallback to API Key strategy
-            Box::new(crate::infrastructure::auth::api_key_strategy::ApiKeyAuthStrategy::new(&account.provider_id))
+            Box::new(
+                crate::infrastructure::auth::api_key_strategy::ApiKeyAuthStrategy::new(
+                    &account.provider_id,
+                ),
+            )
         };
 
         // Refresh the token
         let refreshed_account = strategy.refresh_token(&account).await?;
-        
+
         // Save the updated account
         self.account_repo.save(refreshed_account).await
     }
@@ -189,12 +217,17 @@ impl AuthService {
     pub async fn revoke_token(&self, account_id: &str) -> DomainResult<()> {
         // Get the account
         let account = self.account_repo.find_by_id(account_id).await?;
-        
+
         // Get the provider to determine auth strategy
-        let provider = self.provider_repo.find_enabled_by_id(&account.provider_id).await?;
-        
+        let provider = self
+            .provider_repo
+            .find_enabled_by_id(&account.provider_id)
+            .await?;
+
         // Determine which authentication strategy to use
-        let strategy: Box<dyn AuthenticationStrategy + Send + Sync> = if provider.is_oauth_configured() {
+        let strategy: Box<dyn AuthenticationStrategy + Send + Sync> = if provider
+            .is_oauth_configured()
+        {
             // Check if we should use Device Flow
             if std::env::var("NO_BROWSER").is_ok() {
                 // Use Device Flow
@@ -209,29 +242,37 @@ impl AuthService {
                     )?)
                 } else {
                     // Fallback to PKCE if device auth URL not configured
-                    Box::new(crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
+                    Box::new(
+                        crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
+                            provider.client_id.clone().unwrap_or_default(),
+                            provider.client_secret.clone(),
+                            provider.auth_url.clone().unwrap_or_default(),
+                            provider.token_url.clone().unwrap_or_default(),
+                            provider.redirect_uri.clone().unwrap_or_default(),
+                            vec![],
+                        )?,
+                    )
+                }
+            } else {
+                // Use PKCE flow
+                Box::new(
+                    crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
                         provider.client_id.clone().unwrap_or_default(),
                         provider.client_secret.clone(),
                         provider.auth_url.clone().unwrap_or_default(),
                         provider.token_url.clone().unwrap_or_default(),
                         provider.redirect_uri.clone().unwrap_or_default(),
                         vec![],
-                    )?)
-                }
-            } else {
-                // Use PKCE flow
-                Box::new(crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
-                    provider.client_id.clone().unwrap_or_default(),
-                    provider.client_secret.clone(),
-                    provider.auth_url.clone().unwrap_or_default(),
-                    provider.token_url.clone().unwrap_or_default(),
-                    provider.redirect_uri.clone().unwrap_or_default(),
-                    vec![],
-                )?)
+                    )?,
+                )
             }
         } else {
             // Fallback to API Key strategy
-            Box::new(crate::infrastructure::auth::api_key_strategy::ApiKeyAuthStrategy::new(&account.provider_id))
+            Box::new(
+                crate::infrastructure::auth::api_key_strategy::ApiKeyAuthStrategy::new(
+                    &account.provider_id,
+                ),
+            )
         };
 
         // Revoke the token (discard the returned account as we just need success/failure)
@@ -243,12 +284,12 @@ impl AuthService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{Account, Provider};
+    use crate::domain::services::auth_strategy::AuthenticationStrategy;
     use crate::domain::traits::{AccountRepository, ProviderRepository};
-use crate::domain::services::auth_strategy::AuthenticationStrategy;
+    use crate::domain::{Account, Provider};
     use async_trait::async_trait;
-    use std::sync::Mutex;
     use std::sync::Arc;
+    use std::sync::Mutex;
     use tempfile::TempDir;
 
     // Mock repositories for testing
@@ -267,20 +308,31 @@ use crate::domain::services::auth_strategy::AuthenticationStrategy;
         }
 
         async fn find_by_id(&self, id: &str) -> DomainResult<Account> {
-            self.accounts.lock().unwrap().get(id)
+            self.accounts
+                .lock()
+                .unwrap()
+                .get(id)
                 .cloned()
                 .ok_or_else(|| crate::domain::DomainError::AccountNotFound(id.to_string()))
         }
 
         async fn find_active(&self) -> DomainResult<Vec<Account>> {
-            Ok(self.accounts.lock().unwrap().values()
+            Ok(self
+                .accounts
+                .lock()
+                .unwrap()
+                .values()
                 .filter(|a| a.is_active)
                 .cloned()
                 .collect())
         }
 
         async fn find_active_by_provider(&self, provider_id: &str) -> DomainResult<Vec<Account>> {
-            Ok(self.accounts.lock().unwrap().values()
+            Ok(self
+                .accounts
+                .lock()
+                .unwrap()
+                .values()
                 .filter(|a| a.is_active && a.provider_id == provider_id)
                 .cloned()
                 .collect())
@@ -307,7 +359,10 @@ use crate::domain::services::auth_strategy::AuthenticationStrategy;
         }
 
         async fn find_by_id(&self, id: &str) -> DomainResult<Provider> {
-            self.providers.lock().unwrap().get(id)
+            self.providers
+                .lock()
+                .unwrap()
+                .get(id)
                 .cloned()
                 .ok_or_else(|| crate::domain::DomainError::ProviderNotFound(id.to_string()))
         }
@@ -345,7 +400,11 @@ use crate::domain::services::auth_strategy::AuthenticationStrategy;
 
         async fn complete_auth(&self, response: String) -> DomainResult<Account> {
             if self.should_succeed && response == "test-response" {
-                Ok(Account::new_api_key("test-account", "test-provider", "test-key"))
+                Ok(Account::new_api_key(
+                    "test-account",
+                    "test-provider",
+                    "test-key",
+                ))
             } else {
                 Err(crate::domain::DomainError::InvalidCredentials)
             }
@@ -380,7 +439,7 @@ use crate::domain::services::auth_strategy::AuthenticationStrategy;
         let provider_repo = Arc::new(MockProviderRepository {
             providers: Mutex::new(std::collections::HashMap::new()),
         });
-        
+
         let service = AuthService::new(account_repo, provider_repo);
         assert!(Arc::strong_count(&service.account_repo) >= 1);
         assert!(Arc::strong_count(&service.provider_repo) >= 1);
@@ -392,16 +451,18 @@ use crate::domain::services::auth_strategy::AuthenticationStrategy;
         let mut providers = std::collections::HashMap::new();
         providers.insert(
             "test-provider".to_string(),
-            Provider::new("test-provider", "Test Provider", "https://api.test.com")
+            Provider::new("test-provider", "Test Provider", "https://api.test.com"),
         );
 
         let account_repo = Arc::new(MockAccountRepository {
             accounts: Mutex::new(std::collections::HashMap::new()),
         });
-        let provider_repo = Arc::new(MockProviderRepository { providers: Mutex::new(providers) });
+        let provider_repo = Arc::new(MockProviderRepository {
+            providers: Mutex::new(providers),
+        });
 
         let service = AuthService::new(account_repo, provider_repo);
-        
+
         // This would normally try to open a browser, so we expect it to fail in test environment
         // In a real test, we would mock the browser opening and HTTP listener
         let result = service.initiate_auth("test-provider").await;
@@ -416,20 +477,24 @@ use crate::domain::services::auth_strategy::AuthenticationStrategy;
         let mut providers = std::collections::HashMap::new();
         providers.insert(
             "test-provider".to_string(),
-            Provider::new("test-provider", "Test Provider", "https://api.test.com")
+            Provider::new("test-provider", "Test Provider", "https://api.test.com"),
         );
 
         let account_repo = Arc::new(MockAccountRepository {
             accounts: Mutex::new(std::collections::HashMap::new()),
         });
-        let provider_repo = Arc::new(MockProviderRepository { providers: Mutex::new(providers) });
+        let provider_repo = Arc::new(MockProviderRepository {
+            providers: Mutex::new(providers),
+        });
 
         let service = AuthService::new(account_repo, provider_repo);
-        
+
         // Test with API key strategy (should work in test env)
-        let result = service.complete_auth("test-provider", "test-api-key".to_string()).await;
+        let result = service
+            .complete_auth("test-provider", "test-api-key".to_string())
+            .await;
         assert!(result.is_ok());
-        
+
         let account = result.unwrap();
         assert_eq!(account.provider_id, "test-provider");
         assert_eq!(account.api_key, Some("test-api-key".to_string()));
@@ -442,23 +507,27 @@ use crate::domain::services::auth_strategy::AuthenticationStrategy;
         let mut providers = std::collections::HashMap::new();
         providers.insert(
             "test-provider".to_string(),
-            Provider::new("test-provider", "Test Provider", "https://api.test.com")
+            Provider::new("test-provider", "Test Provider", "https://api.test.com"),
         );
 
         let mut accounts = std::collections::HashMap::new();
         accounts.insert(
             "test-account".to_string(),
-            Account::new_api_key("test-account", "test-provider", "test-api-key")
+            Account::new_api_key("test-account", "test-provider", "test-api-key"),
         );
 
-        let account_repo = Arc::new(MockAccountRepository { accounts: Mutex::new(accounts) });
-        let provider_repo = Arc::new(MockProviderRepository { providers: Mutex::new(providers) });
+        let account_repo = Arc::new(MockAccountRepository {
+            accounts: Mutex::new(accounts),
+        });
+        let provider_repo = Arc::new(MockProviderRepository {
+            providers: Mutex::new(providers),
+        });
 
         let service = AuthService::new(account_repo, provider_repo);
-        
+
         let result = service.refresh_token("test-account").await;
         assert!(result.is_ok());
-        
+
         let account = result.unwrap();
         assert_eq!(account.id, "test-account");
         assert_eq!(account.provider_id, "test-provider");
@@ -470,20 +539,24 @@ use crate::domain::services::auth_strategy::AuthenticationStrategy;
         let mut providers = std::collections::HashMap::new();
         providers.insert(
             "test-provider".to_string(),
-            Provider::new("test-provider", "Test Provider", "https://api.test.com")
+            Provider::new("test-provider", "Test Provider", "https://api.test.com"),
         );
 
         let mut accounts = std::collections::HashMap::new();
         accounts.insert(
             "test-account".to_string(),
-            Account::new_api_key("test-account", "test-provider", "test-api-key")
+            Account::new_api_key("test-account", "test-provider", "test-api-key"),
         );
 
-        let account_repo = Arc::new(MockAccountRepository { accounts: Mutex::new(accounts) });
-        let provider_repo = Arc::new(MockProviderRepository { providers: Mutex::new(providers) });
+        let account_repo = Arc::new(MockAccountRepository {
+            accounts: Mutex::new(accounts),
+        });
+        let provider_repo = Arc::new(MockProviderRepository {
+            providers: Mutex::new(providers),
+        });
 
         let service = AuthService::new(account_repo, provider_repo);
-        
+
         let result = service.revoke_token("test-account").await;
         assert!(result.is_ok());
     }

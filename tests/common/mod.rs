@@ -21,9 +21,7 @@ use rust_llm_api_router::domain::DomainError;
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::{
     default_providers, ProviderConfig,
 };
-use rust_llm_api_router::infrastructure::{
-    HttpClient, JsonAccountRepository, Metrics,
-};
+use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, Metrics};
 use rust_llm_api_router::presentation::state::AppState;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -73,7 +71,10 @@ pub async fn create_repo_with_account(provider_id: &str) -> Arc<dyn AccountRepos
 }
 
 /// Create a repository with multiple accounts
-pub async fn create_repo_with_accounts(provider_id: &str, count: usize) -> Arc<dyn AccountRepository> {
+pub async fn create_repo_with_accounts(
+    provider_id: &str,
+    count: usize,
+) -> Arc<dyn AccountRepository> {
     let repo: Arc<dyn AccountRepository> =
         Arc::new(JsonAccountRepository::new().expect("Should create repository"));
 
@@ -170,7 +171,11 @@ where
 }
 
 /// Setup mock to return accounts for a provider
-pub fn setup_mock_provider_accounts(mock: &mut MockTestAccountRepo, provider_id: &str, accounts: Vec<Account>) {
+pub fn setup_mock_provider_accounts(
+    mock: &mut MockTestAccountRepo,
+    provider_id: &str,
+    accounts: Vec<Account>,
+) {
     mock.expect_find_active_by_provider()
         .with(eq(provider_id.to_string()))
         .returning(move |_| Ok(accounts.clone()));

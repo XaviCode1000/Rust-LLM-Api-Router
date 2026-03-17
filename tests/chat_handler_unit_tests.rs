@@ -12,9 +12,7 @@ use rust_llm_api_router::config::Settings;
 use rust_llm_api_router::domain::{Account, AccountRepository};
 use rust_llm_api_router::domain::{ChatResponse, Choice, Message, Usage};
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
-use rust_llm_api_router::infrastructure::{
-    HttpClient, JsonAccountRepository, Metrics,
-};
+use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, Metrics};
 use rust_llm_api_router::interfaces::handlers::chat_handler::{
     convert_to_openai_response, get_api_key_for_models, list_models, parse_model, OpenAIModelInfo,
     OpenAIModelsResponse,
@@ -277,12 +275,10 @@ async fn test_streaming_with_empty_chunk() {
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
     let provider_config = default_providers();
-    let state = Arc::new(AppState::with_provider_config(
-        Settings::default(),
-        http_client,
-        repo,
-        provider_config,
-    ).unwrap());
+    let state = Arc::new(
+        AppState::with_provider_config(Settings::default(), http_client, repo, provider_config)
+            .unwrap(),
+    );
 
     let app = axum::Router::new()
         .route(
@@ -348,12 +344,10 @@ async fn test_streaming_with_valid_utf8_handling() {
 
     let http_client = Arc::new(HttpClient::with_mock_url(&mock_server.uri()).unwrap());
     let provider_config = default_providers();
-    let state = Arc::new(AppState::with_provider_config(
-        Settings::default(),
-        http_client,
-        repo,
-        provider_config,
-    ).unwrap());
+    let state = Arc::new(
+        AppState::with_provider_config(Settings::default(), http_client, repo, provider_config)
+            .unwrap(),
+    );
 
     let app = axum::Router::new()
         .route(

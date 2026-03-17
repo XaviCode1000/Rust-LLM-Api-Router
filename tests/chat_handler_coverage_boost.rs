@@ -41,10 +41,7 @@ fn create_empty_test_app_state() -> Arc<AppState> {
 }
 
 /// Helper function to create AppState with llm_router
-async fn create_test_app_state(
-    temp_dir: &TempDir,
-    account: Account,
-) -> Arc<AppState> {
+async fn create_test_app_state(temp_dir: &TempDir, account: Account) -> Arc<AppState> {
     let repo: Arc<dyn AccountRepository> =
         Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
     repo.save(account).await.unwrap();

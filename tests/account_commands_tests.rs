@@ -175,10 +175,7 @@ async fn handle_account_command_with_dir(
                     Ok(())
                 }
                 Some(key) => {
-                    println!(
-                        "✓ API key format looks valid (length: {})",
-                        key.len()
-                    );
+                    println!("✓ API key format looks valid (length: {})", key.len());
                     println!("Note: Full validation will be done on first request");
                     Ok(())
                 }

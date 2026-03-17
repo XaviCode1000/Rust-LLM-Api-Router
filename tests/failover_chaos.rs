@@ -5,13 +5,13 @@
 
 use async_trait::async_trait;
 use mockall::predicate::*;
-use rust_llm_api_router::app::services::failover::FailoverManager;
 use rust_llm_api_router::app::services::account_rotation::AccountSelector;
+use rust_llm_api_router::app::services::failover::FailoverManager;
 use rust_llm_api_router::domain::entities::Account;
 use rust_llm_api_router::domain::traits::AccountRepository;
 use rust_llm_api_router::domain::DomainError;
-use std::sync::Arc;
 use std::fmt;
+use std::sync::Arc;
 
 // ============================================================================
 // MOCK REPOSITORY
@@ -110,7 +110,11 @@ async fn test_rapid_failover_between_accounts() {
     }
 
     // Most requests should succeed
-    assert!(success_count >= 10, "Expected at least 10 successes, got {}", success_count);
+    assert!(
+        success_count >= 10,
+        "Expected at least 10 successes, got {}",
+        success_count
+    );
 }
 
 /// Test: All accounts failing sequentially
@@ -149,9 +153,7 @@ async fn test_mixed_success_failure_pattern() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("openai"))
-        .returning(|_| {
-            Ok(vec![Account::new("account-1", "openai", "sk-key-1")])
-        });
+        .returning(|_| Ok(vec![Account::new("account-1", "openai", "sk-key-1")]));
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
@@ -183,20 +185,14 @@ async fn test_health_tracking() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("openai"))
-        .returning(|_| {
-            Ok(vec![
-                Account::new("account-1", "openai", "sk-key-1"),
-            ])
-        });
+        .returning(|_| Ok(vec![Account::new("account-1", "openai", "sk-key-1")]));
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
     // Record successes
     for _ in 0..10 {
         let _: Result<String, TestError> = manager
-            .execute_with_failover("openai", |_account| async {
-                Ok("success".to_string())
-            })
+            .execute_with_failover("openai", |_account| async { Ok("success".to_string()) })
             .await;
     }
 
@@ -212,11 +208,12 @@ async fn test_health_tracking() {
     // Check health
     let health = manager.get_all_health();
     assert!(!health.is_empty());
-    
-    let account_health = health.iter()
+
+    let account_health = health
+        .iter()
         .find(|h| h.account_id == "account-1")
         .expect("Should find account health");
-    
+
     assert_eq!(account_health.successful_requests, 10);
     assert_eq!(account_health.failed_requests, 5);
 }
@@ -277,17 +274,18 @@ async fn test_concurrent_failover_requests() {
         let manager = manager.clone();
         let handle: tokio::task::JoinHandle<Result<String, TestError>> = tokio::spawn(async move {
             manager
-                .execute_with_failover("openai", |_account| async {
-                    Ok(format!("response-{}", i))
-                })
+                .execute_with_failover("openai", |_account| async { Ok(format!("response-{}", i)) })
                 .await
         });
         handles.push(handle);
     }
 
     let results = futures::future::join_all(handles).await;
-    let success_count = results.iter().filter(|r| r.as_ref().unwrap().is_ok()).count();
-    
+    let success_count = results
+        .iter()
+        .filter(|r| r.as_ref().unwrap().is_ok())
+        .count();
+
     assert_eq!(success_count, 20);
 }
 
@@ -299,18 +297,10 @@ async fn test_health_tracking_with_failures() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("openai"))
-        .returning(|_| {
-            Ok(vec![
-                Account::new("account-1", "openai", "sk-key-1"),
-            ])
-        });
+        .returning(|_| Ok(vec![Account::new("account-1", "openai", "sk-key-1")]));
 
     // High retry count
-    let manager = FailoverManager::new(
-        Arc::new(mock_repo),
-        AccountSelector::round_robin(),
-        20,
-    );
+    let manager = FailoverManager::new(Arc::new(mock_repo), AccountSelector::round_robin(), 20);
 
     // Record failures
     for _ in 0..5 {
@@ -324,10 +314,9 @@ async fn test_health_tracking_with_failures() {
     // Check health tracking
     let health = manager.get_all_health();
     assert!(!health.is_empty());
-    
-    let account_health = health.iter()
-        .find(|h| h.account_id == "account-1");
-    
+
+    let account_health = health.iter().find(|h| h.account_id == "account-1");
+
     assert!(account_health.is_some());
 }
 
@@ -357,7 +346,7 @@ async fn test_account_rotation() {
                 async move { Ok(account_id) }
             })
             .await;
-        
+
         if let Ok(account_id) = result {
             used_accounts.push(account_id);
         }

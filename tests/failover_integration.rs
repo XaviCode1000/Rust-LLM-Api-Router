@@ -7,8 +7,8 @@
 
 use async_trait::async_trait;
 use mockall::predicate::*;
-use rust_llm_api_router::app::services::failover::FailoverManager;
 use rust_llm_api_router::app::services::account_rotation::AccountSelector;
+use rust_llm_api_router::app::services::failover::FailoverManager;
 use rust_llm_api_router::domain::traits::AccountRepository;
 use rust_llm_api_router::domain::{Account, DomainError};
 use std::sync::Arc;

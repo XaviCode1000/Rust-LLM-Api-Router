@@ -124,7 +124,11 @@ pub async fn list_accounts(
             provider_id: a.provider_id.clone(),
             is_active: a.is_active,
             priority: a.priority,
-            api_key_prefix: a.api_key.clone().map(|k| k.chars().take(8).collect()).unwrap_or_default(),
+            api_key_prefix: a
+                .api_key
+                .clone()
+                .map(|k| k.chars().take(8).collect())
+                .unwrap_or_default(),
         })
         .collect();
 

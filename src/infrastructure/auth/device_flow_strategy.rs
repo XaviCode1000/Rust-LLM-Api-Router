@@ -1,5 +1,5 @@
-use crate::domain::Account;
 use crate::domain::traits::DomainResult;
+use crate::domain::Account;
 use crate::error::Result;
 use async_trait::async_trait;
 use oauth2::{AuthUrl, ClientId, ClientSecret, TokenUrl};
@@ -36,7 +36,10 @@ impl DeviceFlowAuthStrategy {
             client_secret: client_secret.map(|s| ClientSecret::new(s.into())),
             device_auth_url: AuthUrl::new(device_auth_url.into())?,
             token_url: TokenUrl::new(token_url.into())?,
-            scopes: scopes.into_iter().map(|s| oauth2::Scope::new(s.into())).collect(),
+            scopes: scopes
+                .into_iter()
+                .map(|s| oauth2::Scope::new(s.into()))
+                .collect(),
             polling_interval: polling_interval.unwrap_or(5),
         })
     }
@@ -100,7 +103,8 @@ mod tests {
             "https://auth.example.com/oauth2/token",
             vec!["read".to_string(), "write".to_string()],
             Some(5),
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(strategy.client_id.to_string(), "test-client-id");
         assert_eq!(strategy.polling_interval, 5);
@@ -115,8 +119,9 @@ mod tests {
             "https://auth.example.com/oauth2/token",
             vec!["read".to_string()],
             None,
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         assert_eq!(strategy.auth_type(), "device_flow");
     }
 }

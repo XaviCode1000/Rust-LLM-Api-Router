@@ -417,7 +417,10 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
 
         for provider in &providers {
             // Get accounts for this provider
-            let accounts = self.account_repo.find_active_by_provider(&provider.id).await?;
+            let accounts = self
+                .account_repo
+                .find_active_by_provider(&provider.id)
+                .await?;
 
             for account in accounts {
                 // Create health snapshot (in real implementation, would fetch from health service)
@@ -467,12 +470,14 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
                 use std::collections::hash_map::RandomState;
                 use std::hash::{BuildHasher, Hasher};
                 let mut hasher = RandomState::new().build_hasher();
-                hasher.write_u64(std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_nanos() as u64);
+                hasher.write_u64(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_nanos() as u64,
+                );
                 let seed = hasher.finish() as usize;
-                
+
                 // Simple shuffle using seed
                 let len = accounts.len();
                 for i in (1..len).rev() {
@@ -644,9 +649,7 @@ impl<R: AccountRepository + ?Sized> ExecutionPlannerBuilder<R> {
 
     /// Loads configuration from environment variables.
     pub fn from_env(mut self) -> Self {
-        self.config = ExecutionPlannerConfigBuilder::new()
-            .from_env()
-            .build();
+        self.config = ExecutionPlannerConfigBuilder::new().from_env().build();
         self
     }
 
@@ -656,9 +659,7 @@ impl<R: AccountRepository + ?Sized> ExecutionPlannerBuilder<R> {
     ///
     /// Panics if account_repo is not set.
     pub fn build(self) -> ExecutionPlanner<R> {
-        let account_repo = self
-            .account_repo
-            .expect("Account repository is required");
+        let account_repo = self.account_repo.expect("Account repository is required");
 
         let mut planner = ExecutionPlanner::new(account_repo, self.config);
 
@@ -686,9 +687,9 @@ impl<R: AccountRepository> Default for ExecutionPlannerBuilder<R> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::PlanningOptions;
     use super::*;
     use crate::domain::traits::AccountRepository;
-    use super::super::PlanningOptions;
 
     #[test]
     fn test_config_defaults() {
@@ -758,9 +759,9 @@ mod tests {
             enable_auto_selection: false,
             ..Default::default()
         };
-        
+
         let context = ExecutionContext::new("req-1", "gpt-4");
-        
+
         // Cannot easily test without a repo, but we can verify the config works
         assert_eq!(config.default_plan_type, ExecutionPlanType::Standard);
         assert!(!config.enable_auto_selection);
@@ -774,7 +775,7 @@ mod tests {
             enable_auto_selection: true,
             ..Default::default()
         };
-        
+
         // Verify the config is set correctly for cost optimization
         assert!(config.cost_optimization_enabled);
     }
@@ -787,7 +788,7 @@ mod tests {
             enable_auto_selection: true,
             ..Default::default()
         };
-        
+
         assert!(config.load_balancing_enabled);
     }
 
@@ -801,7 +802,7 @@ mod tests {
             load_balancing_enabled: false,
             ..Default::default()
         };
-        
+
         assert!(config.failover_enabled);
     }
 
@@ -809,7 +810,7 @@ mod tests {
     fn test_model_compatibility_openai() {
         // Create a minimal test using the context's model compatibility logic
         let provider = Provider::new("openai", "OpenAI", "https://api.openai.com");
-        
+
         // These models should be compatible with OpenAI
         assert!(is_model_compatible_internal("gpt-4", &provider));
         assert!(is_model_compatible_internal("gpt-3.5-turbo", &provider));
@@ -819,7 +820,7 @@ mod tests {
     #[test]
     fn test_model_compatibility_anthropic() {
         let provider = Provider::new("anthropic", "Anthropic", "https://api.anthropic.com");
-        
+
         assert!(is_model_compatible_internal("claude-3-opus", &provider));
         assert!(is_model_compatible_internal("claude-3-sonnet", &provider));
         assert!(is_model_compatible_internal("claude-3-haiku", &provider));
@@ -828,7 +829,7 @@ mod tests {
     #[test]
     fn test_model_compatibility_groq() {
         let provider = Provider::new("groq", "Groq", "https://api.groq.com");
-        
+
         // Groq supports many models
         assert!(is_model_compatible_internal("llama-3-70b", &provider));
         assert!(is_model_compatible_internal("mixtral-8x7b", &provider));
@@ -839,7 +840,7 @@ mod tests {
         // Test builder pattern - requires a mock repo which we can't easily create
         // So we just verify the builder can be constructed
         use super::mock::MockAccountRepository;
-        let _builder: ExecutionPlannerBuilder<MockAccountRepository> = 
+        let _builder: ExecutionPlannerBuilder<MockAccountRepository> =
             ExecutionPlannerBuilder::new();
     }
 
@@ -848,14 +849,14 @@ mod tests {
         // Test that context planning options influence plan type selection
         let context = ExecutionContext::new("req-1", "gpt-4")
             .with_planning_options(PlanningOptions::cost_optimized());
-        
+
         assert!(context.planning_options.cost_optimized);
     }
 
     #[test]
     fn test_planning_options_reliability() {
         let options = PlanningOptions::reliability();
-        
+
         assert!(options.enable_failover);
         assert_eq!(options.max_retries, 5);
         assert!(options.health_aware_routing);
@@ -864,7 +865,7 @@ mod tests {
     #[test]
     fn test_planning_options_low_latency() {
         let options = PlanningOptions::low_latency();
-        
+
         assert!(options.enable_load_balancing);
         assert_eq!(options.timeout_seconds, 15);
     }
@@ -922,7 +923,9 @@ mod mock {
                 .iter()
                 .find(|a| a.id == id)
                 .cloned()
-                .ok_or_else(|| crate::domain::DomainError::AccountNotFound("Account not found".to_string()))
+                .ok_or_else(|| {
+                    crate::domain::DomainError::AccountNotFound("Account not found".to_string())
+                })
         }
 
         async fn find_active(&self) -> DomainResult<Vec<Account>> {

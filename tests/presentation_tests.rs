@@ -40,8 +40,9 @@ fn test_app_state_clone() {
 
     let provider_config = default_providers();
 
-    let state = AppState::with_provider_config(settings, http_client, account_repo, provider_config)
-        .unwrap();
+    let state =
+        AppState::with_provider_config(settings, http_client, account_repo, provider_config)
+            .unwrap();
 
     // Clone state (required for Axum multi-request handling)
     let state_clone = state.clone();
@@ -73,8 +74,13 @@ async fn test_app_state_with_accounts() {
         .unwrap();
 
     let provider_config = default_providers();
-    let state = AppState::with_provider_config(settings, http_client, account_repo.clone(), provider_config)
-        .unwrap();
+    let state = AppState::with_provider_config(
+        settings,
+        http_client,
+        account_repo.clone(),
+        provider_config,
+    )
+    .unwrap();
 
     // Verify accounts are accessible
     let accounts = state.account_repo.find_all().await.unwrap();
@@ -93,8 +99,13 @@ async fn test_state_account_operations() {
         Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let provider_config = default_providers();
-    let state = AppState::with_provider_config(settings, http_client, account_repo.clone(), provider_config)
-        .unwrap();
+    let state = AppState::with_provider_config(
+        settings,
+        http_client,
+        account_repo.clone(),
+        provider_config,
+    )
+    .unwrap();
 
     // Test repository operations through state
     // Add account
@@ -125,8 +136,9 @@ async fn test_state_metrics_accessible() {
         Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
     let provider_config = default_providers();
-    let state = AppState::with_provider_config(settings, http_client, account_repo, provider_config)
-        .unwrap();
+    let state =
+        AppState::with_provider_config(settings, http_client, account_repo, provider_config)
+            .unwrap();
 
     // Verify metrics registry is accessible
     let _registry = state.metrics.registry.gather();

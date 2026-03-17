@@ -250,10 +250,7 @@ pub async fn cmd_validate_account(
     if api_key.len() < 8 {
         println!("✗ API key too short (min 8 chars)");
     } else {
-        println!(
-            "✓ API key format looks valid (length: {})",
-            api_key.len()
-        );
+        println!("✓ API key format looks valid (length: {})", api_key.len());
         println!("Note: Full validation will be done on first request");
     }
 

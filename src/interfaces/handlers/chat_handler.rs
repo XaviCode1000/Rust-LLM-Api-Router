@@ -91,7 +91,7 @@ async fn stream_chat_request(
     let chat_request = convert_to_chat_request(&request, &model_name);
 
     // Make streaming request to provider using LlmRouter
-    // For streaming, we still use the direct provider call since LlmRouter 
+    // For streaming, we still use the direct provider call since LlmRouter
     // doesn't have streaming support yet - this is a fallback to existing behavior
     match make_streaming_provider_request(
         &state.http_client,
@@ -153,7 +153,11 @@ async fn process_chat_request(
         vec![]
     };
 
-    match state.llm_router.route_request(chat_request, preferred_providers).await {
+    match state
+        .llm_router
+        .route_request(chat_request, preferred_providers)
+        .await
+    {
         Ok(provider_response) => {
             // Convert provider response to OpenAI format
             Ok(convert_to_openai_response(
@@ -202,7 +206,10 @@ fn select_account(accounts: &[Account], _state: &AppState) -> Account {
 }
 
 /// Convert OpenAI request to internal ChatRequest format.
-fn convert_to_chat_request(openai_request: &OpenAIChatRequest, model_name: &str) -> DomainChatRequest {
+fn convert_to_chat_request(
+    openai_request: &OpenAIChatRequest,
+    model_name: &str,
+) -> DomainChatRequest {
     let messages: Vec<Message> = openai_request
         .messages
         .iter()
@@ -280,9 +287,12 @@ async fn make_provider_request(
 
     // Make HTTP POST request
     let access_token = account.get_access_token().ok_or_else(|| {
-        format!("No authentication credentials available for account '{}'", account.id)
+        format!(
+            "No authentication credentials available for account '{}'",
+            account.id
+        )
     })?;
-    
+
     let response = http_client
         .client()
         .post(&url)
@@ -340,9 +350,12 @@ async fn make_streaming_provider_request(
 
     // Make HTTP POST request with streaming
     let access_token = account.get_access_token().ok_or_else(|| {
-        format!("No authentication credentials available for account '{}'", account.id)
+        format!(
+            "No authentication credentials available for account '{}'",
+            account.id
+        )
     })?;
-    
+
     let response = http_client
         .client()
         .post(&url)
@@ -410,7 +423,10 @@ fn stream_to_sse_events(
 }
 
 /// Convert internal ChatResponse to OpenAI format.
-pub fn convert_to_openai_response(chat_response: DomainChatResponse, model: &str) -> OpenAIChatResponse {
+pub fn convert_to_openai_response(
+    chat_response: DomainChatResponse,
+    model: &str,
+) -> OpenAIChatResponse {
     let choices: Vec<OpenAIChoice> = chat_response
         .choices
         .into_iter()
