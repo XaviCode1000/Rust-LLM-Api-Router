@@ -5,7 +5,20 @@
     "rust": {
       "command": ["rust-analyzer"],
       "env": {
-        "RUST_LOG": "info"
+        "RUST_LOG": "error"
+      },
+      "initialization": {
+        "rust-analyzer": {
+          "procMacro": {
+            "enable": false
+          },
+          "cachePriming": {
+            "enable": false
+          },
+          "cargo": {
+            "allTargets": false
+          }
+        }
       }
     }
   },
