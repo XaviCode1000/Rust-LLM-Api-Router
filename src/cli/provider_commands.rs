@@ -3,6 +3,7 @@
 //! This module implements the provider management subcommands:
 //! - add: Add a new provider
 //! - list: List all providers
+//! - models: List available models for a provider
 //! - remove: Remove a provider by ID
 //! - enable: Enable a provider
 //! - disable: Disable a provider
@@ -11,9 +12,9 @@
 use clap::{Args, Subcommand};
 use std::io::{self, BufRead, Write};
 
-use crate::domain::traits::ProviderRepository;
+use crate::domain::traits::{AccountRepository, ProviderRepository};
 use crate::domain::Provider;
-use crate::infrastructure::JsonProviderRepository;
+use crate::infrastructure::{JsonAccountRepository, JsonProviderRepository};
 use crate::Result;
 
 /// Add provider arguments
@@ -76,6 +77,14 @@ pub struct ValidateProviderArgs {
     pub id: String,
 }
 
+/// List models arguments
+#[derive(Debug, Args)]
+pub struct ListModelsArgs {
+    /// Provider ID to list models for
+    #[arg(short, long)]
+    pub provider: String,
+}
+
 /// Provider management subcommands
 #[derive(Debug, Subcommand)]
 pub enum ProviderCommands {
@@ -84,6 +93,9 @@ pub enum ProviderCommands {
 
     /// List all providers
     List,
+
+    /// List available models for a provider
+    Models(ListModelsArgs),
 
     /// Remove a provider by ID
     Remove(RemoveProviderArgs),
@@ -116,10 +128,12 @@ fn read_api_key_interactive() -> Result<String> {
 /// Handle provider subcommand
 pub async fn handle_provider_command(cmd: ProviderCommands) -> Result<()> {
     let repo = JsonProviderRepository::new().map_err(|e| crate::Error::Internal(e.to_string()))?;
+    let account_repo = JsonAccountRepository::new().map_err(|e| crate::Error::Internal(e.to_string()))?;
 
     match cmd {
         ProviderCommands::Add(args) => cmd_add_provider(args, &repo).await,
-        ProviderCommands::List => cmd_list_providers(&repo).await,
+        ProviderCommands::List => cmd_list_providers(&repo, &account_repo).await,
+        ProviderCommands::Models(args) => cmd_list_models(args, &account_repo).await,
         ProviderCommands::Remove(args) => cmd_remove_provider(args, &repo).await,
         ProviderCommands::Enable(args) => cmd_enable_provider(args, &repo).await,
         ProviderCommands::Disable(args) => cmd_disable_provider(args, &repo).await,
@@ -155,7 +169,10 @@ pub async fn cmd_add_provider(args: AddProviderArgs, repo: &JsonProviderReposito
 }
 
 /// List all providers
-pub async fn cmd_list_providers(repo: &JsonProviderRepository) -> Result<()> {
+pub async fn cmd_list_providers(
+    repo: &JsonProviderRepository,
+    account_repo: &JsonAccountRepository,
+) -> Result<()> {
     let providers = repo
         .find_all()
         .await
@@ -166,8 +183,11 @@ pub async fn cmd_list_providers(repo: &JsonProviderRepository) -> Result<()> {
         return Ok(());
     }
 
-    println!("{:<20} {:<30} {:<40} Status", "ID", "Name", "Base URL");
-    println!("{:-<100}", "");
+    println!(
+        "{:<18} {:<28} {:<35} {:<12} {}",
+        "ID", "Name", "Base URL", "Status", "Account"
+    );
+    println!("{:-<110}", "");
 
     for provider in providers {
         let status = if provider.enabled {
@@ -175,10 +195,129 @@ pub async fn cmd_list_providers(repo: &JsonProviderRepository) -> Result<()> {
         } else {
             "✗ Disabled"
         };
+
+        // Check if there's an active account for this provider
+        let account_status = match account_repo
+            .find_active_by_provider(&provider.id)
+            .await
+        {
+            Ok(accounts) if !accounts.is_empty() => "✓ Configured",
+            _ => "✗ Not set",
+        };
+
         println!(
-            "{:<20} {:<30} {:<40} {}",
-            provider.id, provider.name, provider.base_url, status
+            "{:<18} {:<28} {:<35} {:<12} {}",
+            provider.id,
+            provider.name,
+            // Truncate base URL if too long
+            if provider.base_url.len() > 35 {
+                &provider.base_url[..32]
+            } else {
+                &provider.base_url
+            },
+            status,
+            account_status
         );
+    }
+
+    Ok(())
+}
+
+/// List available models for a provider
+pub async fn cmd_list_models(args: ListModelsArgs, account_repo: &JsonAccountRepository) -> Result<()> {
+    let provider_id = &args.provider;
+
+    // Check if there's an active account for this provider
+    let accounts = account_repo
+        .find_active_by_provider(provider_id)
+        .await
+        .map_err(|e| crate::Error::Internal(e.to_string()))?;
+
+    let account = match accounts.into_iter().find(|a| a.is_active) {
+        Some(acc) => acc,
+        None => {
+            println!("Error: No active account found for provider '{}'", provider_id);
+            println!("Please run: llm-router auth login --provider {}", provider_id);
+            return Ok(());
+        }
+    };
+
+    let api_key = match &account.api_key {
+        Some(key) if !key.is_empty() => key.clone(),
+        _ => {
+            println!("Error: No API key configured for provider '{}'", provider_id);
+            return Ok(());
+        }
+    };
+
+    println!("Fetching models for provider '{}'...", provider_id);
+
+    // Create HTTP client and fetch models
+    let http_client = reqwest::Client::new();
+    
+    // Get provider config for base URL
+    let provider_repo = JsonProviderRepository::new()
+        .map_err(|e| crate::Error::Internal(e.to_string()))?;
+    
+    let provider_config = provider_repo
+        .find_by_id(provider_id)
+        .await
+        .map_err(|e| crate::Error::Internal(e.to_string()))?;
+
+    let models_url = format!("{}/models", provider_config.base_url.trim_end_matches('/'));
+
+    let response = http_client
+        .get(&models_url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .send()
+        .await
+        .map_err(|e| crate::Error::Internal(format!("Failed to fetch models: {}", e)))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        println!("Error: Failed to fetch models (HTTP {}): {}", status, error_text);
+        return Ok(());
+    }
+
+    #[derive(serde::Deserialize)]
+    struct ProviderModelsResponse {
+        data: Vec<ProviderModel>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct ProviderModel {
+        id: String,
+        #[serde(default)]
+        name: Option<String>,
+        #[serde(default)]
+        created: Option<u64>,
+    }
+
+    match response.json::<ProviderModelsResponse>().await {
+        Ok(models_response) => {
+            if models_response.data.is_empty() {
+                println!("No models available for provider '{}'", provider_id);
+                return Ok(());
+            }
+
+            println!("\nAvailable models for '{}':\n", provider_id);
+            println!("{:<50} {}", "Model ID", "Name");
+            println!("{:-<70}", "");
+
+            for model in &models_response.data {
+                let name = model.name.clone().unwrap_or_default();
+                println!("{:<50} {}", model.id, name);
+            }
+            
+            let total = models_response.data.len();
+            println!("\nTotal: {} models", total);
+        }
+        Err(e) => {
+            // Try alternative format (some providers return different structure)
+            println!("Error parsing models response: {}", e);
+        }
     }
 
     Ok(())
