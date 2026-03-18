@@ -215,8 +215,18 @@ curl http://localhost:8080/metrics
 # Add provider
 llm-router provider add --id <id> --name <name> --base-url <url> [--disabled]
 
-# List providers
+# List providers (shows enabled status + account configuration)
 llm-router provider list
+# Output:
+# ID          Name         Base URL                      Status      Account
+# -------------------------------------------------------------------------
+# groq        Groq         https://api.groq.com/...      ✓ Enabled   ✓ Configured
+# openrouter  OpenRouter   https://openrouter.ai/...     ✓ Enabled   ✗ Not set
+
+# List available models for a provider (requires authenticated account)
+llm-router provider models --provider <provider_id>
+# Example:
+# llm-router provider models --provider groq
 
 # Enable provider
 llm-router provider enable --id <id>
@@ -262,6 +272,10 @@ The router supports secure authentication via OAuth 2.1 with PKCE (Proof Key for
 #### Login Commands
 
 ```bash
+# Login with API key (requires --provider argument)
+llm-router auth login --provider groq
+llm-router auth login -p openai
+
 # Login with OAuth 2.1 PKCE (opens browser for authentication)
 llm-router login --provider <provider_id>
 
@@ -276,6 +290,8 @@ llm-router login --provider <provider_id> \
 # Interactive login (prompts for credentials)
 llm-router login --interactive
 ```
+
+> **Note**: The `auth login` command requires the `--provider` argument. Use `llm-router provider list` to see available providers.
 
 #### Logout Commands
 
@@ -507,6 +523,9 @@ Contributions are welcome! Please read our contributing guidelines before submit
 - [x] **Supported Providers**: Groq, OpenRouter, Mistral, Cerebras, Cloudflare, Anthropic, OpenAI
 - [x] **80.35% Code Coverage** with 492 tests
 - [x] **Execution Planning Module** with proactive failover
+- [x] **Auth Login with --provider argument** (configurable provider)
+- [x] **Provider List with account status** (shows configured/not set)
+- [x] **Provider Models command** (list available models)
 
 ### Pending 🔄
 
