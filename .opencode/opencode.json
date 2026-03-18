@@ -1,6 +1,17 @@
 {
   "$schema": "https://opencode.ai/config.json",
 
+  // Model configuration - use llm-router as OpenAI-compatible proxy
+  "model": "groq:llama-3.3-70b-versatile",
+  "provider": {
+    "openai": {
+      "options": {
+        "baseURL": "http://localhost:8080/v1",
+        "apiKey": "demo-key"
+      }
+    }
+  },
+
   "lsp": {
     "rust": {
       "command": ["rust-analyzer"],

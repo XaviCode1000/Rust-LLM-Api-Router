@@ -356,6 +356,30 @@ export CLI_CUSTOM_CA_CERT=/path/to/ca.pem
 
 ✅ = Tested | 🔄 = Supported (pending test)
 
+### OpenCode Integration
+
+You can use llm-router directly from OpenCode as an OpenAI-compatible proxy:
+
+```bash
+# 1. Start the server
+./target/release/llm-router --port 8080
+
+# 2. Configure OpenCode (.opencode/opencode.json)
+{
+  "model": "groq:llama-3.3-70b-versatile",
+  "provider": {
+    "openai": {
+      "options": {
+        "baseURL": "http://localhost:8080/v1",
+        "apiKey": "demo-key"
+      }
+    }
+  }
+}
+```
+
+See [`.opencode/tools/OPENCODE_INTEGRATION.md`](.opencode/tools/OPENCODE_INTEGRATION.md) for full documentation.
+
 ## Verified Working Models
 
 ### Groq
