@@ -2,11 +2,23 @@ use crate::app::services::auth::AuthService;
 use crate::domain::traits::{AccountRepository, ProviderRepository};
 use crate::error::Result;
 use crate::infrastructure::{JsonAccountRepository, JsonProviderRepository};
+use crate::infrastructure::gateway::llm_gateway::default_providers;
 use std::sync::Arc;
 
 /// Handle the login command to initiate authentication flow.
-pub async fn handle_login_command() -> Result<()> {
-    println!("Starting authentication process...");
+pub async fn handle_login_command(provider_id: String) -> Result<()> {
+    // Validate provider exists in default_providers
+    let available_providers = default_providers();
+    if !available_providers.contains_key(&provider_id) {
+        println!("Error: Unknown provider '{}'", provider_id);
+        println!("\nAvailable providers:");
+        for (id, config) in &available_providers {
+            println!("  - {} ({})", id, config.name);
+        }
+        return Ok(());
+    }
+
+    println!("Starting authentication process for provider '{}'...", provider_id);
 
     // Initialize repositories as trait objects
     let account_repo: Arc<dyn AccountRepository + Send + Sync> =
@@ -20,12 +32,8 @@ pub async fn handle_login_command() -> Result<()> {
     // Initialize auth service (uses ownership of provider_repo)
     let auth_service = AuthService::new(account_repo, provider_repo);
 
-    // For now, we'll use a default provider ID
-    // In a real implementation, this would come from CLI args or config
-    let provider_id = "default";
-
     // Check if provider exists
-    let provider_result = provider_repo_check.find_by_id(provider_id).await;
+    let provider_result = provider_repo_check.find_by_id(&provider_id).await;
 
     if provider_result.is_err() {
         println!(
@@ -46,7 +54,7 @@ pub async fn handle_login_command() -> Result<()> {
     }
 
     // Initiate authentication
-    match auth_service.initiate_auth(provider_id).await {
+    match auth_service.initiate_auth(&provider_id).await {
         Ok(verifier_or_instructions) => {
             if verifier_or_instructions.is_empty() {
                 // API key authentication - ask for API key
@@ -66,7 +74,7 @@ pub async fn handle_login_command() -> Result<()> {
 
                 // Complete authentication with the API key
                 match auth_service
-                    .complete_auth(provider_id, api_key.to_string())
+                    .complete_auth(&provider_id, api_key.to_string())
                     .await
                 {
                     Ok(account) => {
