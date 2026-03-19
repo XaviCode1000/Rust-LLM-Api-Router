@@ -144,7 +144,7 @@ impl PlannedAccount {
 
     /// Returns true if the account is healthy enough to use.
     pub fn is_healthy(&self) -> bool {
-        !self.health_snapshot.circuit_breaker_open && self.health_score() > 0.0
+        !self.health_snapshot.circuit_breaker_open() && self.health_score() > 0.0
     }
 
     /// Returns the success rate as a percentage.

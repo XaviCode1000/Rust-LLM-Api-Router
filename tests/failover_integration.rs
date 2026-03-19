@@ -70,7 +70,7 @@ async fn test_complete_failover_flow() {
     let result: Result<String, String> = manager
         .execute_with_failover("openai", |account| {
             let account_id = account.id.clone();
-            async move { Ok(format!("success-{}", account_id)) }
+            async move { Ok((format!("success-{}", account_id), vec![])) }
         })
         .await;
 
@@ -153,7 +153,7 @@ async fn test_circuit_breaker_integration() {
                     if account_id == "account-1" {
                         Err("failure".to_string())
                     } else {
-                        Ok("success".to_string())
+                        Ok(("success".to_string(), vec![]))
                     }
                 }
             })
@@ -164,7 +164,7 @@ async fn test_circuit_breaker_integration() {
     let result: Result<String, String> = manager
         .execute_with_failover("openai", |account| {
             let account_id = account.id.clone();
-            async move { Ok(format!("used-{}", account_id)) }
+            async move { Ok((format!("used-{}", account_id), vec![])) }
         })
         .await;
 
@@ -206,7 +206,7 @@ async fn test_concurrent_requests_no_race_condition() {
                     async move {
                         // Simulate network latency
                         tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
-                        Ok(format!("request-{}-{}", i, account_id))
+                        Ok((format!("request-{}-{}", i, account_id), vec![]))
                     }
                 })
                 .await
@@ -247,7 +247,7 @@ async fn test_health_tracking_concurrent() {
         let handle: tokio::task::JoinHandle<Result<String, String>> = tokio::spawn(async move {
             if i % 2 == 0 {
                 manager
-                    .execute_with_failover("openai", |_| async { Ok("success".to_string()) })
+                    .execute_with_failover("openai", |_| async { Ok(("success".to_string(), vec![])) })
                     .await
             } else {
                 manager
@@ -315,14 +315,14 @@ async fn test_multi_provider_isolation() {
     let openai_result: Result<String, String> = manager
         .execute_with_failover("openai", |account| {
             let account_id = account.id.clone();
-            async move { Ok(format!("openai-{}", account_id)) }
+            async move { Ok((format!("openai-{}", account_id), vec![])) }
         })
         .await;
 
     let anthropic_result: Result<String, String> = manager
         .execute_with_failover("anthropic", |account| {
             let account_id = account.id.clone();
-            async move { Ok(format!("anthropic-{}", account_id)) }
+            async move { Ok((format!("anthropic-{}", account_id), vec![])) }
         })
         .await;
 
@@ -365,9 +365,9 @@ async fn test_request_timeout() {
                 if account_id == "account-1" {
                     // Simulate timeout
                     tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
-                    Ok("should-not-reach".to_string())
+                    Ok(("should-not-reach".to_string(), vec![]))
                 } else {
-                    Ok(format!("success-{}", account_id))
+                    Ok((format!("success-{}", account_id), vec![]))
                 }
             }
         })
@@ -395,7 +395,7 @@ async fn test_memory_under_load() {
     // Execute many requests
     for _ in 0..1000 {
         let _: Result<String, String> = manager
-            .execute_with_failover("openai", |_| async { Ok("success".to_string()) })
+            .execute_with_failover("openai", |_| async { Ok(("success".to_string(), vec![])) })
             .await;
     }
 
@@ -434,7 +434,7 @@ fn test_repository_error_handling() {
         rt.block_on(async {
             manager
                 .execute_with_failover::<_, _, String, String>("openai", |_| async {
-                    Ok("success".to_string())
+                    Ok(("success".to_string(), vec![]))
                 })
                 .await
         })
@@ -462,7 +462,7 @@ fn test_empty_account_list() {
         rt.block_on(async {
             manager
                 .execute_with_failover::<_, _, String, String>("openai", |_| async {
-                    Ok("success".to_string())
+                    Ok(("success".to_string(), vec![]))
                 })
                 .await
         })
@@ -508,7 +508,7 @@ async fn test_all_strategies_with_failover() {
         let result: Result<String, String> = manager
             .execute_with_failover("openai", |account| {
                 let account_id = account.id.clone();
-                async move { Ok(format!("{}-{}", name, account_id)) }
+                async move { Ok((format!("{}-{}", name, account_id), vec![])) }
             })
             .await;
 

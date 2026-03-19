@@ -10,10 +10,12 @@
 #![cfg(test)]
 
 use super::account_rotation::{
-    AccountSelector, LatencyStrategy, RotationStrategy, RoundRobinStrategy, UserAffinityStrategy,
-    WeightedStrategy,
+    AccountSelector, BackoffConfig, LatencyStrategy, RateLimitInfo, RotationStrategy,
+    RoundRobinStrategy, UserAffinityStrategy, WeightedStrategy,
 };
+use crate::domain::entities::account_health::{AccountHealth, CircuitBreakerState};
 use crate::domain::Account;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 // ============================================================================
@@ -171,6 +173,343 @@ fn test_latency_strategy_empty() {
     let accounts: Vec<Account> = vec![];
 
     assert!(strategy.select(&accounts).is_none());
+}
+
+// ============================================================================
+// LATENCY STRATEGY WITH HEALTH TESTS (Phase 4.1)
+// ============================================================================
+
+fn create_account_with_latency(id: &str, latency_ms: f64) -> (Account, AccountHealth) {
+    let account = Account::new(id, "openai", format!("key-{}", id));
+    let mut health = AccountHealth::new(id);
+    health.avg_latency_ms = latency_ms;
+    (account, health)
+}
+
+fn create_account_with_circuit_breaker(
+    id: &str,
+    state: CircuitBreakerState,
+) -> (Account, AccountHealth) {
+    let account = Account::new(id, "openai", format!("key-{}", id));
+    let mut health = AccountHealth::new(id);
+    health.circuit_breaker_state = state;
+    health.consecutive_failures = if state == CircuitBreakerState::Open {
+        5
+    } else {
+        0
+    };
+    (account, health)
+}
+
+fn create_account_with_quota(id: &str, quota: Option<u64>) -> (Account, AccountHealth) {
+    let account = Account::new(id, "openai", format!("key-{}", id));
+    let mut health = AccountHealth::new(id);
+    health.quota_remaining = quota;
+    (account, health)
+}
+
+/// Test: LatencyStrategy selects account with lowest latency
+#[test]
+fn test_latency_strategy_selects_lowest_latency() {
+    let strategy = LatencyStrategy::new();
+
+    let (acc1, h1) = create_account_with_latency("acc1", 100.0);
+    let (acc2, mut h2) = create_account_with_latency("acc2", 50.0);
+    h2.avg_latency_ms = 50.0;
+    let (acc3, mut h3) = create_account_with_latency("acc3", 200.0);
+    h3.avg_latency_ms = 200.0;
+
+    let accounts = vec![&acc1, &acc2, &acc3];
+    let mut health_map: HashMap<String, AccountHealth> = HashMap::new();
+    health_map.insert(acc1.id.clone(), h1);
+    health_map.insert(acc2.id.clone(), h2);
+    health_map.insert(acc3.id.clone(), h3);
+
+    let selected = strategy.select_with_health(&accounts, &health_map);
+
+    assert!(selected.is_some());
+    assert_eq!(selected.unwrap().id, "acc2"); // Lowest latency
+}
+
+/// Test: LatencyStrategy excludes accounts with open circuit breaker
+#[test]
+fn test_latency_strategy_excludes_open_circuit_breaker() {
+    let strategy = LatencyStrategy::new();
+
+    let (acc1, _) = create_account_with_circuit_breaker("acc1", CircuitBreakerState::Open);
+    let (acc2, h2) = create_account_with_latency("acc2", 100.0);
+    let (acc3, h3) = create_account_with_latency("acc3", 50.0);
+
+    let accounts = vec![&acc1, &acc2, &acc3];
+    let mut health_map: HashMap<String, AccountHealth> = HashMap::new();
+    health_map.insert(acc1.id.clone(), AccountHealth::new("acc1")); // Open circuit breaker
+    health_map.get_mut("acc1").unwrap().circuit_breaker_state = CircuitBreakerState::Open;
+    health_map.get_mut("acc1").unwrap().consecutive_failures = 5;
+    health_map.insert(acc2.id.clone(), h2);
+    health_map.insert(acc3.id.clone(), h3);
+
+    let selected = strategy.select_with_health(&accounts, &health_map);
+
+    // acc1 has open circuit breaker, should be excluded
+    // acc3 has lower latency than acc2, should be selected
+    assert!(selected.is_some());
+    assert_ne!(selected.unwrap().id, "acc1");
+}
+
+/// Test: LatencyStrategy excludes accounts with zero quota
+#[test]
+fn test_latency_strategy_excludes_zero_quota() {
+    let strategy = LatencyStrategy::new();
+
+    let (acc1, h1) = create_account_with_quota("acc1", Some(0)); // Zero quota
+    let (acc2, h2) = create_account_with_latency("acc2", 100.0);
+    let (acc3, h3) = create_account_with_latency("acc3", 200.0);
+
+    let accounts = vec![&acc1, &acc2, &acc3];
+    let mut health_map: HashMap<String, AccountHealth> = HashMap::new();
+    health_map.insert(acc1.id.clone(), h1);
+    health_map.insert(acc2.id.clone(), h2);
+    health_map.insert(acc3.id.clone(), h3);
+
+    let selected = strategy.select_with_health(&accounts, &health_map);
+
+    // acc1 has zero quota, should be excluded
+    // acc2 has lower latency than acc3, should be selected
+    assert!(selected.is_some());
+    assert_eq!(selected.unwrap().id, "acc2");
+}
+
+/// Test: LatencyStrategy fallback when no latency data
+#[test]
+fn test_latency_strategy_fallback_no_latency_data() {
+    let strategy = LatencyStrategy::new();
+
+    let accounts = vec![
+        Account::new("acc1", "openai", "key1"),
+        Account::new("acc2", "openai", "key2"),
+    ];
+
+    let health_map: HashMap<String, AccountHealth> = HashMap::new();
+
+    let selected = strategy.select_with_health(&accounts, &health_map);
+
+    // When no health data, falls back to first account (latency 0.0)
+    assert!(selected.is_some());
+    assert_eq!(selected.unwrap().id, "acc1");
+}
+
+/// Test: LatencyStrategy returns None when all accounts excluded
+#[test]
+fn test_latency_strategy_returns_none_all_excluded() {
+    let strategy = LatencyStrategy::new();
+
+    let (acc1, mut h1) = create_account_with_quota("acc1", Some(0));
+    h1.circuit_breaker_state = CircuitBreakerState::Open;
+    h1.consecutive_failures = 5;
+    h1.quota_remaining = Some(0);
+
+    let (acc2, mut h2) = create_account_with_quota("acc2", Some(0));
+    h2.circuit_breaker_state = CircuitBreakerState::Open;
+    h2.consecutive_failures = 5;
+    h2.quota_remaining = Some(0);
+
+    let accounts = vec![&acc1, &acc2];
+    let mut health_map: HashMap<String, AccountHealth> = HashMap::new();
+    health_map.insert(acc1.id.clone(), h1);
+    health_map.insert(acc2.id.clone(), h2);
+
+    let selected = strategy.select_with_health(&accounts, &health_map);
+
+    // All accounts have open CB or zero quota, should return None
+    assert!(selected.is_none());
+}
+
+// ============================================================================
+// BACKOFF CONFIG TESTS (Phase 4.2)
+// ============================================================================
+
+/// Test: Exponential backoff delay increases exponentially
+#[test]
+fn test_backoff_exponential_increase() {
+    let config = BackoffConfig::new(100, 10000, 0.0, 3); // No jitter for predictable test
+
+    let delay0 = config.calculate_delay(0);
+    let delay1 = config.calculate_delay(1);
+    let delay2 = config.calculate_delay(2);
+
+    // 100 * 2^0 = 100
+    // 100 * 2^1 = 200
+    // 100 * 2^2 = 400
+    assert_eq!(delay0, 100);
+    assert_eq!(delay1, 200);
+    assert_eq!(delay2, 400);
+}
+
+/// Test: Backoff max delay is capped
+#[test]
+fn test_backoff_max_delay_capped() {
+    let config = BackoffConfig::new(100, 500, 0.0, 10);
+
+    let delay10 = config.calculate_delay(10); // 100 * 2^10 = 102400 > 500
+
+    // Should be capped at max_delay_ms
+    assert!(delay10 <= 500);
+}
+
+/// Test: Backoff jitter is applied within expected range
+#[test]
+fn test_backoff_jitter_applied() {
+    // Test multiple times to catch jitter
+    let mut delays_with_jitter: Vec<u64> = Vec::new();
+    let config = BackoffConfig::new(100, 10000, 0.1, 3);
+
+    for _ in 0..100 {
+        let delay = config.calculate_delay(1); // 200ms base
+        delays_with_jitter.push(delay);
+    }
+
+    // All delays should be within jitter range (0.9x to 1.1x for 0.1 factor)
+    // Actually the jitter is 1.0 + (rand % 2000 / 10000 - 0.1) = 0.9 to 1.1
+    for delay in &delays_with_jitter {
+        assert!(
+            *delay >= 180,
+            "Delay {} should be >= 180 (200 * 0.9)",
+            delay
+        );
+        assert!(
+            *delay <= 220,
+            "Delay {} should be <= 220 (200 * 1.1)",
+            delay
+        );
+    }
+}
+
+/// Test: Backoff with different base delays
+#[test]
+fn test_backoff_different_base_delays() {
+    let config = BackoffConfig::new(50, 10000, 0.0, 3);
+
+    let delay0 = config.calculate_delay(0); // 50
+    let delay1 = config.calculate_delay(1); // 100
+    let delay2 = config.calculate_delay(2); // 200
+
+    assert_eq!(delay0, 50);
+    assert_eq!(delay1, 100);
+    assert_eq!(delay2, 200);
+}
+
+/// Test: Backoff default config
+#[test]
+fn test_backoff_default_config() {
+    let config = BackoffConfig::default();
+
+    assert_eq!(config.base_delay_ms, 100);
+    assert_eq!(config.max_delay_ms, 10000);
+    assert_eq!(config.jitter_factor, 0.1);
+    assert_eq!(config.max_retries, 3);
+}
+
+// ============================================================================
+// RATE LIMIT INFO TESTS (Phase 4.3)
+// ============================================================================
+
+/// Test: Parses X-RateLimit-Remaining header
+#[test]
+fn test_rate_limit_info_parses_remaining() {
+    let headers = vec![("X-RateLimit-Remaining", "950")];
+
+    let info = RateLimitInfo::from_headers(&headers);
+
+    assert_eq!(info.remaining, Some(950));
+}
+
+/// Test: Parses X-RateLimit-Limit header
+#[test]
+fn test_rate_limit_info_parses_limit() {
+    let headers = vec![("X-RateLimit-Limit", "1000")];
+
+    let info = RateLimitInfo::from_headers(&headers);
+
+    assert_eq!(info.limit, Some(1000));
+}
+
+/// Test: Parses X-RateLimit-Reset header
+#[test]
+fn test_rate_limit_info_parses_reset() {
+    let headers = vec![("X-RateLimit-Reset", "1640000000")];
+
+    let info = RateLimitInfo::from_headers(&headers);
+
+    assert_eq!(info.reset_timestamp, Some(1640000000));
+}
+
+/// Test: Parses all rate limit headers together
+#[test]
+fn test_rate_limit_info_parses_all_headers() {
+    let headers = vec![
+        ("X-RateLimit-Remaining", "950"),
+        ("X-RateLimit-Limit", "1000"),
+        ("X-RateLimit-Reset", "1640000000"),
+    ];
+
+    let info = RateLimitInfo::from_headers(&headers);
+
+    assert_eq!(info.remaining, Some(950));
+    assert_eq!(info.limit, Some(1000));
+    assert_eq!(info.reset_timestamp, Some(1640000000));
+}
+
+/// Test: RateLimitInfo handles case-insensitive headers
+#[test]
+fn test_rate_limit_info_case_insensitive() {
+    let headers = vec![
+        ("x-ratelimit-remaining", "950"),
+        ("X-RATELIMIT-LIMIT", "1000"),
+        ("X-RateLimit-Reset", "1640000000"),
+    ];
+
+    let info = RateLimitInfo::from_headers(&headers);
+
+    assert_eq!(info.remaining, Some(950));
+    assert_eq!(info.limit, Some(1000));
+    assert_eq!(info.reset_timestamp, Some(1640000000));
+}
+
+/// Test: RateLimitInfo handles missing headers
+#[test]
+fn test_rate_limit_info_missing_headers() {
+    let headers = vec![("Content-Type", "application/json")];
+
+    let info = RateLimitInfo::from_headers(&headers);
+
+    assert_eq!(info.remaining, None);
+    assert_eq!(info.limit, None);
+    assert_eq!(info.reset_timestamp, None);
+}
+
+/// Test: RateLimitInfo handles invalid header values
+#[test]
+fn test_rate_limit_info_invalid_values() {
+    let headers = vec![
+        ("X-RateLimit-Remaining", "not-a-number"),
+        ("X-RateLimit-Limit", "invalid"),
+    ];
+
+    let info = RateLimitInfo::from_headers(&headers);
+
+    // Should gracefully handle invalid values
+    assert_eq!(info.remaining, None);
+    assert_eq!(info.limit, None);
+}
+
+/// Test: RateLimitInfo default is empty
+#[test]
+fn test_rate_limit_info_default() {
+    let info = RateLimitInfo::default();
+
+    assert_eq!(info.remaining, None);
+    assert_eq!(info.limit, None);
+    assert_eq!(info.reset_timestamp, None);
 }
 
 // ============================================================================

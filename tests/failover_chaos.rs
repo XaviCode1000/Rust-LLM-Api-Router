@@ -98,7 +98,7 @@ async fn test_rapid_failover_between_accounts() {
                     if account_id.contains("1") || account_id.contains("3") {
                         Err(TestError::new(&format!("fail-{}", i)))
                     } else {
-                        Ok(format!("success-{}", account_id))
+                        Ok((format!("success-{}", account_id), vec![]))
                     }
                 }
             })
@@ -164,7 +164,7 @@ async fn test_mixed_success_failure_pattern() {
         let result: Result<String, TestError> = manager
             .execute_with_failover("openai", move |_account| async move {
                 if should_succeed {
-                    Ok("success".to_string())
+                    Ok(("success".to_string(), vec![]))
                 } else {
                     Err(TestError::new("failure"))
                 }
@@ -192,7 +192,7 @@ async fn test_health_tracking() {
     // Record successes
     for _ in 0..10 {
         let _: Result<String, TestError> = manager
-            .execute_with_failover("openai", |_account| async { Ok("success".to_string()) })
+            .execute_with_failover("openai", |_account| async { Ok(("success".to_string(), vec![])) })
             .await;
     }
 
@@ -243,7 +243,7 @@ async fn test_multiple_accounts_different_behaviors() {
                 if account_id == "bad-account" {
                     Err(TestError::new("bad account"))
                 } else {
-                    Ok("success".to_string())
+                    Ok(("success".to_string(), vec![]))
                 }
             }
         })
@@ -274,7 +274,7 @@ async fn test_concurrent_failover_requests() {
         let manager = manager.clone();
         let handle: tokio::task::JoinHandle<Result<String, TestError>> = tokio::spawn(async move {
             manager
-                .execute_with_failover("openai", |_account| async { Ok(format!("response-{}", i)) })
+                .execute_with_failover("openai", |_account| async { Ok((format!("response-{}", i), vec![])) })
                 .await
         });
         handles.push(handle);
@@ -343,7 +343,7 @@ async fn test_account_rotation() {
         let result: Result<String, TestError> = manager
             .execute_with_failover("openai", |account| {
                 let account_id = account.id.clone();
-                async move { Ok(account_id) }
+                async move { Ok((account_id, vec![])) }
             })
             .await;
 

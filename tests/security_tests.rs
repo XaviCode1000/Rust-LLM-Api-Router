@@ -258,7 +258,7 @@ async fn test_concurrent_health_map_no_race() {
                 .execute_with_failover("openai", |_| async move {
                     tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
                     if i % 2 == 0 {
-                        Ok("success".to_string())
+                        Ok(("success".to_string(), vec![]))
                     } else {
                         Err("failure".to_string())
                     }
@@ -368,7 +368,7 @@ async fn test_memory_bounded_health_tracking() {
     // Execute many requests to test memory bounds
     for _ in 0..10000 {
         let _: Result<String, String> = manager
-            .execute_with_failover("openai", |_| async { Ok("success".to_string()) })
+            .execute_with_failover("openai", |_| async { Ok(("success".to_string(), vec![])) })
             .await;
     }
 
@@ -469,7 +469,7 @@ async fn test_circuit_breaker_prevents_dos() {
     let account_health = &health_scores[0];
 
     assert!(
-        account_health.circuit_breaker_open,
+        account_health.circuit_breaker_open(),
         "Circuit breaker should be open after 5 failures"
     );
 
@@ -500,14 +500,14 @@ async fn test_circuit_breaker_timeout() {
 
     // Verify circuit is open
     let health_scores = manager.get_all_health();
-    assert!(health_scores[0].circuit_breaker_open);
+    assert!(health_scores[0].circuit_breaker_open());
 
     // Wait for recovery timeout
     tokio::time::sleep(tokio::time::Duration::from_secs(31)).await;
 
     // Should allow request (half-open)
     let result: Result<String, String> = manager
-        .execute_with_failover("openai", |_| async { Ok("recovered".to_string()) })
+        .execute_with_failover("openai", |_| async { Ok(("recovered".to_string(), vec![])) })
         .await;
 
     assert!(result.is_ok(), "Should allow after timeout");
