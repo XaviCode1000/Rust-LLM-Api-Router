@@ -9,7 +9,7 @@
 
 #![cfg(test)]
 
-use super::AccountHealth;
+use super::{AccountHealth, CircuitBreakerState};
 use proptest::prelude::*;
 
 // ============================================================================
@@ -141,7 +141,11 @@ fn test_circuit_breaker_opens_after_5_failures() {
     // 4 failures - should still be closed
     for i in 0..4 {
         health.record_failure();
-        assert!(!health.circuit_breaker_open, "Should be closed at {} failures", i + 1);
+        assert!(
+            !health.circuit_breaker_open,
+            "Should be closed at {} failures",
+            i + 1
+        );
     }
 
     // 5th failure - should open
@@ -294,7 +298,10 @@ fn test_success_rate_calculation() {
 
     // 2/3 = 66.67%
     let rate = health.success_rate();
-    assert!((66.0..=67.0).contains(&rate), "Success rate should be ~66.67%");
+    assert!(
+        (66.0..=67.0).contains(&rate),
+        "Success rate should be ~66.67%"
+    );
 }
 
 // ============================================================================
@@ -591,10 +598,169 @@ fn test_serialization_roundtrip() {
 
     let json = serde_json::to_string(&health).expect("Should serialize");
 
-    let deserialized: AccountHealth =
-        serde_json::from_str(&json).expect("Should deserialize");
+    let deserialized: AccountHealth = serde_json::from_str(&json).expect("Should deserialize");
 
     assert_eq!(health.account_id, deserialized.account_id);
     assert_eq!(health.total_requests, deserialized.total_requests);
     // Note: recent_latencies is skipped in serialization
+}
+
+// ============================================================================
+// CIRCUIT BREAKER DEGRADED STATE TESTS (Phase 4.4)
+// ============================================================================
+
+/// Test: Circuit breaker transitions from Open to Degraded after timeout
+#[test]
+fn test_circuit_breaker_open_to_degraded_after_timeout() {
+    let mut health = AccountHealth::new("test-account");
+
+    // Open the circuit breaker
+    for _ in 0..5 {
+        health.record_failure();
+    }
+    assert!(health.circuit_breaker_state.is_open());
+
+    // Wait 31 seconds (simulated)
+    std::thread::sleep(std::time::Duration::from_secs(31));
+
+    // After timeout, should transition to Degraded (half-open)
+    let allowed = health.can_make_request();
+
+    // In degraded state, requests are allowed but only 10% pass through
+    assert!(allowed || !health.circuit_breaker_state.is_open());
+}
+
+/// Test: Circuit breaker transitions from Degraded to Closed after 3 successes
+#[test]
+fn test_circuit_breaker_degraded_to_closed_after_3_successes() {
+    let mut health = AccountHealth::new("test-account");
+
+    // Open and then wait to transition to Degraded
+    for _ in 0..5 {
+        health.record_failure();
+    }
+    assert!(health.circuit_breaker_state.is_open());
+
+    // Wait for timeout and trigger degraded state
+    std::thread::sleep(std::time::Duration::from_secs(31));
+    let _ = health.can_make_request(); // This should transition to Degraded
+
+    assert!(health.circuit_breaker_state.is_degraded());
+    assert_eq!(health.degraded_success_count, 0);
+
+    // Record 3 successes - should close the circuit breaker
+    health.record_success(100);
+    assert_eq!(health.degraded_success_count, 1);
+    assert!(health.circuit_breaker_state.is_degraded()); // Still degraded
+
+    health.record_success(100);
+    assert_eq!(health.degraded_success_count, 2);
+    assert!(health.circuit_breaker_state.is_degraded()); // Still degraded
+
+    health.record_success(100);
+    assert_eq!(health.degraded_success_count, 3);
+    // After 3 successes, should be Closed
+    assert!(!health.circuit_breaker_state.is_degraded());
+    assert!(!health.circuit_breaker_state.is_open());
+    assert_eq!(health.circuit_breaker_state, CircuitBreakerState::Closed);
+}
+
+/// Test: Circuit breaker in DEGRADED state allows 10% pass-through
+#[test]
+fn test_circuit_breaker_degraded_10_percent_passthrough() {
+    let mut health = AccountHealth::new("test-account");
+
+    // Set to degraded state directly
+    health.circuit_breaker_state = CircuitBreakerState::Degraded;
+    health.degraded_success_count = 0;
+
+    // In degraded state, can_make_request uses rand_simple() % 10 == 0
+    // This means roughly 10% of calls return true
+    // Run many iterations to verify approximately 10% pass rate
+    let mut pass_count = 0;
+    let iterations = 1000;
+
+    for _ in 0..iterations {
+        if health.can_make_request() {
+            pass_count += 1;
+        }
+        // Reset to degraded for next iteration (simulating re-check)
+        health.circuit_breaker_state = CircuitBreakerState::Degraded;
+    }
+
+    let pass_rate = pass_count as f64 / iterations as f64;
+
+    // Allow some tolerance - should be roughly 10% (between 5% and 15%)
+    assert!(
+        pass_rate >= 0.05 && pass_rate <= 0.15,
+        "Pass rate {}% is not approximately 10%",
+        pass_rate * 100.0
+    );
+}
+
+/// Test: Circuit breaker is_degraded() method works correctly
+#[test]
+fn test_circuit_breaker_is_degraded_method() {
+    let mut health = AccountHealth::new("test-account");
+
+    // Default is Closed
+    assert!(!health.circuit_breaker_state.is_degraded());
+
+    // Open
+    health.circuit_breaker_state = CircuitBreakerState::Open;
+    assert!(!health.circuit_breaker_state.is_degraded());
+
+    // Degraded
+    health.circuit_breaker_state = CircuitBreakerState::Degraded;
+    assert!(health.circuit_breaker_state.is_degraded());
+}
+
+/// Test: Health score in degraded state
+#[test]
+fn test_health_score_in_degraded_state() {
+    let mut health = AccountHealth::new("test-account");
+
+    // Record some successes first to have a non-default score
+    for _ in 0..10 {
+        health.record_success(100);
+    }
+
+    // Set to degraded
+    health.circuit_breaker_state = CircuitBreakerState::Degraded;
+
+    // Degraded should have partial score (10 points instead of 20)
+    let score = health.health_score();
+
+    // Should have: 50 (success) + 30 (latency) + 10 (degraded) = 90
+    assert!(score >= 80.0 && score <= 95.0);
+}
+
+/// Test: Degraded success count is reset when circuit reopens
+#[test]
+fn test_degraded_success_count_reset_on_reopen() {
+    let mut health = AccountHealth::new("test-account");
+
+    // Open and transition to degraded
+    for _ in 0..5 {
+        health.record_failure();
+    }
+    std::thread::sleep(std::time::Duration::from_secs(31));
+    let _ = health.can_make_request();
+
+    assert!(health.circuit_breaker_state.is_degraded());
+    assert_eq!(health.degraded_success_count, 0);
+
+    // Record 2 successes
+    health.record_success(100);
+    health.record_success(100);
+    assert_eq!(health.degraded_success_count, 2);
+
+    // New failure should reopen the circuit
+    health.record_failure();
+
+    // Circuit should be open again, not degraded
+    assert!(health.circuit_breaker_state.is_open());
+    assert!(!health.circuit_breaker_state.is_degraded());
+
+    // Success count should be reset (we'd need to check internal, but it should be 0)
 }

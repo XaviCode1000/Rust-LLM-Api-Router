@@ -527,7 +527,7 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
             }
 
             // Filter by circuit breaker
-            if health.circuit_breaker_open {
+            if health.circuit_breaker_open() {
                 continue;
             }
 

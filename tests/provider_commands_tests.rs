@@ -121,6 +121,10 @@ async fn handle_provider_command_with_dir(
             println!("✓ Provider '{}' removed successfully", args.id);
             Ok(())
         }
+        ProviderCommands::Models(_args) => {
+            println!("Models command not implemented in test");
+            Ok(())
+        }
         ProviderCommands::Enable(args) => {
             let mut provider = repo
                 .find_by_id(&args.id)

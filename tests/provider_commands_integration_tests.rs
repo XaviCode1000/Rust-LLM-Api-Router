@@ -5,15 +5,16 @@
 
 use rust_llm_api_router::cli::provider_commands::*;
 use rust_llm_api_router::domain::ProviderRepository;
-use rust_llm_api_router::infrastructure::JsonProviderRepository;
+use rust_llm_api_router::infrastructure::{JsonAccountRepository, JsonProviderRepository};
 use rust_llm_api_router::Error;
 use tempfile::TempDir;
 
 /// Helper para crear repository en directorio temporal
-fn create_test_repo() -> (JsonProviderRepository, TempDir) {
+fn create_test_repo() -> (JsonProviderRepository, JsonAccountRepository, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let repo = JsonProviderRepository::with_config_dir(temp_dir.path()).unwrap();
-    (repo, temp_dir)
+    let account_repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+    (repo, account_repo, temp_dir)
 }
 
 /// Helper para crear AddProviderArgs
@@ -30,7 +31,7 @@ fn create_add_args(id: &str, name: &str, base_url: &str, api_key: Option<&str>) 
 
 #[tokio::test]
 async fn test_cli_add_provider_with_real_validation() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // Valid provider with all required fields
     let args = create_add_args(
@@ -53,7 +54,7 @@ async fn test_cli_add_provider_with_real_validation() {
 
 #[tokio::test]
 async fn test_cli_add_provider_url_validation() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // Invalid URL - should still add (validation is minimal)
     let args = create_add_args(
@@ -79,7 +80,7 @@ async fn test_cli_add_provider_url_validation() {
 
 #[tokio::test]
 async fn test_cli_add_provider_without_api_key() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // Provider without API key (warning should be printed)
     let args = create_add_args(
@@ -101,7 +102,7 @@ async fn test_cli_add_provider_without_api_key() {
 
 #[tokio::test]
 async fn test_cli_add_provider_disabled_flag() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     let mut args = create_add_args(
         "disabled-provider",
@@ -121,7 +122,7 @@ async fn test_cli_add_provider_disabled_flag() {
 
 #[tokio::test]
 async fn test_cli_add_duplicate_provider() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // Add provider first time
     let args1 = create_add_args(
@@ -151,7 +152,7 @@ async fn test_cli_add_duplicate_provider() {
 
 #[tokio::test]
 async fn test_cli_list_providers_formatting() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // Add multiple providers
     let args1 = create_add_args("prov-1", "Provider 1", "https://api.1.com", Some("key-1"));
@@ -163,7 +164,7 @@ async fn test_cli_list_providers_formatting() {
     cmd_add_provider(args3, &repo).await.unwrap();
 
     // List providers - should not error
-    let result = cmd_list_providers(&repo).await;
+    let result = cmd_list_providers(&repo, &account_repo).await;
     assert!(result.is_ok());
 
     // Verify all providers exist
@@ -178,16 +179,16 @@ async fn test_cli_list_providers_formatting() {
 
 #[tokio::test]
 async fn test_cli_list_empty_providers() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // List with no providers
-    let result = cmd_list_providers(&repo).await;
+    let result = cmd_list_providers(&repo, &account_repo).await;
     assert!(result.is_ok());
 }
 
 #[tokio::test]
 async fn test_cli_enable_disable_provider_workflow() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // Add provider
     let args = create_add_args(
@@ -227,7 +228,7 @@ async fn test_cli_enable_disable_provider_workflow() {
 
 #[tokio::test]
 async fn test_cli_enable_nonexistent_provider() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     let args = EnableProviderArgs {
         id: "nonexistent".to_string(),
@@ -244,7 +245,7 @@ async fn test_cli_enable_nonexistent_provider() {
 
 #[tokio::test]
 async fn test_cli_disable_nonexistent_provider() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     let args = DisableProviderArgs {
         id: "nonexistent".to_string(),
@@ -261,7 +262,7 @@ async fn test_cli_disable_nonexistent_provider() {
 
 #[tokio::test]
 async fn test_cli_remove_provider_workflow() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // Add provider
     let args = create_add_args(
@@ -290,7 +291,7 @@ async fn test_cli_remove_provider_workflow() {
 
 #[tokio::test]
 async fn test_cli_remove_nonexistent_provider() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     let args = RemoveProviderArgs {
         id: "nonexistent".to_string(),
@@ -307,7 +308,7 @@ async fn test_cli_remove_nonexistent_provider() {
 
 #[tokio::test]
 async fn test_cli_remove_and_readd_provider() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // Add provider
     let args1 = create_add_args(
@@ -364,7 +365,7 @@ async fn test_cli_provider_persistence_across_repo_reloads() {
 
 #[tokio::test]
 async fn test_cli_provider_with_special_characters() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // Provider with special characters in name
     let args = create_add_args(
@@ -384,7 +385,7 @@ async fn test_cli_provider_with_special_characters() {
 
 #[tokio::test]
 async fn test_cli_provider_with_long_name() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     let long_name = "A".repeat(200); // 200 character name
     let args = create_add_args(
@@ -404,7 +405,7 @@ async fn test_cli_provider_with_long_name() {
 
 #[tokio::test]
 async fn test_cli_provider_url_with_different_schemes() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // HTTP URL
     let args1 = create_add_args(
@@ -449,7 +450,7 @@ async fn test_cli_provider_url_with_different_schemes() {
 
 #[tokio::test]
 async fn test_cli_provider_enable_disable_multiple_times() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // Add provider
     let args = create_add_args(
@@ -490,7 +491,7 @@ async fn test_cli_provider_enable_disable_multiple_times() {
 
 #[tokio::test]
 async fn test_cli_provider_validate_command() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // Add provider
     let args = create_add_args(
@@ -513,7 +514,7 @@ async fn test_cli_provider_validate_command() {
 
 #[tokio::test]
 async fn test_cli_provider_validate_nonexistent() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     let args = ValidateProviderArgs {
         id: "nonexistent".to_string(),
@@ -530,7 +531,7 @@ async fn test_cli_provider_validate_nonexistent() {
 
 #[tokio::test]
 async fn test_cli_provider_validate_disabled_provider() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // Add and disable provider
     let mut args = create_add_args(
@@ -554,7 +555,7 @@ async fn test_cli_provider_validate_disabled_provider() {
 
 #[tokio::test]
 async fn test_cli_provider_crud_complete_workflow() {
-    let (repo, _temp_dir) = create_test_repo();
+    let (repo, account_repo, _temp_dir) = create_test_repo();
 
     // CREATE
     let add_args = create_add_args(

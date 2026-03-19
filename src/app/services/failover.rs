@@ -3,11 +3,12 @@
 //! This module provides automatic failover between accounts when requests fail.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::domain::traits::AccountRepository;
 use crate::domain::{Account, AccountHealth};
 
-use super::account_rotation::AccountSelector;
+use super::account_rotation::{AccountSelector, BackoffConfig, RateLimitInfo};
 
 /// Failover manager for account requests.
 ///
@@ -24,6 +25,9 @@ pub struct FailoverManager {
 
     /// Maximum retry attempts
     max_retries: u32,
+
+    /// Backoff configuration for retries
+    backoff_config: BackoffConfig,
 }
 
 impl FailoverManager {
@@ -57,6 +61,23 @@ impl FailoverManager {
             selector,
             health_map: std::sync::Mutex::new(std::collections::HashMap::new()),
             max_retries,
+            backoff_config: BackoffConfig::default(),
+        }
+    }
+
+    /// Creates a new failover manager with custom backoff config.
+    pub fn with_backoff(
+        account_repo: Arc<dyn AccountRepository>,
+        selector: AccountSelector,
+        max_retries: u32,
+        backoff_config: BackoffConfig,
+    ) -> Self {
+        Self {
+            account_repo,
+            selector,
+            health_map: std::sync::Mutex::new(std::collections::HashMap::new()),
+            max_retries,
+            backoff_config,
         }
     }
 
@@ -111,6 +132,8 @@ impl FailoverManager {
     /// # Arguments
     /// * `provider_id` - Provider ID to get accounts for
     /// * `execute` - Async function to execute the request with an account
+    ///               Returns `Result<(T, Vec<(String, String)>), E>` where the tuple
+    ///               contains the response and optional response headers for rate limiting
     ///
     /// # Returns
     /// The response if successful, or the last error if all accounts fail
@@ -138,7 +161,8 @@ impl FailoverManager {
     ///         let account_id = account.id.clone();
     ///         async move {
     ///             // Execute request with account.api_key
-    ///             Ok(format!("Success with {}", account_id))
+    ///             // Return response with optional headers (empty vec if no headers)
+    ///             Ok((format!("Success with {}", account_id), vec![]))
     ///         }
     ///     })
     ///     .await;
@@ -152,7 +176,7 @@ impl FailoverManager {
     ) -> Result<T, E>
     where
         F: Fn(&Account) -> Fut,
-        Fut: std::future::Future<Output = Result<T, E>>,
+        Fut: std::future::Future<Output = Result<(T, Vec<(String, String)>), E>>,
         E: std::fmt::Debug + Clone,
     {
         // Get active accounts for provider
@@ -191,8 +215,11 @@ impl FailoverManager {
                 // Execute request
                 let start = std::time::Instant::now();
                 match execute(account).await {
-                    Ok(response) => {
-                        // Record success
+                    Ok((response, headers)) => {
+                        // Parse rate limit info from headers and update health
+                        self.update_rate_limits(&account.id, &headers);
+                        
+                        // Record success with latency
                         self.record_success(&account.id, start.elapsed().as_millis() as u64);
                         return Ok(response);
                     }
@@ -201,8 +228,10 @@ impl FailoverManager {
                         self.record_failure(&account.id);
                         last_error = Some(e);
 
-                        // Continue to next account if we have retries left
+                        // Apply backoff delay before next retry (only if we have more accounts to try)
                         if attempt < self.max_retries as usize - 1 {
+                            let delay_ms = self.backoff_config.calculate_delay(attempt as u32);
+                            tokio::time::sleep(Duration::from_millis(delay_ms)).await;
                             continue;
                         }
                     }
@@ -245,6 +274,27 @@ impl FailoverManager {
         health.record_failure();
     }
 
+    /// Updates rate limit information from response headers.
+    fn update_rate_limits(&self, account_id: &str, headers: &[(String, String)]) {
+        if headers.is_empty() {
+            return;
+        }
+        
+        let rate_limit_info = RateLimitInfo::from_headers(headers);
+        
+        let mut health_map = self.health_map.lock().unwrap();
+        let health = health_map
+            .entry(account_id.to_string())
+            .or_insert_with(|| AccountHealth::new(account_id));
+        
+        if let Some(remaining) = rate_limit_info.remaining {
+            health.quota_remaining = Some(remaining);
+        }
+        if let Some(limit) = rate_limit_info.limit {
+            health.quota_limit = Some(limit);
+        }
+    }
+
     /// Creates a "no accounts available" error.
     fn create_no_accounts_error<T>(&self, provider_id: &str) -> T {
         // This is a workaround - in real code, we'd have a proper error type
@@ -261,5 +311,63 @@ impl FailoverManager {
     pub fn get_all_health(&self) -> Vec<AccountHealth> {
         let health_map = self.health_map.lock().unwrap();
         health_map.values().cloned().collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_backoff_exponential_increase() {
+        let config = BackoffConfig::new(100, 10000, 0.1, 3);
+
+        let delay0 = config.calculate_delay(0);
+        let delay1 = config.calculate_delay(1);
+        let delay2 = config.calculate_delay(2);
+
+        assert!(delay0 <= config.max_delay_ms);
+        assert!(delay1 <= config.max_delay_ms);
+        assert!(delay2 <= config.max_delay_ms);
+
+        let base = 100_u64;
+        // Account for jitter multiplier range [0.9, 1.1]
+        assert!(delay0 >= base * 1 * 9 / 10); // 90
+        assert!(delay1 >= base * 2 * 9 / 10); // 180
+        assert!(delay2 >= base * 4 * 9 / 10); // 360
+    }
+
+    #[test]
+    fn test_backoff_max_delay_capped() {
+        let config = BackoffConfig::new(1000, 500, 0.1, 10);
+
+        for attempt in 0..10 {
+            let delay = config.calculate_delay(attempt);
+            assert!(delay <= 500, "Delay {} exceeded max 500", delay);
+        }
+    }
+
+    #[test]
+    fn test_backoff_jitter_variation() {
+        let config = BackoffConfig::new(1000, 10000, 0.1, 3);
+
+        let mut delays: Vec<u64> = (0..10)
+            .map(|_| config.calculate_delay(2))
+            .collect();
+
+        delays.sort();
+        let min = delays.first().copied().unwrap_or(0);
+        let max = delays.last().copied().unwrap_or(0);
+
+        assert!(min != max || max == 0, "Jitter should produce variation in delays");
+    }
+
+    #[test]
+    fn test_backoff_config_default() {
+        let config = BackoffConfig::default();
+        assert_eq!(config.base_delay_ms, 100);
+        assert_eq!(config.max_delay_ms, 10000);
+        assert_eq!(config.jitter_factor, 0.1);
+        assert_eq!(config.max_retries, 3);
     }
 }

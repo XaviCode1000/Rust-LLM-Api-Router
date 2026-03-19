@@ -16,17 +16,18 @@ use rust_llm_api_router::cli::provider_commands::{
 };
 use rust_llm_api_router::domain::traits::ProviderRepository;
 use rust_llm_api_router::domain::Provider;
-use rust_llm_api_router::infrastructure::JsonProviderRepository;
+use rust_llm_api_router::infrastructure::{JsonAccountRepository, JsonProviderRepository};
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
-fn create_test_repo() -> (TempDir, JsonProviderRepository) {
+fn create_test_repo() -> (TempDir, JsonProviderRepository, JsonAccountRepository) {
     let temp_dir = TempDir::new().unwrap();
     std::env::set_var("XDG_CONFIG_HOME", temp_dir.path());
     let repo = JsonProviderRepository::with_config_dir(temp_dir.path()).unwrap();
-    (temp_dir, repo)
+    let account_repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+    (temp_dir, repo, account_repo)
 }
 
 // ============================================================================
@@ -35,7 +36,7 @@ fn create_test_repo() -> (TempDir, JsonProviderRepository) {
 
 #[tokio::test]
 async fn test_cli_add_provider_success_enabled() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     let args = AddProviderArgs {
         id: "test-provider".to_string(),
@@ -59,7 +60,7 @@ async fn test_cli_add_provider_success_enabled() {
 
 #[tokio::test]
 async fn test_cli_add_provider_success_disabled() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     let args = AddProviderArgs {
         id: "disabled-provider".to_string(),
@@ -80,7 +81,7 @@ async fn test_cli_add_provider_success_disabled() {
 
 #[tokio::test]
 async fn test_cli_add_provider_empty_api_key_warning() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     let args = AddProviderArgs {
         id: "no-key-provider".to_string(),
@@ -98,7 +99,7 @@ async fn test_cli_add_provider_empty_api_key_warning() {
 
 #[tokio::test]
 async fn test_cli_add_provider_duplicate_overwrites() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     // Add first provider
     let args1 = AddProviderArgs {
@@ -134,16 +135,16 @@ async fn test_cli_add_provider_duplicate_overwrites() {
 
 #[tokio::test]
 async fn test_cli_list_providers_empty() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
-    let result = cmd_list_providers(&repo).await;
+    let result = cmd_list_providers(&repo, &account_repo).await;
 
     assert!(result.is_ok());
 }
 
 #[tokio::test]
 async fn test_cli_list_providers_with_data() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     repo.save(Provider::new("prov-1", "Provider 1", "https://prov1.com"))
         .await
@@ -159,7 +160,7 @@ async fn test_cli_list_providers_with_data() {
     .await
     .unwrap();
 
-    let result = cmd_list_providers(&repo).await;
+    let result = cmd_list_providers(&repo, &account_repo).await;
 
     assert!(result.is_ok());
 
@@ -169,7 +170,7 @@ async fn test_cli_list_providers_with_data() {
 
 #[tokio::test]
 async fn test_cli_list_providers_displays_enabled_disabled() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     repo.save(Provider::new(
         "enabled-prov",
@@ -186,7 +187,7 @@ async fn test_cli_list_providers_displays_enabled_disabled() {
     .await
     .unwrap();
 
-    let result = cmd_list_providers(&repo).await;
+    let result = cmd_list_providers(&repo, &account_repo).await;
 
     assert!(result.is_ok());
 }
@@ -198,7 +199,7 @@ async fn test_cli_list_providers_displays_enabled_disabled() {
 #[tokio::test]
 #[ignore]
 async fn test_cli_remove_provider_success() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     repo.save(Provider::new(
         "to-remove",
@@ -225,7 +226,7 @@ async fn test_cli_remove_provider_success() {
 
 #[tokio::test]
 async fn test_cli_remove_provider_not_found() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     let args = RemoveProviderArgs {
         id: "non-existent".to_string(),
@@ -242,7 +243,7 @@ async fn test_cli_remove_provider_not_found() {
 #[tokio::test]
 #[ignore]
 async fn test_cli_remove_provider_from_multiple() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     repo.save(Provider::new("prov-1", "Provider 1", "https://prov1.com"))
         .await
@@ -275,7 +276,7 @@ async fn test_cli_remove_provider_from_multiple() {
 
 #[tokio::test]
 async fn test_cli_enable_provider_success() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     repo.save(Provider::disabled(
         "disabled-to-enable",
@@ -298,7 +299,7 @@ async fn test_cli_enable_provider_success() {
 
 #[tokio::test]
 async fn test_cli_enable_provider_already_enabled() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     repo.save(Provider::new(
         "already-enabled",
@@ -321,7 +322,7 @@ async fn test_cli_enable_provider_already_enabled() {
 
 #[tokio::test]
 async fn test_cli_enable_provider_not_found() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     let args = EnableProviderArgs {
         id: "non-existent".to_string(),
@@ -341,7 +342,7 @@ async fn test_cli_enable_provider_not_found() {
 
 #[tokio::test]
 async fn test_cli_disable_provider_success() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     repo.save(Provider::new(
         "enabled-to-disable",
@@ -364,7 +365,7 @@ async fn test_cli_disable_provider_success() {
 
 #[tokio::test]
 async fn test_cli_disable_provider_already_disabled() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     repo.save(Provider::disabled(
         "already-disabled",
@@ -387,7 +388,7 @@ async fn test_cli_disable_provider_already_disabled() {
 
 #[tokio::test]
 async fn test_cli_disable_provider_not_found() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     let args = DisableProviderArgs {
         id: "non-existent".to_string(),
@@ -407,7 +408,7 @@ async fn test_cli_disable_provider_not_found() {
 
 #[tokio::test]
 async fn test_cli_validate_provider_success() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     repo.save(Provider::new(
         "validate-prov",
@@ -427,7 +428,7 @@ async fn test_cli_validate_provider_success() {
 
 #[tokio::test]
 async fn test_cli_validate_provider_disabled_warning() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     repo.save(Provider::disabled(
         "disabled-validate",
@@ -447,7 +448,7 @@ async fn test_cli_validate_provider_disabled_warning() {
 
 #[tokio::test]
 async fn test_cli_validate_provider_not_found() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     let args = ValidateProviderArgs {
         id: "non-existent".to_string(),
@@ -463,7 +464,7 @@ async fn test_cli_validate_provider_not_found() {
 
 #[tokio::test]
 async fn test_cli_validate_provider_unreachable_url() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     // Use a URL that will fail
     repo.save(Provider::new(
@@ -579,7 +580,7 @@ fn test_provider_commands_validate_variant() {
 #[tokio::test]
 #[ignore]
 async fn test_cli_multiple_providers_workflow() {
-    let (_temp_dir, repo) = create_test_repo();
+    let (_temp_dir, repo, account_repo) = create_test_repo();
 
     // Add multiple providers
     cmd_add_provider(
