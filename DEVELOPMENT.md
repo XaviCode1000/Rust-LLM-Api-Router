@@ -79,10 +79,10 @@ sccache --show-stats  # View cache stats
 
 ```bash
 # Clippy with warnings as errors
-cargo clippy -- -D warnings
+cargo clippy -D warnings
 
 # Auto-fix
-cargo clippy --fix -- -D warnings
+cargo clippy --fix
 ```
 
 ### Formatting
@@ -146,6 +146,22 @@ Rust-LLM-Api-Router/
 ├── scripts/
 │   ├── dev.sh               # Watch mode + clippy + nextest
 │   └── coverage.sh          # LLVM coverage report
+├── src/
+│   ├── main.rs              # Entry point
+│   ├── lib.rs               # Public API + re-exports
+│   ├── domain/              # Entities, traits, errors
+│   ├── app/                 # Services, router, execution_plan
+│   ├── infrastructure/      # HTTP, persistence, auth, providers
+│   ├── interfaces/          # HTTP handlers
+│   └── presentation/        # Routes, state, CLI
+│       └── cli/
+│           ├── mod.rs       # Cli struct, dispatcher
+│           ├── commands/
+│           │   ├── provider.rs    # Provider CRUD
+│           │   ├── account.rs     # Account CRUD
+│           │   ├── auth.rs        # Login/logout
+│           │   └── completions.rs # Shell completions (feature-gated)
+│           └── input.rs           # Shared input helpers
 ├── tests/
 │   ├── error_snapshots.rs   # Insta snapshot tests
 │   ├── failover_integration.rs
@@ -154,6 +170,8 @@ Rust-LLM-Api-Router/
 │   └── failover_chaos.rs    # Turmoil chaos tests
 ├── coverage-llvm/           # Generated coverage report
 └── docs/
+    ├── cli.md               # CLI reference
+    ├── architecture.md      # Architecture docs
     └── coverage-report.md   # Coverage analysis
 ```
 
@@ -175,7 +193,7 @@ Rust-LLM-Api-Router/
 ```bash
 # Format + lint + test
 cargo fmt
-cargo clippy -- -D warnings
+cargo clippy -D warnings
 cargo nextest run --test-threads 2
 ```
 
@@ -186,7 +204,7 @@ cargo nextest run --test-threads 2
 ./scripts/coverage.sh
 
 # Target: >80% en código crítico
-# Current: 35.81% (needs improvement!)
+# Current: 80.35% ✅
 ```
 
 ---
@@ -235,6 +253,6 @@ cargo llvm-cov --clean --html
 
 ---
 
-**Last updated**: 2026-03-14  
+**Last updated**: 2026-03-29  
 **Rust version**: 1.93.0  
 **Stack version**: 2025-26 optimal
