@@ -291,7 +291,6 @@ mod tests {
     use std::sync::Arc;
     use std::sync::Mutex;
 
-
     // Mock repositories for testing
     struct MockAccountRepository {
         accounts: Mutex<std::collections::HashMap<String, Account>>,

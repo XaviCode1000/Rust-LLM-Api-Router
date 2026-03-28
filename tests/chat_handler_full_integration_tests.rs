@@ -21,13 +21,13 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use rust_llm_api_router::config::Settings;
 use rust_llm_api_router::domain::{Account, AccountRepository};
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
-use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, Metrics};
+use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository};
 use rust_llm_api_router::interfaces::handlers::chat_handler::chat_completions;
 use rust_llm_api_router::presentation::AppState;
 
 /// Helper function to create AppState with required fields
 fn create_test_app_state(
-    temp_dir: &TempDir,
+    _temp_dir: &TempDir,
     http_client: Arc<HttpClient>,
     account_repo: Arc<dyn AccountRepository>,
     provider_config: std::collections::HashMap<

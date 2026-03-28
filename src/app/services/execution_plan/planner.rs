@@ -694,7 +694,6 @@ mod tests {
     use super::super::PlanningOptions;
     use super::*;
 
-
     #[test]
     fn test_config_defaults() {
         let config = ExecutionPlannerConfig::default();
