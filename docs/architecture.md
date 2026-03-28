@@ -220,21 +220,44 @@ impl AccountRepository for JsonAccountRepository {
 
 **Ubicación:** `src/presentation/` + `src/interfaces/`
 
-HTTP handlers y routes.
+HTTP handlers, routes y CLI commands.
 
 ```
 src/presentation/
 ├── mod.rs
-├── routes.rs             # Definición de routes
-└── state.rs              # AppState
+├── routes.rs                  # Definición de routes
+├── state.rs                   # AppState
+└── cli/
+    ├── mod.rs                 # Cli struct, CliCommands enum, dispatcher
+    └── commands/
+        ├── mod.rs
+        ├── provider.rs        # Provider subcommands
+        ├── account.rs         # Account subcommands
+        ├── auth.rs            # Auth (login/logout)
+        ├── completions.rs     # Shell completions (feature-gated: --features completions)
+        └── input.rs           # Shared input helpers
 
 src/interfaces/
 ├── mod.rs
 └── handlers/
     ├── mod.rs
-    ├── chat_handler.rs   # /v1/chat/completions
-    └── health_handler.rs # /health, /health/detail
+    ├── chat_handler.rs        # /v1/chat/completions
+    └── health_handler.rs      # /health, /health/detail
 ```
+
+**Trait-based DI en CLI:**
+
+Los comandos CLI reciben repositorios vía traits, no instancias concretas:
+
+```rust
+// Los comandos aceptan &impl ProviderRepository / &impl AccountRepository
+pub fn handle_provider_add(
+    repo: &impl ProviderRepository,
+    args: ProviderAddArgs,
+) -> Result<(), DomainError> { ... }
+```
+
+Esto permite testear los comandos con mocks sin dependencia de infraestructura.
 
 **AppState:**
 

@@ -12,10 +12,14 @@ use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, Scope, TokenUrl};
 /// like CLI applications.
 pub struct PkceAuthStrategy {
     client_id: ClientId,
+    #[allow(dead_code)]
     client_secret: Option<ClientSecret>,
     auth_url: AuthUrl,
+    #[allow(dead_code)]
     token_url: TokenUrl,
+    #[allow(dead_code)]
     redirect_url: RedirectUrl,
+    #[allow(dead_code)]
     scopes: Vec<Scope>,
 }
 
@@ -35,7 +39,7 @@ impl PkceAuthStrategy {
             auth_url: AuthUrl::new(auth_url.into())?,
             token_url: TokenUrl::new(token_url.into())?,
             redirect_url: RedirectUrl::new(redirect_url.into())?,
-            scopes: scopes.into_iter().map(|s| Scope::new(s.into())).collect(),
+            scopes: scopes.into_iter().map(Scope::new).collect(),
         })
     }
 }

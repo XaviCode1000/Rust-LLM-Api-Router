@@ -290,7 +290,7 @@ mod tests {
     use async_trait::async_trait;
     use std::sync::Arc;
     use std::sync::Mutex;
-    use tempfile::TempDir;
+
 
     // Mock repositories for testing
     struct MockAccountRepository {
@@ -383,6 +383,7 @@ mod tests {
     }
 
     // Mock authentication strategy for testing
+    #[allow(dead_code)]
     struct MockAuthStrategy {
         auth_type: &'static str,
         should_succeed: bool,

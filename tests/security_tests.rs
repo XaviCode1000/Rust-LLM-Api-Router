@@ -507,7 +507,9 @@ async fn test_circuit_breaker_timeout() {
 
     // Should allow request (half-open)
     let result: Result<String, String> = manager
-        .execute_with_failover("openai", |_| async { Ok(("recovered".to_string(), vec![])) })
+        .execute_with_failover("openai", |_| async {
+            Ok(("recovered".to_string(), vec![]))
+        })
         .await;
 
     assert!(result.is_ok(), "Should allow after timeout");

@@ -7,9 +7,10 @@ use serde::{Deserialize, Serialize};
 use crate::domain::entities::{AccountHealth, Provider};
 
 /// Type of execution plan strategy.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum ExecutionPlanType {
     /// Standard execution with single account
+    #[default]
     Standard,
 
     /// Execution with automatic failover
@@ -52,12 +53,6 @@ impl ExecutionPlanType {
 impl std::fmt::Display for ExecutionPlanType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name())
-    }
-}
-
-impl Default for ExecutionPlanType {
-    fn default() -> Self {
-        Self::Standard
     }
 }
 
@@ -156,7 +151,6 @@ impl PlannedAccount {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::entities::Account;
 
     #[test]
     fn test_execution_plan_type_name() {

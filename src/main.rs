@@ -19,7 +19,7 @@
 //! ```
 
 use clap::Parser;
-use rust_llm_api_router::cli::Cli;
+use rust_llm_api_router::presentation::cli::Cli;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
 
     // Handle CLI subcommands
     if let Some(commands) = cli.commands {
-        return rust_llm_api_router::cli::handle_command(commands).await;
+        return rust_llm_api_router::presentation::cli::handle_command(commands).await;
     }
 
     // Server mode

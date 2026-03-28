@@ -1,8 +1,8 @@
 use crate::app::services::auth::AuthService;
 use crate::domain::traits::{AccountRepository, ProviderRepository};
 use crate::error::Result;
-use crate::infrastructure::{JsonAccountRepository, JsonProviderRepository};
 use crate::infrastructure::gateway::llm_gateway::default_providers;
+use crate::infrastructure::{JsonAccountRepository, JsonProviderRepository};
 use std::sync::Arc;
 
 /// Handle the login command to initiate authentication flow.
@@ -18,7 +18,10 @@ pub async fn handle_login_command(provider_id: String) -> Result<()> {
         return Ok(());
     }
 
-    println!("Starting authentication process for provider '{}'...", provider_id);
+    println!(
+        "Starting authentication process for provider '{}'...",
+        provider_id
+    );
 
     // Initialize repositories as trait objects
     let account_repo: Arc<dyn AccountRepository + Send + Sync> =

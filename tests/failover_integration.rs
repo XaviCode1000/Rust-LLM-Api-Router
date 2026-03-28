@@ -247,7 +247,9 @@ async fn test_health_tracking_concurrent() {
         let handle: tokio::task::JoinHandle<Result<String, String>> = tokio::spawn(async move {
             if i % 2 == 0 {
                 manager
-                    .execute_with_failover("openai", |_| async { Ok(("success".to_string(), vec![])) })
+                    .execute_with_failover("openai", |_| async {
+                        Ok(("success".to_string(), vec![]))
+                    })
                     .await
             } else {
                 manager

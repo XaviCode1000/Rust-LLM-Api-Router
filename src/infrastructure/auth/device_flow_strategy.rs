@@ -13,11 +13,16 @@ use crate::domain::services::auth_strategy::AuthenticationStrategy;
 /// environments where a browser is not readily available.
 pub struct DeviceFlowAuthStrategy {
     client_id: ClientId,
+    #[allow(dead_code)]
     client_secret: Option<ClientSecret>,
+    #[allow(dead_code)]
     device_auth_url: AuthUrl,
+    #[allow(dead_code)]
     token_url: TokenUrl,
+    #[allow(dead_code)]
     scopes: Vec<oauth2::Scope>,
     /// Polling interval in seconds (default: 5 seconds)
+    #[allow(dead_code)]
     polling_interval: u64,
 }
 
@@ -36,10 +41,7 @@ impl DeviceFlowAuthStrategy {
             client_secret: client_secret.map(|s| ClientSecret::new(s.into())),
             device_auth_url: AuthUrl::new(device_auth_url.into())?,
             token_url: TokenUrl::new(token_url.into())?,
-            scopes: scopes
-                .into_iter()
-                .map(|s| oauth2::Scope::new(s.into()))
-                .collect(),
+            scopes: scopes.into_iter().map(oauth2::Scope::new).collect(),
             polling_interval: polling_interval.unwrap_or(5),
         })
     }

@@ -29,6 +29,7 @@ A high-performance LLM proxy/router built with Clean Architecture in Rust. Route
 - **OpenAI-Compatible API**: Drop-in replacement for OpenAI clients
 - **Health Monitoring**: Real-time health checks and metrics
 - **Integrated CLI**: Manage providers and accounts from the terminal
+- **Shell Completions**: Auto-completion for bash, zsh, and fish (build with `--features completions`)
 - **Execution Planning**: Proactive planning with multiple strategies (Standard, Failover, Load Balanced, Cost Optimized)
 - **OAuth 2.1 / PKCE**: Secure authentication flow support
 

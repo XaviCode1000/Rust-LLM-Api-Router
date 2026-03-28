@@ -23,7 +23,6 @@ use rust_llm_api_router::infrastructure::JsonAccountRepository;
 
 fn create_test_repo() -> (TempDir, JsonAccountRepository) {
     let temp_dir = TempDir::new().unwrap();
-    std::env::set_var("XDG_CONFIG_HOME", temp_dir.path());
     let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
     (temp_dir, repo)
 }
@@ -209,7 +208,6 @@ async fn test_cli_list_accounts_displays_correctly() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore]
 async fn test_cli_remove_account_success() {
     let (_temp_dir, repo) = create_test_repo();
 
@@ -249,7 +247,6 @@ async fn test_cli_remove_account_not_found() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn test_cli_remove_account_from_multiple() {
     let (_temp_dir, repo) = create_test_repo();
 
@@ -572,7 +569,6 @@ async fn test_cli_multiple_accounts_different_providers() {
 }
 
 #[tokio::test]
-#[ignore] // Temporarily ignored - race condition in test
 async fn test_cli_account_workflow_add_list_remove() {
     let (_temp_dir, repo) = create_test_repo();
 

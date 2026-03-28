@@ -1,4 +1,3 @@
-```
 # Compiled and build artifacts
 *.pyc
 __pycache__/
@@ -6,6 +5,7 @@ __pycache__/
 *.obj
 dist/
 build/
+target/
 
 # Dependencies
 .venv/
@@ -16,6 +16,7 @@ node_modules/
 *.log
 *.tmp
 *.swp
+*.backup
 
 # Environment
 .env
@@ -28,4 +29,25 @@ node_modules/
 
 # Cargo
 .cargo/
-```
+
+# AI Agent tooling (local configs, not for repo)
+.qwen/
+.opencode/
+.agent/
+.atl/
+
+# Coverage reports (generated)
+coverage/
+coverage-llvm/
+
+# SDD artifacts
+openspec/
+exploration.md
+
+# Generated docs
+COVERAGE_REPORT.md
+TESTS_README.md
+TODO_COVERAGE.md
+
+# Custom scripts
+scripts/llm.fish

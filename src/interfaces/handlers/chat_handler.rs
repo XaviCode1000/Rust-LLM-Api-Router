@@ -20,7 +20,7 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use tokio_stream::StreamExt as TokioStreamExt;
 
-use crate::domain::traits::{AccountRepository, LlmGateway};
+use crate::domain::traits::LlmGateway;
 use crate::domain::{
     Account, ChatRequest as DomainChatRequest, ChatResponse as DomainChatResponse, Message,
     OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice, OpenAIErrorResponse, OpenAIMessage,
@@ -260,6 +260,7 @@ fn get_provider_base_url(
 }
 
 /// Make HTTP request to the provider.
+#[allow(dead_code)]
 async fn make_provider_request(
     http_client: &HttpClient,
     provider_config: &std::collections::HashMap<

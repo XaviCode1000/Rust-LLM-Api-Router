@@ -360,6 +360,7 @@ pub mod logging {
     }
 
     /// Logs fallback account selection.
+    #[allow(dead_code)]
     pub fn log_fallback_selection(request_id: &str, from_account: &str, to_account: &str) {
         DecisionLogBuilder::new(request_id, "fallback_selection")
             .reason(format!("Primary account {} failed", from_account))
@@ -369,6 +370,7 @@ pub mod logging {
     }
 
     /// Logs execution outcome.
+    #[allow(dead_code)]
     pub fn log_execution_outcome(
         request_id: &str,
         outcome: &str,

@@ -124,6 +124,54 @@ llm-router account remove --id <id>
 llm-router account validate --id <id>
 ```
 
+## Auth Commands
+
+### Login
+
+```bash
+# Login with API key (requires --provider)
+llm-router auth login --provider <provider_id>
+llm-router auth login -p <provider_id>
+
+# Login with OAuth 2.1 PKCE (opens browser)
+llm-router auth login --provider <provider_id> --oauth
+
+# Login with Device Flow (headless environments)
+llm-router auth login --provider <provider_id> --device-flow
+
+# Interactive login (prompts for credentials)
+llm-router auth login --interactive
+```
+
+### Logout
+
+```bash
+# Logout from a specific provider
+llm-router auth logout --provider <provider_id>
+
+# Logout from all providers
+llm-router auth logout --all
+
+# Clear stored credentials
+llm-router auth logout --clear-credentials
+```
+
+## Shell Completions
+
+Generate shell completions for your terminal (requires `completions` feature flag).
+
+```bash
+# Build with completions enabled
+cargo build --release --features completions
+
+# Generate completions for your shell
+llm-router completions --shell bash > ~/.local/share/bash-completion/completions/llm-router
+llm-router completions --shell zsh > ~/.zfunc/_llm-router
+llm-router completions --shell fish > ~/.config/fish/completions/llm-router.fish
+```
+
+**Supported shells:** `bash`, `zsh`, `fish`
+
 ## Working Commands Verified
 
 ### Provider Setup
