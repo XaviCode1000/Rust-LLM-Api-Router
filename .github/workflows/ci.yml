@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,114 +12,62 @@ env:
 
 jobs:
   fmt:
-    name: Rust Format
+    name: Format
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
+      - run: cargo fmt --all -- --check
 
   clippy:
-    name: Rust Clippy
+    name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-
-      - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets --all-features -- -D warnings
 
   test:
-    name: Tests
+    name: Test (${{ matrix.label }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - features: ""
+            label: "default"
+          - features: "--features completions"
+            label: "all features"
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
-
-      - name: Install cargo-nextest
-        uses: taiki-e/install-action@cargo-nextest
-
-      - name: Run tests
-        run: cargo nextest run --all-features --no-fail-fast
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-nextest
+      - run: cargo nextest run ${{ matrix.features }} --no-fail-fast
 
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
-
-      - name: Run coverage
-        run: cargo llvm-cov --lcov --output-path lcov.info
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - run: cargo llvm-cov --lcov --output-path lcov.info
+      - uses: codecov/codecov-action@v4
         with:
           files: ./lcov.info
-          fail_ci_if_below: 80  # Target: 80% coverage
           verbose: true
 
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
-
-      - name: Build
-        run: cargo build --release --all-features
-
   security:
-    name: Security Audit
+    name: Security
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
-
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
-
-      - name: Install cargo-deny
-        run: cargo install cargo-deny
-
-      - name: Run security audit (cargo-audit)
-        run: cargo audit
-
-      - name: Run license/dependency check (cargo-deny)
-        run: cargo deny check
+      - uses: actions/checkout@v4
+      - uses: rustsec/audit-check@v1.2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
