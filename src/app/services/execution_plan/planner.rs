@@ -167,6 +167,7 @@ impl ExecutionPlannerConfigBuilder {
     }
 
     /// Loads config from environment variables.
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_env(mut self) -> Self {
         // Load from environment variables if present
         if let Ok(plan_type) = std::env::var("EXECUTION_PLAN_TYPE") {
@@ -205,12 +206,14 @@ impl ExecutionPlannerConfigBuilder {
     }
 
     /// Sets the default plan type.
+    #[allow(dead_code)]
     pub fn with_default_plan_type(mut self, plan_type: ExecutionPlanType) -> Self {
         self.config.default_plan_type = plan_type;
         self
     }
 
     /// Sets max accounts per plan.
+    #[allow(dead_code)]
     pub fn with_max_accounts(mut self, max: usize) -> Self {
         self.config.max_accounts_per_plan = max;
         self
@@ -285,6 +288,7 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
     }
 
     /// Checks if metrics are enabled.
+    #[allow(dead_code)]
     fn has_metrics(&self) -> bool {
         self.metrics.is_some()
     }
@@ -689,7 +693,7 @@ impl<R: AccountRepository> Default for ExecutionPlannerBuilder<R> {
 mod tests {
     use super::super::PlanningOptions;
     use super::*;
-    use crate::domain::traits::AccountRepository;
+
 
     #[test]
     fn test_config_defaults() {
@@ -760,7 +764,7 @@ mod tests {
             ..Default::default()
         };
 
-        let context = ExecutionContext::new("req-1", "gpt-4");
+        let _context = ExecutionContext::new("req-1", "gpt-4");
 
         // Cannot easily test without a repo, but we can verify the config works
         assert_eq!(config.default_plan_type, ExecutionPlanType::Standard);
@@ -872,6 +876,7 @@ mod tests {
 }
 
 /// Helper function to check model compatibility (for testing only)
+#[allow(dead_code)]
 fn is_model_compatible_internal(model: &str, provider: &Provider) -> bool {
     let model_lower = model.to_lowercase();
 
@@ -903,6 +908,7 @@ mod mock {
     }
 
     impl MockAccountRepository {
+        #[allow(dead_code)]
         pub fn new(accounts: Vec<Account>) -> Self {
             Self { accounts }
         }

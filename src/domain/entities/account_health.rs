@@ -2,13 +2,13 @@
 //!
 //! This module provides health scoring and metrics for accounts.
 
-use crate::app::services::account_rotation::RateLimitInfo;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
 /// Circuit breaker states.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum CircuitBreakerState {
+    #[default]
     Closed,
     Open,
     Degraded,
@@ -21,12 +21,6 @@ impl CircuitBreakerState {
 
     pub fn is_degraded(&self) -> bool {
         matches!(self, CircuitBreakerState::Degraded)
-    }
-}
-
-impl Default for CircuitBreakerState {
-    fn default() -> Self {
-        Self::Closed
     }
 }
 
@@ -269,7 +263,7 @@ impl AccountHealth {
                 }
                 "retry-after" => {
                     // Could be seconds to wait or HTTP date
-                    if let Ok(seconds) = value_str.parse::<u64>() {
+                    if let Ok(_seconds) = value_str.parse::<u64>() {
                         // If it's a number, it's seconds until retry
                     }
                 }
@@ -297,6 +291,7 @@ fn rand_simple() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app::services::account_rotation::RateLimitInfo;
 
     #[test]
     fn test_rate_limit_parsing_remaining() {

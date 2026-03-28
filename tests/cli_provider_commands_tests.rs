@@ -24,7 +24,6 @@ use rust_llm_api_router::infrastructure::{JsonAccountRepository, JsonProviderRep
 
 fn create_test_repo() -> (TempDir, JsonProviderRepository, JsonAccountRepository) {
     let temp_dir = TempDir::new().unwrap();
-    std::env::set_var("XDG_CONFIG_HOME", temp_dir.path());
     let repo = JsonProviderRepository::with_config_dir(temp_dir.path()).unwrap();
     let account_repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
     (temp_dir, repo, account_repo)
@@ -197,7 +196,6 @@ async fn test_cli_list_providers_displays_enabled_disabled() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore]
 async fn test_cli_remove_provider_success() {
     let (_temp_dir, repo, account_repo) = create_test_repo();
 
@@ -241,7 +239,6 @@ async fn test_cli_remove_provider_not_found() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn test_cli_remove_provider_from_multiple() {
     let (_temp_dir, repo, account_repo) = create_test_repo();
 
@@ -578,7 +575,6 @@ fn test_provider_commands_validate_variant() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore]
 async fn test_cli_multiple_providers_workflow() {
     let (_temp_dir, repo, account_repo) = create_test_repo();
 

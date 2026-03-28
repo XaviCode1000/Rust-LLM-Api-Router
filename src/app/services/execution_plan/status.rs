@@ -5,9 +5,10 @@
 use serde::{Deserialize, Serialize};
 
 /// Status of an execution plan.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum ExecutionPlanStatus {
     /// Plan has been created but not yet executed
+    #[default]
     Planned,
 
     /// Plan is currently being executed
@@ -50,12 +51,6 @@ impl std::fmt::Display for ExecutionPlanStatus {
             Self::Completed => write!(f, "completed"),
             Self::Failed => write!(f, "failed"),
         }
-    }
-}
-
-impl Default for ExecutionPlanStatus {
-    fn default() -> Self {
-        Self::Planned
     }
 }
 

@@ -12,7 +12,6 @@ use tempfile::TempDir;
 
 fn create_test_repo() -> (TempDir, JsonProviderRepository) {
     let temp_dir = TempDir::new().unwrap();
-    std::env::set_var("XDG_CONFIG_HOME", temp_dir.path());
     let repo = JsonProviderRepository::with_config_dir(temp_dir.path()).unwrap();
     (temp_dir, repo)
 }

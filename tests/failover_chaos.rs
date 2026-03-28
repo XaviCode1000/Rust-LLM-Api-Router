@@ -192,7 +192,9 @@ async fn test_health_tracking() {
     // Record successes
     for _ in 0..10 {
         let _: Result<String, TestError> = manager
-            .execute_with_failover("openai", |_account| async { Ok(("success".to_string(), vec![])) })
+            .execute_with_failover("openai", |_account| async {
+                Ok(("success".to_string(), vec![]))
+            })
             .await;
     }
 
@@ -274,7 +276,9 @@ async fn test_concurrent_failover_requests() {
         let manager = manager.clone();
         let handle: tokio::task::JoinHandle<Result<String, TestError>> = tokio::spawn(async move {
             manager
-                .execute_with_failover("openai", |_account| async { Ok((format!("response-{}", i), vec![])) })
+                .execute_with_failover("openai", |_account| async {
+                    Ok((format!("response-{}", i), vec![]))
+                })
                 .await
         });
         handles.push(handle);

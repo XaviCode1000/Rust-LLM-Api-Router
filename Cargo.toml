@@ -7,6 +7,10 @@ license = "MIT"
 authors = ["LLM Router Team"]
 rust-version = "1.75"
 
+[features]
+default = []
+completions = ["clap_complete", "clap_mangen"]
+
 [dependencies]
 # Web
 axum = "0.7"
@@ -46,6 +50,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # CLI
 clap = { version = "4.4", features = ["derive"] }
+clap_complete = { version = "4", optional = true }
+clap_mangen = { version = "0.2", optional = true }
 
 # Directories
 dirs = "5.0"

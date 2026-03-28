@@ -354,7 +354,7 @@ mod tests {
         let account1 = PlannedAccount::new("acc-1", &provider, health1);
         let account2 = PlannedAccount::new("acc-2", &provider, health2).as_fallback();
 
-        let mut plan = ExecutionPlanBuilder::new()
+        let plan = ExecutionPlanBuilder::new()
             .with_plan_type(ExecutionPlanType::Failover)
             .with_context(create_test_context())
             .with_accounts(vec![account1, account2])

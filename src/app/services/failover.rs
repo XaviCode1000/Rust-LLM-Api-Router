@@ -132,8 +132,8 @@ impl FailoverManager {
     /// # Arguments
     /// * `provider_id` - Provider ID to get accounts for
     /// * `execute` - Async function to execute the request with an account
-    ///               Returns `Result<(T, Vec<(String, String)>), E>` where the tuple
-    ///               contains the response and optional response headers for rate limiting
+    ///   Returns `Result<(T, Vec<(String, String)>), E>` where the tuple
+    ///   contains the response and optional response headers for rate limiting
     ///
     /// # Returns
     /// The response if successful, or the last error if all accounts fail
@@ -218,7 +218,7 @@ impl FailoverManager {
                     Ok((response, headers)) => {
                         // Parse rate limit info from headers and update health
                         self.update_rate_limits(&account.id, &headers);
-                        
+
                         // Record success with latency
                         self.record_success(&account.id, start.elapsed().as_millis() as u64);
                         return Ok(response);
@@ -279,14 +279,14 @@ impl FailoverManager {
         if headers.is_empty() {
             return;
         }
-        
+
         let rate_limit_info = RateLimitInfo::from_headers(headers);
-        
+
         let mut health_map = self.health_map.lock().unwrap();
         let health = health_map
             .entry(account_id.to_string())
             .or_insert_with(|| AccountHealth::new(account_id));
-        
+
         if let Some(remaining) = rate_limit_info.remaining {
             health.quota_remaining = Some(remaining);
         }
@@ -351,15 +351,16 @@ mod tests {
     fn test_backoff_jitter_variation() {
         let config = BackoffConfig::new(1000, 10000, 0.1, 3);
 
-        let mut delays: Vec<u64> = (0..10)
-            .map(|_| config.calculate_delay(2))
-            .collect();
+        let mut delays: Vec<u64> = (0..10).map(|_| config.calculate_delay(2)).collect();
 
         delays.sort();
         let min = delays.first().copied().unwrap_or(0);
         let max = delays.last().copied().unwrap_or(0);
 
-        assert!(min != max || max == 0, "Jitter should produce variation in delays");
+        assert!(
+            min != max || max == 0,
+            "Jitter should produce variation in delays"
+        );
     }
 
     #[test]

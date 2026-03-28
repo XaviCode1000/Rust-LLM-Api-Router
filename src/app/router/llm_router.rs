@@ -308,8 +308,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             .json(&body)
             .send()
             .await
-            .map_err(|e| Error::Http(e))?;
-
+            .map_err(Error::Http)?;
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response

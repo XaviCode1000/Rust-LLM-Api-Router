@@ -10,11 +10,10 @@
 //! - validate: Validate provider credentials
 
 use clap::{Args, Subcommand};
-use std::io::{self, BufRead, Write};
 
 use crate::domain::traits::{AccountRepository, ProviderRepository};
 use crate::domain::Provider;
-use crate::infrastructure::{JsonAccountRepository, JsonProviderRepository};
+use crate::presentation::cli::input::read_api_key_interactive;
 use crate::Result;
 
 /// Add provider arguments
@@ -110,39 +109,25 @@ pub enum ProviderCommands {
     Validate(ValidateProviderArgs),
 }
 
-/// Read API key interactively (hidden input)
-fn read_api_key_interactive() -> Result<String> {
-    print!("Enter API Key: ");
-    io::stdout().flush()?;
-
-    let stdin = io::stdin();
-    let mut line = String::new();
-    stdin
-        .lock()
-        .read_line(&mut line)
-        .map_err(|e| crate::Error::Internal(e.to_string()))?;
-
-    Ok(line.trim().to_string())
-}
-
 /// Handle provider subcommand
-pub async fn handle_provider_command(cmd: ProviderCommands) -> Result<()> {
-    let repo = JsonProviderRepository::new().map_err(|e| crate::Error::Internal(e.to_string()))?;
-    let account_repo = JsonAccountRepository::new().map_err(|e| crate::Error::Internal(e.to_string()))?;
-
+pub async fn handle_provider_command(
+    cmd: ProviderCommands,
+    repo: &impl ProviderRepository,
+    account_repo: &impl AccountRepository,
+) -> Result<()> {
     match cmd {
-        ProviderCommands::Add(args) => cmd_add_provider(args, &repo).await,
-        ProviderCommands::List => cmd_list_providers(&repo, &account_repo).await,
-        ProviderCommands::Models(args) => cmd_list_models(args, &account_repo).await,
-        ProviderCommands::Remove(args) => cmd_remove_provider(args, &repo).await,
-        ProviderCommands::Enable(args) => cmd_enable_provider(args, &repo).await,
-        ProviderCommands::Disable(args) => cmd_disable_provider(args, &repo).await,
-        ProviderCommands::Validate(args) => cmd_validate_provider(args, &repo).await,
+        ProviderCommands::Add(args) => cmd_add_provider(args, repo).await,
+        ProviderCommands::List => cmd_list_providers(repo, account_repo).await,
+        ProviderCommands::Models(args) => cmd_list_models(args, repo, account_repo).await,
+        ProviderCommands::Remove(args) => cmd_remove_provider(args, repo).await,
+        ProviderCommands::Enable(args) => cmd_enable_provider(args, repo).await,
+        ProviderCommands::Disable(args) => cmd_disable_provider(args, repo).await,
+        ProviderCommands::Validate(args) => cmd_validate_provider(args, repo).await,
     }
 }
 
 /// Add a new provider
-pub async fn cmd_add_provider(args: AddProviderArgs, repo: &JsonProviderRepository) -> Result<()> {
+pub async fn cmd_add_provider(args: AddProviderArgs, repo: &impl ProviderRepository) -> Result<()> {
     // Get API key (from args or interactive)
     let api_key = if args.interactive {
         read_api_key_interactive()?
@@ -170,8 +155,8 @@ pub async fn cmd_add_provider(args: AddProviderArgs, repo: &JsonProviderReposito
 
 /// List all providers
 pub async fn cmd_list_providers(
-    repo: &JsonProviderRepository,
-    account_repo: &JsonAccountRepository,
+    repo: &impl ProviderRepository,
+    account_repo: &impl AccountRepository,
 ) -> Result<()> {
     let providers = repo
         .find_all()
@@ -184,8 +169,8 @@ pub async fn cmd_list_providers(
     }
 
     println!(
-        "{:<18} {:<28} {:<35} {:<12} {}",
-        "ID", "Name", "Base URL", "Status", "Account"
+        "{:<18} {:<28} {:<35} {:<12} Account",
+        "ID", "Name", "Base URL", "Status"
     );
     println!("{:-<110}", "");
 
@@ -197,10 +182,7 @@ pub async fn cmd_list_providers(
         };
 
         // Check if there's an active account for this provider
-        let account_status = match account_repo
-            .find_active_by_provider(&provider.id)
-            .await
-        {
+        let account_status = match account_repo.find_active_by_provider(&provider.id).await {
             Ok(accounts) if !accounts.is_empty() => "✓ Configured",
             _ => "✗ Not set",
         };
@@ -224,7 +206,11 @@ pub async fn cmd_list_providers(
 }
 
 /// List available models for a provider
-pub async fn cmd_list_models(args: ListModelsArgs, account_repo: &JsonAccountRepository) -> Result<()> {
+pub async fn cmd_list_models(
+    args: ListModelsArgs,
+    provider_repo: &impl ProviderRepository,
+    account_repo: &impl AccountRepository,
+) -> Result<()> {
     let provider_id = &args.provider;
 
     // Check if there's an active account for this provider
@@ -236,8 +222,14 @@ pub async fn cmd_list_models(args: ListModelsArgs, account_repo: &JsonAccountRep
     let account = match accounts.into_iter().find(|a| a.is_active) {
         Some(acc) => acc,
         None => {
-            println!("Error: No active account found for provider '{}'", provider_id);
-            println!("Please run: llm-router auth login --provider {}", provider_id);
+            println!(
+                "Error: No active account found for provider '{}'",
+                provider_id
+            );
+            println!(
+                "Please run: llm-router auth login --provider {}",
+                provider_id
+            );
             return Ok(());
         }
     };
@@ -245,7 +237,10 @@ pub async fn cmd_list_models(args: ListModelsArgs, account_repo: &JsonAccountRep
     let api_key = match &account.api_key {
         Some(key) if !key.is_empty() => key.clone(),
         _ => {
-            println!("Error: No API key configured for provider '{}'", provider_id);
+            println!(
+                "Error: No API key configured for provider '{}'",
+                provider_id
+            );
             return Ok(());
         }
     };
@@ -254,11 +249,8 @@ pub async fn cmd_list_models(args: ListModelsArgs, account_repo: &JsonAccountRep
 
     // Create HTTP client and fetch models
     let http_client = reqwest::Client::new();
-    
+
     // Get provider config for base URL
-    let provider_repo = JsonProviderRepository::new()
-        .map_err(|e| crate::Error::Internal(e.to_string()))?;
-    
     let provider_config = provider_repo
         .find_by_id(provider_id)
         .await
@@ -277,7 +269,10 @@ pub async fn cmd_list_models(args: ListModelsArgs, account_repo: &JsonAccountRep
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_default();
-        println!("Error: Failed to fetch models (HTTP {}): {}", status, error_text);
+        println!(
+            "Error: Failed to fetch models (HTTP {}): {}",
+            status, error_text
+        );
         return Ok(());
     }
 
@@ -292,6 +287,7 @@ pub async fn cmd_list_models(args: ListModelsArgs, account_repo: &JsonAccountRep
         #[serde(default)]
         name: Option<String>,
         #[serde(default)]
+        #[allow(dead_code)]
         created: Option<u64>,
     }
 
@@ -303,14 +299,14 @@ pub async fn cmd_list_models(args: ListModelsArgs, account_repo: &JsonAccountRep
             }
 
             println!("\nAvailable models for '{}':\n", provider_id);
-            println!("{:<50} {}", "Model ID", "Name");
+            println!("{:<50} Name", "Model ID");
             println!("{:-<70}", "");
 
             for model in &models_response.data {
                 let name = model.name.clone().unwrap_or_default();
                 println!("{:<50} {}", model.id, name);
             }
-            
+
             let total = models_response.data.len();
             println!("\nTotal: {} models", total);
         }
@@ -332,7 +328,7 @@ pub async fn cmd_list_models(args: ListModelsArgs, account_repo: &JsonAccountRep
 /// 3. Handling empty list after deletion gracefully
 pub async fn cmd_remove_provider(
     args: RemoveProviderArgs,
-    repo: &JsonProviderRepository,
+    repo: &impl ProviderRepository,
 ) -> Result<()> {
     // First check if provider exists
     repo.find_by_id(&args.id)
@@ -351,7 +347,7 @@ pub async fn cmd_remove_provider(
 /// Enable a provider
 pub async fn cmd_enable_provider(
     args: EnableProviderArgs,
-    repo: &JsonProviderRepository,
+    repo: &impl ProviderRepository,
 ) -> Result<()> {
     let mut provider = repo
         .find_by_id(&args.id)
@@ -371,7 +367,7 @@ pub async fn cmd_enable_provider(
 /// Disable a provider
 pub async fn cmd_disable_provider(
     args: DisableProviderArgs,
-    repo: &JsonProviderRepository,
+    repo: &impl ProviderRepository,
 ) -> Result<()> {
     let mut provider = repo
         .find_by_id(&args.id)
@@ -391,7 +387,7 @@ pub async fn cmd_disable_provider(
 /// Validate provider credentials
 pub async fn cmd_validate_provider(
     args: ValidateProviderArgs,
-    repo: &JsonProviderRepository,
+    repo: &impl ProviderRepository,
 ) -> Result<()> {
     let provider = match repo.find_enabled_by_id(&args.id).await {
         Ok(p) => p,
