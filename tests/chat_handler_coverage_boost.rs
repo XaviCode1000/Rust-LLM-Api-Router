@@ -21,7 +21,7 @@ use rust_llm_api_router::domain::{
     Account, AccountRepository, ChatResponse, Choice, Message, Usage,
 };
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
-use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, Metrics};
+use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository};
 use rust_llm_api_router::interfaces::handlers::chat_handler::{
     chat_completions, convert_to_openai_response, list_models, parse_model,
 };

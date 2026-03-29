@@ -16,7 +16,7 @@ use tower::util::ServiceExt;
 use rust_llm_api_router::config::Settings;
 use rust_llm_api_router::domain::{Account, AccountRepository};
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
-use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, Metrics};
+use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository};
 use rust_llm_api_router::interfaces::handlers::chat_handler::chat_completions;
 use rust_llm_api_router::presentation::state::AppState;
 

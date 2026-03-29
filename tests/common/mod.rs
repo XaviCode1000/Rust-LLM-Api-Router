@@ -21,7 +21,7 @@ use rust_llm_api_router::domain::DomainError;
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::{
     default_providers, ProviderConfig,
 };
-use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, Metrics};
+use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository};
 use rust_llm_api_router::presentation::state::AppState;
 use std::collections::HashMap;
 use std::sync::Arc;
