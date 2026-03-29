@@ -446,7 +446,7 @@ mod tests {
         let mut health = AccountHealth::new("test");
 
         let score_new = health.health_score();
-        assert!(score_new >= 25.0 && score_new <= 100.0);
+        assert!((25.0..=100.0).contains(&score_new));
 
         for _ in 0..5 {
             health.record_success(100);
