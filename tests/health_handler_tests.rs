@@ -2,7 +2,7 @@
 //!
 //! Tests cover GET /health, /health/detail, /accounts endpoints.
 
-use axum::{body::Body, http::Request, routing::get, Router};
+use axum::{routing::get, Router};
 use std::sync::Arc;
 use tempfile::TempDir;
 
