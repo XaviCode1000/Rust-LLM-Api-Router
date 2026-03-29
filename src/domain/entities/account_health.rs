@@ -456,6 +456,6 @@ mod tests {
         }
 
         let score = health.health_score();
-        assert!(score >= 0.0 && score <= 100.0);
+        assert!((0.0..=100.0).contains(&score));
     }
 }

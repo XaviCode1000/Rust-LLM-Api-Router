@@ -25,7 +25,7 @@ fn create_test_app_state(
         rust_llm_api_router::infrastructure::gateway::llm_gateway::ProviderConfig,
     >,
 ) -> Arc<AppState> {
-    let _settings = Settings::default();
+    let settings = Settings::default();
     Arc::new(
         AppState::with_provider_config(settings, http_client, account_repo, provider_config)
             .unwrap(),
