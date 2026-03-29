@@ -451,16 +451,36 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
             return context
                 .preferred_providers
                 .iter()
-                .map(|id| Provider::new(id.clone(), id.clone(), format!("https://api.{}.com", id)))
+                .map(|id| Provider::new(id.clone(), id.clone(), Self::get_provider_url(id)))
                 .collect();
         }
 
         // Otherwise return default providers
         vec![
-            Provider::new("openai", "OpenAI", "https://api.openai.com"),
-            Provider::new("anthropic", "Anthropic", "https://api.anthropic.com"),
-            Provider::new("groq", "Groq", "https://api.groq.com"),
+            Provider::new("openai", "OpenAI", "https://api.openai.com/v1"),
+            Provider::new("anthropic", "Anthropic", "https://api.anthropic.com/v1"),
+            Provider::new("groq", "Groq", "https://api.groq.com/openai/v1"),
         ]
+    }
+
+    /// Get the correct base URL for a provider
+    fn get_provider_url(provider_id: &str) -> String {
+        match provider_id {
+            "openai" => "https://api.openai.com/v1".to_string(),
+            "anthropic" => "https://api.anthropic.com/v1".to_string(),
+            "groq" => "https://api.groq.com/openai/v1".to_string(),
+            "openrouter" => "https://openrouter.ai/api/v1".to_string(),
+            "mistral" => "https://api.mistral.ai/v1".to_string(),
+            "cerebras" => "https://api.cerebras.ai/v1".to_string(),
+            "cloudflare" => "https://gateway.ai.cloudflare.com/v1".to_string(),
+            "deepseek" => "https://api.deepseek.com/v1".to_string(),
+            "xai" => "https://api.x.ai/v1".to_string(),
+            "cohere" => "https://api.cohere.ai/v1".to_string(),
+            "ai21" => "https://api.ai21.com/studio/v1".to_string(),
+            "google" => "https://generativelanguage.googleapis.com/v1".to_string(),
+            "huggingface" => "https://api-inference.huggingface.co".to_string(),
+            _ => format!("https://api.{}.com", provider_id),
+        }
     }
 
     /// Applies rotation strategy to accounts.

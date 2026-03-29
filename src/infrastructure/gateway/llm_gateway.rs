@@ -159,6 +159,16 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
         ),
     );
 
+    providers.insert(
+        "cloudflare".to_string(),
+        ProviderConfig::new(
+            "cloudflare",
+            "Cloudflare AI Gateway",
+            "https://gateway.ai.cloudflare.com/v1",
+            "/models",
+        ),
+    );
+
     providers
 }
 

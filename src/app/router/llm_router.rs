@@ -58,6 +58,9 @@ pub struct LlmRouter<R: AccountRepository + ?Sized> {
     /// Provider configurations
     provider_configs: Arc<std::collections::HashMap<String, ProviderConfig>>,
 
+    /// Account repository for fetching account details (including API keys)
+    account_repo: Arc<R>,
+
     /// Execution planner for creating execution plans
     planner: ExecutionPlanner<R>,
 
@@ -73,11 +76,12 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
         provider_configs: Arc<std::collections::HashMap<String, ProviderConfig>>,
         planner_config: ExecutionPlannerConfig,
     ) -> Self {
-        let planner = ExecutionPlanner::new(account_repo, planner_config);
+        let planner = ExecutionPlanner::new(account_repo.clone(), planner_config);
 
         Self {
             http_client,
             provider_configs,
+            account_repo,
             planner,
             config: LlmRouterConfig::default(),
         }
@@ -91,11 +95,12 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
         planner_config: ExecutionPlannerConfig,
         router_config: LlmRouterConfig,
     ) -> Self {
-        let planner = ExecutionPlanner::new(account_repo, planner_config);
+        let planner = ExecutionPlanner::new(account_repo.clone(), planner_config);
 
         Self {
             http_client,
             provider_configs,
+            account_repo,
             planner,
             config: router_config,
         }
@@ -202,7 +207,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
 
             // Try to execute with this account
             match self
-                .forward_to_provider(&planned_account.account_id, request)
+                .forward_to_provider(&planned_account.account_id, request, &planned_account.provider_id)
                 .await
             {
                 Ok(response) => {
@@ -260,29 +265,40 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
     /// Forwards a request to a specific provider using the account.
     async fn forward_to_provider(
         &self,
-        _account_id: &str,
+        account_id: &str,
         request: &ChatRequest,
+        provider_id_from_account: &str,
     ) -> Result<ChatResponse> {
-        // Get account from repository (would need to fetch by ID)
-        // For now, we'll use the provider configs to determine where to send
-        // This is a simplified implementation
+        // Fetch the account from repository to get the API key
+        let account = self.account_repo.find_by_id(account_id).await.map_err(|e| {
+            Error::Internal(format!("Failed to find account '{}': {}", account_id, e))
+        })?;
 
-        // Get provider from account (simplified - would need proper account lookup)
-        let provider_id = self
-            .infer_provider_from_model(&request.model)
-            .unwrap_or_else(|| "openai".to_string());
+        // Get API key from account
+        let api_key = account.api_key.as_ref().ok_or_else(|| {
+            Error::Internal(format!("No API key found for account '{}'", account_id))
+        })?;
+
+        // Use the provider from the account, NOT inferred from model name
+        let provider_id = provider_id_from_account;
 
         // Get provider config
-        let provider_config = self.provider_configs.get(&provider_id).ok_or_else(|| {
+        let provider_config = self.provider_configs.get(provider_id).ok_or_else(|| {
             Error::ProviderNotFound(format!("Provider '{}' not found", provider_id))
         })?;
 
-        // Build URL
-        let base_url = self
-            .http_client
-            .mock_base_url()
-            .map(|url| format!("{}/v1", url))
-            .unwrap_or_else(|| provider_config.base_url.clone());
+        // Build URL - special handling for Cloudflare AI Gateway
+        let base_url = if provider_id == "cloudflare" {
+            // Cloudflare AI Gateway format: /v1/{account_id}/gateway/{gateway_name}/chat/completions
+            // API key format: {account_id}_{api_key}, we use account_id part
+            let account_id = api_key.split('_').next().unwrap_or("ex5FpSyn1K5lkyZK6swxSyhpf8DO82BGy");
+            format!("{}/ex5FpSyn1K5lkyZK6swxSyhpf8DO82BGy/gateway/ai", provider_config.base_url)
+        } else {
+            self.http_client
+                .mock_base_url()
+                .map(|url| format!("{}/v1", url))
+                .unwrap_or_else(|| provider_config.base_url.clone())
+        };
 
         let url = format!("{}/chat/completions", base_url);
 
@@ -298,13 +314,15 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             "stream": request.stream.unwrap_or(false)
         });
 
-        // Make HTTP request - using a placeholder for account credentials
-        // In production, this would fetch the actual account and use its API key
+        // Make HTTP request with the account's API key
         let response = self
             .http_client
             .client()
             .post(&url)
             .header("Content-Type", "application/json")
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("HTTP-Referer", "https://github.com/XaviCode1000/Rust-LLM-Api-Router")
+            .header("X-Title", "Rust LLM API Router")
             .json(&body)
             .send()
             .await
