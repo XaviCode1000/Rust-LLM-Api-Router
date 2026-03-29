@@ -25,7 +25,7 @@ fn create_test_app_state(
         rust_llm_api_router::infrastructure::gateway::llm_gateway::ProviderConfig,
     >,
 ) -> Arc<AppState> {
-    let settings = Settings::default();
+    let _settings = Settings::default();
     Arc::new(
         AppState::with_provider_config(settings, http_client, account_repo, provider_config)
             .unwrap(),
@@ -42,7 +42,7 @@ fn setup_health_app() -> (Router, TempDir) {
 
     let http_client = Arc::new(HttpClient::new().expect("Should create HTTP client"));
 
-    let settings = Settings::default();
+    let _settings = Settings::default();
     let provider_config = default_providers();
     let state = create_test_app_state(http_client, repo, provider_config);
 
@@ -74,7 +74,7 @@ async fn setup_health_app_with_accounts() -> (Router, TempDir) {
 
     let http_client = Arc::new(HttpClient::new().expect("Should create HTTP client"));
 
-    let settings = Settings::default();
+    let _settings = Settings::default();
     let provider_config = default_providers();
     let state = create_test_app_state(http_client, repo, provider_config);
 
@@ -98,7 +98,7 @@ fn setup_health_app_with_metrics() -> (Router, TempDir) {
     let http_client = Arc::new(HttpClient::new().expect("Should create HTTP client"));
     let _metrics = Arc::new(Metrics::new().expect("Should create metrics"));
 
-    let settings = Settings::default();
+    let _settings = Settings::default();
     let provider_config = default_providers();
     let state = create_test_app_state(http_client, repo, provider_config);
 
