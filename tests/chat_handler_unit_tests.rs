@@ -191,7 +191,7 @@ async fn setup_app_state_with_accounts_in_temp(
     }
 
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let metrics = Arc::new(Metrics::new().unwrap());
+    let _metrics = Arc::new(Metrics::new().unwrap());
 
     let provider_config = default_providers();
     let settings = Settings::default();

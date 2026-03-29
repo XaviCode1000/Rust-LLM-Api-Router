@@ -93,7 +93,7 @@ fn setup_health_app_with_metrics() -> (Router, TempDir) {
     );
 
     let http_client = Arc::new(HttpClient::new().expect("Should create HTTP client"));
-    let metrics = Arc::new(Metrics::new().expect("Should create metrics"));
+    let _metrics = Arc::new(Metrics::new().expect("Should create metrics"));
 
     let settings = Settings::default();
     let provider_config = default_providers();

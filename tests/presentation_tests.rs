@@ -59,7 +59,7 @@ async fn test_app_state_with_accounts() {
     let settings = Settings::default();
 
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let metrics = Arc::new(Metrics::new().unwrap());
+    let _metrics = Arc::new(Metrics::new().unwrap());
     let account_repo: Arc<dyn AccountRepository> =
         Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
@@ -94,7 +94,7 @@ async fn test_state_account_operations() {
     let settings = Settings::default();
 
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let metrics = Arc::new(Metrics::new().unwrap());
+    let _metrics = Arc::new(Metrics::new().unwrap());
     let account_repo: Arc<dyn AccountRepository> =
         Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
@@ -131,7 +131,7 @@ async fn test_state_metrics_accessible() {
     let settings = Settings::default();
 
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let metrics = Arc::new(Metrics::new().unwrap());
+    let _metrics = Arc::new(Metrics::new().unwrap());
     let account_repo: Arc<dyn AccountRepository> =
         Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
@@ -149,7 +149,7 @@ async fn test_state_http_client_accessible() {
     let temp_dir = TempDir::new().unwrap();
 
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let metrics = Arc::new(Metrics::new().unwrap());
+    let _metrics = Arc::new(Metrics::new().unwrap());
     let account_repo: Arc<dyn AccountRepository> =
         Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
 
