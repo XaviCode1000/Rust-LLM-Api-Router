@@ -54,8 +54,8 @@ pub mod traits;
 // Re-export entities and errors explicitly to avoid ambiguity
 pub use entities::{
     Account, AccountHealth, ChatRequest, ChatResponse, Choice, LlmRequest, LlmResponse, Message,
-    Model, OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice, OpenAIError, OpenAIErrorResponse,
-    OpenAIMessage, OpenAIUsage, Provider, Usage,
+    Model, ModelPricing, OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice, OpenAIError,
+    OpenAIErrorResponse, OpenAIMessage, OpenAIUsage, Provider, Usage,
 };
 
 // Re-export errors explicitly
@@ -64,6 +64,8 @@ pub use traits::DomainResult;
 
 // Re-export services explicitly
 pub use services::auth_strategy::AuthenticationStrategy;
+pub use services::model_selector::{CostAwareSelector, ModelSelector, SelectionError, SelectionResult};
+pub use services::query_complexity::{ClassifierConfig, QueryClassifier, QueryComplexity};
 
 // Re-export traits but exclude DomainResult to avoid ambiguity
 pub use traits::{AccountRepository, LlmGateway, LlmProvider, ProviderRepository};

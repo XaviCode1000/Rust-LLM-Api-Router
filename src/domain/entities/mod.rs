@@ -149,16 +149,73 @@ impl Usage {
     }
 }
 
+/// Pricing information for a model, in USD per 1 million tokens.
+///
+/// Aligns with industry standard: OpenAI, Anthropic, and LiteLLM
+/// all publish prices as $/1M tokens.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ModelPricing {
+    /// Cost per 1 million input (prompt) tokens in USD.
+    pub input_cost_per_million_tokens: f64,
+    /// Cost per 1 million output (completion) tokens in USD.
+    pub output_cost_per_million_tokens: f64,
+    /// ISO 8601 timestamp of when this pricing was last verified.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_updated: Option<String>,
+}
+
+impl ModelPricing {
+    /// Creates a new `ModelPricing`.
+    ///
+    /// # Arguments
+    /// * `input_cost_per_million_tokens` - Cost per 1M input tokens in USD
+    /// * `output_cost_per_million_tokens` - Cost per 1M output tokens in USD
+    pub fn new(input_cost_per_million_tokens: f64, output_cost_per_million_tokens: f64) -> Self {
+        Self {
+            input_cost_per_million_tokens,
+            output_cost_per_million_tokens,
+            last_updated: None,
+        }
+    }
+
+    /// Sets the `last_updated` timestamp (ISO 8601).
+    #[must_use]
+    pub fn with_last_updated(mut self, timestamp: impl Into<String>) -> Self {
+        self.last_updated = Some(timestamp.into());
+        self
+    }
+
+    /// Estimates the cost for a request given approximate token counts.
+    ///
+    /// # Arguments
+    /// * `input_tokens` - Estimated number of input tokens
+    /// * `output_tokens` - Estimated number of output tokens
+    ///
+    /// # Returns
+    /// Estimated cost in USD
+    #[must_use]
+    pub fn estimate_cost(&self, input_tokens: u32, output_tokens: u32) -> f64 {
+        let input_cost = (input_tokens as f64 / 1_000_000.0) * self.input_cost_per_million_tokens;
+        let output_cost =
+            (output_tokens as f64 / 1_000_000.0) * self.output_cost_per_million_tokens;
+        input_cost + output_cost
+    }
+}
+
 /// Model information from an LLM provider.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Model {
     pub id: String,
     pub name: String,
     pub provider_id: String,
+    /// Pricing information for cost-aware routing.
+    /// `None` indicates pricing is unknown or not applicable.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pricing: Option<ModelPricing>,
 }
 
 impl Model {
-    /// Creates a new `Model`.
+    /// Creates a new `Model` without pricing information.
     pub fn new(
         id: impl Into<String>,
         name: impl Into<String>,
@@ -168,6 +225,22 @@ impl Model {
             id: id.into(),
             name: name.into(),
             provider_id: provider_id.into(),
+            pricing: None,
+        }
+    }
+
+    /// Creates a new `Model` with pricing information.
+    pub fn with_pricing(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        provider_id: impl Into<String>,
+        pricing: ModelPricing,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            name: name.into(),
+            provider_id: provider_id.into(),
+            pricing: Some(pricing),
         }
     }
 }
