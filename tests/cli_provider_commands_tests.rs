@@ -136,7 +136,7 @@ async fn test_cli_add_provider_duplicate_overwrites() {
 async fn test_cli_list_providers_empty() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
-    let result = cmd_list_providers(&repo, &account_repo).await;
+    let result = cmd_list_providers(&repo, &_account_repo).await;
 
     assert!(result.is_ok());
 }
@@ -159,7 +159,7 @@ async fn test_cli_list_providers_with_data() {
     .await
     .unwrap();
 
-    let result = cmd_list_providers(&repo, &account_repo).await;
+    let result = cmd_list_providers(&repo, &_account_repo).await;
 
     assert!(result.is_ok());
 
@@ -186,7 +186,7 @@ async fn test_cli_list_providers_displays_enabled_disabled() {
     .await
     .unwrap();
 
-    let result = cmd_list_providers(&repo, &account_repo).await;
+    let result = cmd_list_providers(&repo, &_account_repo).await;
 
     assert!(result.is_ok());
 }
