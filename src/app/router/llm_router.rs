@@ -291,7 +291,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
         let base_url = if provider_id == "cloudflare" {
             // Cloudflare AI Gateway format: /v1/{account_id}/gateway/{gateway_name}/chat/completions
             // API key format: {account_id}_{api_key}, we use account_id part
-            let account_id = api_key.split('_').next().unwrap_or("ex5FpSyn1K5lkyZK6swxSyhpf8DO82BGy");
+            let _account_id = api_key.split('_').next().unwrap_or("ex5FpSyn1K5lkyZK6swxSyhpf8DO82BGy");
             format!("{}/ex5FpSyn1K5lkyZK6swxSyhpf8DO82BGy/gateway/ai", provider_config.base_url)
         } else {
             self.http_client
@@ -346,30 +346,6 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             .map_err(|e| Error::Internal(format!("Failed to parse response: {}", e)))?;
 
         Ok(chat_response)
-    }
-
-    /// Infers the provider from the model name.
-    fn infer_provider_from_model(&self, model: &str) -> Option<String> {
-        let model_lower = model.to_lowercase();
-
-        if model_lower.starts_with("gpt-")
-            || model_lower.starts_with("o1")
-            || model_lower.starts_with("o3")
-        {
-            Some("openai".to_string())
-        } else if model_lower.starts_with("claude-")
-            || model_lower.starts_with("sonnet")
-            || model_lower.starts_with("haiku")
-        {
-            Some("anthropic".to_string())
-        } else if model_lower.contains("llama")
-            || model_lower.contains("mixtral")
-            || model_lower.contains("groq")
-        {
-            Some("groq".to_string())
-        } else {
-            None
-        }
     }
 }
 
