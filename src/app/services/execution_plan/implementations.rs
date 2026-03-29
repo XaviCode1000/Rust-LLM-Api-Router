@@ -583,17 +583,41 @@ impl<R: AccountRepository> ExecutionPlanBuilder<R> {
         // Helper function to get provider URL
         fn get_provider_url(provider_id: &str) -> String {
             match provider_id {
+                // Major providers
                 "openai" => "https://api.openai.com/v1".to_string(),
                 "anthropic" => "https://api.anthropic.com/v1".to_string(),
                 "groq" => "https://api.groq.com/openai/v1".to_string(),
+                // OpenAI-compatible cloud providers
+                "deepseek" => "https://api.deepseek.com/v1".to_string(),
+                "together" => "https://api.together.xyz/v1".to_string(),
+                "fireworks" => "https://api.fireworks.ai/inference/v1".to_string(),
+                "xai" => "https://api.x.ai/v1".to_string(),
+                "perplexity" => "https://api.perplexity.ai/v1".to_string(),
                 "openrouter" => "https://openrouter.ai/api/v1".to_string(),
                 "mistral" => "https://api.mistral.ai/v1".to_string(),
                 "cerebras" => "https://api.cerebras.ai/v1".to_string(),
-                "cloudflare" => "https://api.cloudflare.com/client/v4/accounts".to_string(),
-                "deepseek" => "https://api.deepseek.com/v1".to_string(),
-                "xai" => "https://api.x.ai/v1".to_string(),
+                "cloudflare" => "https://gateway.ai.cloudflare.com/v1".to_string(),
+                // Local inference servers
+                "ollama" => "http://localhost:11434/v1".to_string(),
+                "lmstudio" => "http://localhost:1234/v1".to_string(),
+                "vllm" => "http://localhost:8000/v1".to_string(),
+                // Platform / specialized providers
+                "replicate" => "https://api.replicate.com/v1".to_string(),
+                "huggingface" => "https://api-inference.huggingface.co".to_string(),
+                "anyscale" => "https://api.endpoints.anyscale.com/v1".to_string(),
+                "deepinfra" => "https://api.deepinfra.com/v1".to_string(),
+                "novita" => "https://api.novita.ai/v1".to_string(),
+                "sambanova" => "https://api.sambanova.ai/v1".to_string(),
+                // Cloud hyperscaler services
+                "azure" => "https://{resource}.openai.azure.com/v1".to_string(),
+                "bedrock" => "https://bedrock-runtime.{region}.amazonaws.com".to_string(),
+                "vertexai" => "https://{region}-aiplatform.googleapis.com/v1".to_string(),
+                // Additional model providers
                 "cohere" => "https://api.cohere.ai/v1".to_string(),
-                "ai21" => "https://api.ai21.com/studio/v1".to_string(),
+                "ai21" => "https://api.ai21.com/v1".to_string(),
+                "aleph_alpha" => "https://api.aleph-alpha.com/v1".to_string(),
+                "nvidia" => "https://integrate.api.nvidia.com/v1".to_string(),
+                "google" => "https://generativelanguage.googleapis.com/v1".to_string(),
                 _ => format!("https://api.{}.com", provider_id),
             }
         }
