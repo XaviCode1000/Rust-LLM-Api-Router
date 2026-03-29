@@ -33,6 +33,7 @@ fn create_test_app_state(
 }
 
 /// Setup test app with health routes
+#[allow(dead_code)]
 fn setup_health_app() -> (Router, TempDir) {
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let repo: Arc<dyn AccountRepository> = Arc::new(
@@ -55,6 +56,7 @@ fn setup_health_app() -> (Router, TempDir) {
 }
 
 /// Setup health app with test accounts
+#[allow(dead_code)]
 async fn setup_health_app_with_accounts() -> (Router, TempDir) {
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let repo: Arc<dyn AccountRepository> = Arc::new(
@@ -86,6 +88,7 @@ async fn setup_health_app_with_accounts() -> (Router, TempDir) {
 }
 
 /// Setup health app with custom metrics
+#[allow(dead_code)]
 fn setup_health_app_with_metrics() -> (Router, TempDir) {
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let repo: Arc<dyn AccountRepository> = Arc::new(
