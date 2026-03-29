@@ -6,7 +6,13 @@
 ignore = [
     "RUSTSEC-2026-0066",  # astral-tokio-tar - transitive dep, low severity
     "RUSTSEC-2026-0049",  # rustls-webpki - transitive dep, limited impact
+    "RUSTSEC-2024-0388",  # derivative - unmaintained, transitive dep
+    "RUSTSEC-2024-0384",  # instant - unmaintained, transitive dep
 ]
+vulnerability = "deny"
+unmaintained = "warn"
+unsound = "warn"
+yanked = "warn"
 
 [licenses]
 allow = [
