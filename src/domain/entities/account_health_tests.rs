@@ -692,7 +692,7 @@ fn test_circuit_breaker_degraded_10_percent_passthrough() {
 
     // Allow some tolerance - should be roughly 10% (between 5% and 15%)
     assert!(
-        pass_rate >= 0.05 && pass_rate <= 0.15,
+        (0.05..=0.15).contains(&pass_rate),
         "Pass rate {}% is not approximately 10%",
         pass_rate * 100.0
     );
@@ -732,7 +732,7 @@ fn test_health_score_in_degraded_state() {
     let score = health.health_score();
 
     // Should have: 50 (success) + 30 (latency) + 10 (degraded) = 90
-    assert!(score >= 80.0 && score <= 95.0);
+    assert!((80.0..=95.0).contains(&score));
 }
 
 /// Test: Degraded success count is reset when circuit reopens

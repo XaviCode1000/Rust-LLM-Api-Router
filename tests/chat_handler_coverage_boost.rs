@@ -41,6 +41,7 @@ fn create_empty_test_app_state() -> Arc<AppState> {
 }
 
 /// Helper function to create AppState with llm_router
+#[allow(dead_code)]
 async fn create_test_app_state(temp_dir: &TempDir, account: Account) -> Arc<AppState> {
     let repo: Arc<dyn AccountRepository> =
         Arc::new(JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap());
@@ -54,6 +55,7 @@ async fn create_test_app_state(temp_dir: &TempDir, account: Account) -> Arc<AppS
 }
 
 /// Helper function to create AppState with mock server URL
+#[allow(dead_code)]
 async fn create_test_app_state_with_mock(
     temp_dir: &TempDir,
     mock_server_uri: &str,
