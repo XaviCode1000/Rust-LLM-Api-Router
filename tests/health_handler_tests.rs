@@ -5,7 +5,6 @@
 use axum::{body::Body, http::Request, routing::get, Router};
 use std::sync::Arc;
 use tempfile::TempDir;
-use tower::util::ServiceExt;
 
 use rust_llm_api_router::config::Settings;
 use rust_llm_api_router::domain::{Account, AccountRepository};
