@@ -12,8 +12,8 @@ use super::types::{ExecutionPlanType, PlannedAccount};
 use super::{
     ExecutionContext, ExecutionOutcome, ExecutionPlan, ExecutionPlanImpl, ExecutionPlanStatus,
 };
-use crate::app::services::quality::{HeuristicQualityEvaluator, QualityConfig, QualityGate};
 use crate::app::services::execution_plan::CascadingExecutionPlan;
+use crate::app::services::quality::{HeuristicQualityEvaluator, QualityConfig, QualityGate};
 
 /// Provider pricing information for cost optimization.
 #[derive(Debug, Clone)]
@@ -568,12 +568,12 @@ impl<R: AccountRepository> ExecutionPlanBuilder<R> {
     ) -> Result<CostOptimizedExecutionPlan, DomainError> {
         let accounts = self.get_accounts_for_context(&context).await?;
 
-         Ok(CostOptimizedExecutionPlan::new(
-             context,
-             accounts,
-             self.pricing.clone(),
-         ))
-     }
+        Ok(CostOptimizedExecutionPlan::new(
+            context,
+            accounts,
+            self.pricing.clone(),
+        ))
+    }
 
     /// Builds a CascadingExecutionPlan.
     #[must_use]
@@ -585,13 +585,13 @@ impl<R: AccountRepository> ExecutionPlanBuilder<R> {
         quality_gate: Option<Arc<dyn QualityGate>>,
     ) -> Result<CascadingExecutionPlan, DomainError> {
         let accounts = self.get_accounts_for_context(&context).await?;
-        
+
         // Use default quality config if none provided
         let config = quality_config.unwrap_or_default();
-        
+
         // Use default heuristic evaluator if none provided
         let gate = quality_gate.unwrap_or_else(|| Arc::new(HeuristicQualityEvaluator::new()));
-        
+
         Ok(CascadingExecutionPlan::new(
             context,
             accounts,
@@ -602,7 +602,7 @@ impl<R: AccountRepository> ExecutionPlanBuilder<R> {
         ))
     }
 
-     /// Gets accounts for the given context.
+    /// Gets accounts for the given context.
     async fn get_accounts_for_context(
         &self,
         context: &ExecutionContext,

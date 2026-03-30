@@ -64,7 +64,9 @@ pub use traits::DomainResult;
 
 // Re-export services explicitly
 pub use services::auth_strategy::AuthenticationStrategy;
-pub use services::model_selector::{CostAwareSelector, ModelSelector, SelectionError, SelectionResult};
+pub use services::model_selector::{
+    CostAwareSelector, ModelSelector, SelectionError, SelectionResult,
+};
 pub use services::query_complexity::{ClassifierConfig, QueryClassifier, QueryComplexity};
 
 // Re-export traits but exclude DomainResult to avoid ambiguity

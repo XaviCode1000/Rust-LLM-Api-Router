@@ -1,5 +1,5 @@
-use crate::domain::entities::AccountHealth;
 use crate::app::services::execution_plan::types::PlannedAccount;
+use crate::domain::entities::AccountHealth;
 
 /// Represents the quality score of a response with detailed evaluation results.
 #[derive(Debug, Clone, PartialEq)]
@@ -25,13 +25,18 @@ impl QualityScore {
     /// # Returns
     ///
     /// A new QualityScore instance
-    pub fn new(passed_checks: u32, total_checks: u32, failed_checks: Vec<String>, min_quality_score: f64) -> Self {
+    pub fn new(
+        passed_checks: u32,
+        total_checks: u32,
+        failed_checks: Vec<String>,
+        min_quality_score: f64,
+    ) -> Self {
         let score = if total_checks > 0 {
             passed_checks as f64 / total_checks as f64
         } else {
             0.0
         };
-        
+
         Self {
             score,
             is_acceptable: score >= min_quality_score,
@@ -129,8 +134,8 @@ impl HeuristicQualityEvaluator {
 
         // Check for obvious truncation patterns
         let last_char = response.chars().last().unwrap_or('\0');
-        matches!(last_char, '.' | '!' | '?' | ']' | '}' | '"' | '\'') || 
-        !matches!(last_char, ',' | ':' | ';' | '-' | '{' | '[')
+        matches!(last_char, '.' | '!' | '?' | ']' | '}' | '"' | '\'')
+            || !matches!(last_char, ',' | ':' | ';' | '-' | '{' | '[')
     }
 
     /// Checks if the response meets the minimum length requirement.
@@ -145,7 +150,7 @@ impl HeuristicQualityEvaluator {
     fn check_structure(&self, _input: &str, response: &str) -> bool {
         // For now, we'll implement a simple check
         // In a real implementation, we'd analyze the input to determine expected structure
-        
+
         // If response looks like it should be JSON (starts with { or [) but doesn't end properly
         let trimmed = response.trim();
         if trimmed.starts_with('{') && !trimmed.ends_with('}') {
@@ -154,7 +159,7 @@ impl HeuristicQualityEvaluator {
         if trimmed.starts_with('[') && !trimmed.ends_with(']') {
             return false;
         }
-        
+
         true
     }
 
@@ -164,7 +169,7 @@ impl HeuristicQualityEvaluator {
     /// to produce a proper response.
     fn check_coherence(&self, response: &str) -> bool {
         let lower = response.to_lowercase();
-        
+
         // Common error/refusal patterns
         let error_patterns = [
             "i cannot",
@@ -178,23 +183,26 @@ impl HeuristicQualityEvaluator {
             "i apologize",
             "i don't have the capability",
         ];
-        
+
         // Check for error patterns
         if error_patterns.iter().any(|&pat| lower.contains(pat)) {
             return false;
         }
-        
+
         // Check for excessive repetition (same word repeated 4+ times)
         let words: Vec<&str> = lower.split_whitespace().collect();
         if words.len() >= 4 {
             for i in 0..=words.len().saturating_sub(4) {
-                if words[i] == words[i+1] && words[i+1] == words[i+2] && words[i+2] == words[i+3] {
+                if words[i] == words[i + 1]
+                    && words[i + 1] == words[i + 2]
+                    && words[i + 2] == words[i + 3]
+                {
                     // Same word repeated 4 times in a row
                     return false;
                 }
             }
         }
-        
+
         true
     }
 }
@@ -209,35 +217,35 @@ impl QualityGate for HeuristicQualityEvaluator {
     ) -> QualityScore {
         let mut failed_checks = Vec::new();
         let mut passed_checks = 0;
-        
+
         // Check 1: Completeness
         if self.check_completeness(response) {
             passed_checks += 1;
         } else {
             failed_checks.push("completeness".to_string());
         }
-        
+
         // Check 2: Length
         if self.check_length(response) {
             passed_checks += 1;
         } else {
             failed_checks.push("length".to_string());
         }
-        
+
         // Check 3: Structure (using empty input for now - in real implementation would pass actual input)
         if self.check_structure("", response) {
             passed_checks += 1;
         } else {
             failed_checks.push("structure".to_string());
         }
-        
+
         // Check 4: Coherence
         if self.check_coherence(response) {
             passed_checks += 1;
         } else {
             failed_checks.push("coherence".to_string());
         }
-        
+
         QualityScore::new(
             passed_checks,
             4, // Total checks
@@ -250,8 +258,8 @@ impl QualityGate for HeuristicQualityEvaluator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::entities::{AccountHealth, Provider};
     use crate::app::services::execution_plan::types::PlannedAccount;
+    use crate::domain::entities::{AccountHealth, Provider};
 
     fn create_test_account() -> PlannedAccount {
         let provider = Provider::new("openai", "OpenAI", "https://api.openai.com");
@@ -271,13 +279,13 @@ mod tests {
     #[tokio::test]
     async fn test_check_completeness() {
         let evaluator = HeuristicQualityEvaluator::new();
-        
+
         // Empty response
         assert!(!evaluator.check_completeness(""));
-        
+
         // Ends with space
         assert!(!evaluator.check_completeness("Hello "));
-        
+
         // Ends with open punctuation
         assert!(!evaluator.check_completeness("Hello,"));
         assert!(!evaluator.check_completeness("Hello:"));
@@ -285,7 +293,7 @@ mod tests {
         assert!(!evaluator.check_completeness("Hello-"));
         assert!(!evaluator.check_completeness("Hello{"));
         assert!(!evaluator.check_completeness("Hello["));
-        
+
         // Properly ended
         assert!(evaluator.check_completeness("Hello."));
         assert!(evaluator.check_completeness("Hello!"));
@@ -297,14 +305,14 @@ mod tests {
     #[tokio::test]
     async fn test_check_length() {
         let evaluator = HeuristicQualityEvaluator::new();
-        
+
         // Too short
         assert!(!evaluator.check_length("Hi"));
         assert!(!evaluator.check_length("Hello"));
-        
+
         // Exactly minimum length
         assert!(evaluator.check_length("Hello there")); // 11 chars
-        
+
         // Longer
         assert!(evaluator.check_length("This is a longer response"));
     }
@@ -312,18 +320,18 @@ mod tests {
     #[tokio::test]
     async fn test_check_structure() {
         let evaluator = HeuristicQualityEvaluator::new();
-        
+
         // Proper JSON-like structures
         assert!(evaluator.check_structure("", "{}"));
         assert!(evaluator.check_structure("", "[]"));
         assert!(evaluator.check_structure("", "{\"key\": \"value\"}"));
         assert!(evaluator.check_structure("", "[\"item1\", \"item2\"]"));
-        
+
         // Improper JSON-like structures
         assert!(!evaluator.check_structure("", "{\"key\": \"value\""));
         assert!(!evaluator.check_structure("", "[\"item1\", \"item2\""));
         assert!(!evaluator.check_structure("", "{\"key\": \"value\" ]"));
-        
+
         // Non-JSON responses should pass
         assert!(evaluator.check_structure("", "This is a normal response"));
         assert!(evaluator.check_structure("", "Another normal response"));
@@ -332,22 +340,23 @@ mod tests {
     #[tokio::test]
     async fn test_check_coherence() {
         let evaluator = HeuristicQualityEvaluator::new();
-        
+
         // Good responses
         assert!(evaluator.check_coherence("This is a valid response about machine learning."));
         assert!(evaluator.check_coherence("The quick brown fox jumps over the lazy dog."));
-        
+
         // Error patterns
         assert!(!evaluator.check_coherence("I cannot answer that question."));
         assert!(!evaluator.check_coherence("As an AI, I don't have that capability."));
         assert!(!evaluator.check_coherence("Sorry, but I can't help with that."));
-        
+
         // Excessive repetition
         assert!(!evaluator.check_coherence("test test test test"));
         assert!(!evaluator.check_coherence("hello hello hello hello hello"));
-        
+
         // Mixed content with repetition but not excessive
-        assert!(evaluator.check_coherence("The test test procedure is standard")); // Only 2 repeats
+        assert!(evaluator.check_coherence("The test test procedure is standard"));
+        // Only 2 repeats
     }
 
     #[tokio::test]
@@ -356,9 +365,11 @@ mod tests {
         let account = create_test_account();
         let health = AccountHealth::new("test-acc");
         let response = "This is a good quality response that meets all criteria.";
-        
-        let score = evaluator.evaluate_quality(&account, response, &health).await;
-        
+
+        let score = evaluator
+            .evaluate_quality(&account, response, &health)
+            .await;
+
         assert!(score.is_acceptable);
         assert_eq!(score.score, 1.0);
         assert!(score.checks_failed.is_empty());
@@ -370,9 +381,11 @@ mod tests {
         let account = create_test_account();
         let health = AccountHealth::new("test-acc");
         let response = "I cannot"; // Too short and contains error pattern
-        
-        let score = evaluator.evaluate_quality(&account, response, &health).await;
-        
+
+        let score = evaluator
+            .evaluate_quality(&account, response, &health)
+            .await;
+
         assert!(!score.is_acceptable);
         assert_eq!(score.score, 0.5); // 2 out of 4 checks passed (structure, coherence failed)
         assert!(score.checks_failed.contains(&"length".to_string()));
@@ -385,9 +398,11 @@ mod tests {
         let account = create_test_account();
         let health = AccountHealth::new("test-acc");
         let response = "This response is okay,"; // Ends with comma - incomplete
-        
-        let score = evaluator.evaluate_quality(&account, response, &health).await;
-        
+
+        let score = evaluator
+            .evaluate_quality(&account, response, &health)
+            .await;
+
         assert!(score.is_acceptable); // Should be acceptable with 0.75 score (3/4 checks passed)
         assert_eq!(score.score, 0.75); // 3 out of 4 checks passed (completeness failed)
         assert!(score.checks_failed.contains(&"completeness".to_string()));

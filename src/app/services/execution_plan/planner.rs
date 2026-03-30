@@ -22,25 +22,25 @@ pub struct ExecutionPlannerConfig {
     // ... existing config fields (lines 9-61)
     /// Default plan type to use when no specific strategy is selected
     pub default_plan_type: ExecutionPlanType,
-    
+
     /// Enable automatic plan selection based on context
     pub enable_auto_selection: bool,
-    
+
     /// Maximum number of accounts to include in a plan
     pub max_accounts_per_plan: usize,
-    
+
     /// Minimum health score threshold (0-100)
     pub min_health_score: f64,
-    
+
     /// Enable cost optimization by default
     pub cost_optimization_enabled: bool,
-    
+
     /// Enable failover by default
     pub failover_enabled: bool,
-    
+
     /// Enable load balancing by default
     pub load_balancing_enabled: bool,
-    
+
     /// Enable cascading by default
     pub cascading_enabled: bool,
 
@@ -49,13 +49,13 @@ pub struct ExecutionPlannerConfig {
 
     /// Default max retries
     pub default_max_retries: u32,
-    
+
     /// Default timeout in seconds
     pub default_timeout_seconds: u32,
-    
+
     /// Circuit breaker threshold (consecutive failures)
     pub circuit_breaker_threshold: u32,
-    
+
     /// Circuit breaker timeout in seconds
     pub circuit_breaker_timeout_seconds: u64,
 }
@@ -420,7 +420,11 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
         }
 
         // Check for cascading (quality-based escalation)
-        if options.enable_cascading || self.config.cascading_enabled || options.budget_mode || self.config.budget_mode_enabled {
+        if options.enable_cascading
+            || self.config.cascading_enabled
+            || options.budget_mode
+            || self.config.budget_mode_enabled
+        {
             return ExecutionPlanType::Cascading;
         }
 

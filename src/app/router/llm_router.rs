@@ -207,7 +207,11 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
 
             // Try to execute with this account
             match self
-                .forward_to_provider(&planned_account.account_id, request, &planned_account.provider_id)
+                .forward_to_provider(
+                    &planned_account.account_id,
+                    request,
+                    &planned_account.provider_id,
+                )
                 .await
             {
                 Ok(response) => {
@@ -270,9 +274,13 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
         provider_id_from_account: &str,
     ) -> Result<ChatResponse> {
         // Fetch the account from repository to get the API key
-        let account = self.account_repo.find_by_id(account_id).await.map_err(|e| {
-            Error::Internal(format!("Failed to find account '{}': {}", account_id, e))
-        })?;
+        let account = self
+            .account_repo
+            .find_by_id(account_id)
+            .await
+            .map_err(|e| {
+                Error::Internal(format!("Failed to find account '{}': {}", account_id, e))
+            })?;
 
         // Get API key from account
         let api_key = account.api_key.as_ref().ok_or_else(|| {
@@ -291,8 +299,14 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
         let base_url = if provider_id == "cloudflare" {
             // Cloudflare AI Gateway format: /v1/{account_id}/gateway/{gateway_name}/chat/completions
             // API key format: {account_id}_{api_key}, we use account_id part
-            let _account_id = api_key.split('_').next().unwrap_or("ex5FpSyn1K5lkyZK6swxSyhpf8DO82BGy");
-            format!("{}/ex5FpSyn1K5lkyZK6swxSyhpf8DO82BGy/gateway/ai", provider_config.base_url)
+            let _account_id = api_key
+                .split('_')
+                .next()
+                .unwrap_or("ex5FpSyn1K5lkyZK6swxSyhpf8DO82BGy");
+            format!(
+                "{}/ex5FpSyn1K5lkyZK6swxSyhpf8DO82BGy/gateway/ai",
+                provider_config.base_url
+            )
         } else {
             self.http_client
                 .mock_base_url()
@@ -321,7 +335,10 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             .post(&url)
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", api_key))
-            .header("HTTP-Referer", "https://github.com/XaviCode1000/Rust-LLM-Api-Router")
+            .header(
+                "HTTP-Referer",
+                "https://github.com/XaviCode1000/Rust-LLM-Api-Router",
+            )
             .header("X-Title", "Rust LLM API Router")
             .json(&body)
             .send()
