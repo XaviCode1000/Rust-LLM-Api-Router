@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::domain::entities::AccountHealth;
 use crate::app::services::execution_plan::types::PlannedAccount;
 
@@ -205,7 +203,7 @@ impl HeuristicQualityEvaluator {
 impl QualityGate for HeuristicQualityEvaluator {
     async fn evaluate_quality(
         &self,
-        account: &PlannedAccount,
+        _account: &PlannedAccount,
         response: &str,
         _health: &AccountHealth,
     ) -> QualityScore {
@@ -252,8 +250,8 @@ impl QualityGate for HeuristicQualityEvaluator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::entities::{Account, AccountHealth, Provider};
-use crate::app::services::execution_plan::types::PlannedAccount;
+    use crate::domain::entities::{AccountHealth, Provider};
+    use crate::app::services::execution_plan::types::PlannedAccount;
 
     fn create_test_account() -> PlannedAccount {
         let provider = Provider::new("openai", "OpenAI", "https://api.openai.com");

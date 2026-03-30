@@ -58,7 +58,8 @@ pub struct CascadingExecutionPlan {
     total_cost_microdollars: u64,
     /// Number of tiers that have been attempted
     tiers_attempted: u32,
-    /// Quality gate for evaluating responses
+    /// Quality gate for evaluating responses (reserved for future use when integrating with real LLM execution)
+    #[allow(dead_code)]
     quality_gate: Arc<dyn QualityGate>,
 }
 
@@ -176,7 +177,7 @@ impl CascadingExecutionPlan {
             self.tiers_attempted += 1;
             
             // If we still have a valid tier, update the inner plan
-            if let Some(tier) = self.current_tier() {
+            if self.current_tier().is_some() {
                 // Reset the inner plan with the new tier as primary
                 let mut planned_accounts: Vec<PlannedAccount> = self
                     .tiers
@@ -268,9 +269,9 @@ impl CascadingExecutionPlan {
     ) -> ExecutionResult {
         // Streaming guard: skip cascading in streaming mode
         if config.stream {
-            if let Some(tier) = self.current_tier() {
+            if self.current_tier().is_some() {
                 // Execute only the first tier in streaming mode
-                let mut planned_accounts: Vec<PlannedAccount> = self
+                let planned_accounts: Vec<PlannedAccount> = self
                     .tiers
                     .iter()
                     .take(1)
@@ -278,7 +279,7 @@ impl CascadingExecutionPlan {
                     .collect();
 
                 // Create the inner execution plan with the first tier
-                let inner = ExecutionPlanImpl::new(
+                let _inner = ExecutionPlanImpl::new(
                     ExecutionPlanType::Cascading,
                     self.inner.context().clone(),
                     planned_accounts,
@@ -302,7 +303,6 @@ impl CascadingExecutionPlan {
         }
 
         // Non-streaming execution with cascading logic
-        let final_tier_index = self.tiers.len().saturating_sub(1);
         let mut used_quality_escalation = false;
 
         // Loop through tiers
@@ -316,7 +316,7 @@ impl CascadingExecutionPlan {
                 .collect();
 
             // Create the inner execution plan for this tier
-            let inner = ExecutionPlanImpl::new(
+            let _inner = ExecutionPlanImpl::new(
                 ExecutionPlanType::Cascading,
                 self.inner.context().clone(),
                 tier_accounts,
