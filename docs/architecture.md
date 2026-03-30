@@ -59,6 +59,10 @@ src/domain/
 │   ├── account_repository.rs
 │   ├── provider_repository.rs
 │   └── llm_gateway.rs
+├── services/           # Domain services
+│   ├── mod.rs
+│   ├── model_selector.rs    # CostAwareSelector, ModelSelector trait
+│   └── query_complexity.rs  # QueryClassifier, QueryComplexity
 └── errors/             # Errores de dominio
     └── mod.rs
 ```
@@ -112,6 +116,37 @@ pub trait LlmGateway: Send + Sync {
     async fn chat(&self, request: ChatRequest, api_key: &str) -> DomainResult<ChatResponse>;
     async fn list_models(&self, api_key: &str) -> DomainResult<Vec<Model>>;
 }
+
+// Model selector trait (Issue #23: Cost-Aware Routing)
+pub trait ModelSelector: Send + Sync {
+    fn select<'a>(
+        &self,
+        request: &ChatRequest,
+        available_models: &'a [Model],
+    ) -> SelectionResult<&'a Model>;
+    fn strategy_name(&self) -> &'static str;
+}
+```
+
+**Domain Services:**
+
+```rust
+// Query complexity classification (Issue #23)
+pub enum QueryComplexity {
+    Low = 0,    // Short queries, simple questions
+    Medium = 1, // Conversational, code keywords
+    High = 2,   // Complex reasoning, design tasks
+}
+
+pub struct QueryClassifier {
+    config: ClassifierConfig,  // Thresholds and keywords
+}
+
+// Cost-aware model selector (Issue #23)
+pub struct CostAwareSelector {
+    classifier: QueryClassifier,
+    max_cost_per_million_tokens: Option<f64>,
+}
 ```
 
 ---
@@ -128,7 +163,15 @@ src/app/
 ├── services/           # Servicios de aplicación
 │   ├── mod.rs
 │   ├── account_rotation.rs  # Estrategias de rotación
-│   └── failover.rs          # Failover manager
+│   ├── failover.rs          # Failover manager
+│   ├── execution_plan/      # Execution plan module
+│   │   ├── mod.rs
+│   │   ├── cascading.rs     # CascadingExecutionPlan (Issue #24)
+│   │   ├── types.rs         # ExecutionPlanType enum
+│   │   └── planner.rs       # ExecutionPlanner
+│   └── quality/             # Quality evaluation (Issue #24)
+│       ├── mod.rs
+│       └── evaluator.rs     # HeuristicQualityEvaluator, QualityGate trait
 └── router/             # Enrutamiento interno
     └── llm_router.rs
 ```
@@ -173,6 +216,75 @@ pub struct FailoverManager {
 - Se abre tras 5 fallos consecutivos
 - Auto-cierre después de 30 segundos
 - Health scoring 0-100
+
+#### Cascading Execution Plan (Issue #24)
+
+Estrategia de ejecución que intenta modelos más baratos y escala si la calidad es insuficiente.
+
+```rust
+pub struct CascadingExecutionPlan {
+    inner: ExecutionPlanImpl,
+    tiers: Vec<CascadingTier>,
+    quality_config: QualityConfig,
+    total_cost_microdollars: u64,
+    tiers_attempted: u32,
+    quality_gate: Arc<dyn QualityGate>,
+}
+
+pub struct CascadingTier {
+    pub account: PlannedAccount,
+    pub model_id: String,
+    pub tier_order: u32,
+}
+```
+
+**Flujo de Cascading:**
+
+1. Ejecuta con el tier más barato (Tier 0)
+2. Evalúa calidad de la respuesta (4 checks heurísticos)
+3. Si calidad ≥ umbral (default 0.75) → retorna éxito
+4. Si calidad < umbral → escala al siguiente tier
+5. Repite hasta éxito o agotar tiers
+6. Rastrea costo acumulado en microdólares
+
+**Streaming Guard:**
+
+- Cascading se deshabilita automáticamente para requests streaming
+- La calidad no se puede evaluar hasta completar el stream
+- Fallback a plan `Standard` en ese caso
+
+#### Quality Gate (Issue #24)
+
+Trait para evaluar calidad de respuestas sin llamadas adicionales al LLM.
+
+```rust
+#[async_trait]
+pub trait QualityGate: Send + Sync {
+    async fn evaluate_quality(
+        &self,
+        account: &PlannedAccount,
+        response: &str,
+        health: &AccountHealth,
+    ) -> QualityScore;
+}
+
+pub struct QualityScore {
+    pub score: f64,              // 0.0 a 1.0
+    pub is_acceptable: bool,     // score >= min_quality_score
+    pub checks_failed: Vec<String>, // Nombres de checks fallidos
+}
+```
+
+**HeuristicQualityEvaluator:**
+
+Evaluación basada en 4 checks:
+
+| Check | Qué evalúa | Condición de fallo |
+|-------|------------|-------------------|
+| **Completeness** | Respuesta no truncada | Termina con puntuación abierta |
+| **Length** | Longitud mínima | < 10 caracteres |
+| **Structure** | JSON válido cuando esperado | Llaves/brackets sin cerrar |
+| **Coherence** | Sin patrones de error | Contiene "I cannot", repetición excesiva |
 
 ---
 

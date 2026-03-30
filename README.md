@@ -22,7 +22,7 @@ A high-performance LLM proxy/router built with Clean Architecture in Rust. Route
 
 ## Features
 
-- **Multi-Provider Support**: Connect to 12+ LLM providers (Groq, OpenRouter, Mistral, Cerebras, Cloudflare, Anthropic, OpenAI, and more)
+- **Multi-Provider Support**: Connect to 29 LLM providers (OpenAI, Anthropic, Groq, Mistral, and 26 more including local and enterprise options)
 - **Multi-Account Routing**: Register multiple API keys per provider with automatic rotation
 - **Automatic Failover**: Circuit breaker pattern with intelligent retry logic
 - **Streaming (SSE)**: Real-time token-by-token streaming responses
@@ -30,7 +30,10 @@ A high-performance LLM proxy/router built with Clean Architecture in Rust. Route
 - **Health Monitoring**: Real-time health checks and metrics
 - **Integrated CLI**: Manage providers and accounts from the terminal
 - **Shell Completions**: Auto-completion for bash, zsh, and fish (build with `--features completions`)
-- **Execution Planning**: Proactive planning with multiple strategies (Standard, Failover, Load Balanced, Cost Optimized)
+- **Execution Planning**: Proactive planning with multiple strategies (Standard, Failover, Load Balanced, Cost Optimized, Cascading)
+- **Cost-Aware Routing**: Static model selection based on query complexity (#23)
+- **Cascading Routing**: Dynamic escalation when quality thresholds not met (#24)
+- **Quality Evaluation**: Heuristic-based response quality checks
 - **OAuth 2.1 / PKCE**: Secure authentication flow support
 
 ## Quick Start
@@ -123,6 +126,8 @@ This project follows **Clean Architecture** and **Domain-Driven Design (DDD)** p
 ```
 
 For detailed architecture documentation, see [docs/architecture.md](docs/architecture.md).
+
+For intelligent routing strategies (Cost-Aware and Cascading), see [docs/routing.md](docs/routing.md).
 
 ## API Reference
 
@@ -338,24 +343,63 @@ export CLI_CUSTOM_CA_CERT=/path/to/ca.pem
 
 ## Supported Providers
 
+### Major AI Providers (Commercial)
+
+| Provider | Base URL | Status |
+|----------|----------|--------|
+| OpenAI | https://api.openai.com/v1 | ✅ Tested |
+| Anthropic | https://api.anthropic.com/v1 | ✅ Tested |
+| Mistral AI | https://api.mistral.ai/v1 | ✅ Tested |
+| Cohere | https://api.cohere.ai/v1 | ✅ Tested |
+| Google AI Studio | https://generativelanguage.googleapis.com/v1 | 🔄 Supported |
+
+### OpenAI-Compatible Platforms
+
 | Provider | Base URL | Status |
 |----------|----------|--------|
 | Groq | https://api.groq.com/openai/v1 | ✅ Tested |
 | OpenRouter | https://openrouter.ai/api/v1 | ✅ Tested |
-| Mistral AI | https://api.mistral.ai/v1 | ✅ Tested |
 | Cerebras | https://api.cerebras.ai/v1 | ✅ Tested |
-| Cloudflare Workers AI | https://api.cloudflare.com/client/v4/accounts | ✅ Tested |
-| Anthropic | https://api.anthropic.com/v1 | ✅ Tested |
-| OpenAI | https://api.openai.com/v1 | ✅ Tested |
-| NVIDIA NIM | https://integrate.api.nvidia.com/v1 | 🔄 Supported |
-| Hugging Face | https://api-inference.huggingface.co/models | 🔄 Supported |
+| Cloudflare Workers AI | https://gateway.ai.cloudflare.com/v1 | ✅ Tested |
 | DeepSeek | https://api.deepseek.com/v1 | 🔄 Supported |
+| Together | https://api.together.xyz/v1 | 🔄 Supported |
+| Fireworks AI | https://api.fireworks.ai/inference/v1 | 🔄 Supported |
 | xAI (Grok) | https://api.x.ai/v1 | 🔄 Supported |
-| Cohere | https://api.cohere.ai/v1 | 🔄 Supported |
-| AI21 | https://api.ai21.com/studio/v1 | 🔄 Supported |
-| Google AI Studio | https://generativelanguage.googleapis.com/v1beta | 🔄 Supported |
+| Perplexity AI | https://api.perplexity.ai/v1 | 🔄 Supported |
+| Replicate | https://api.replicate.com/v1 | 🔄 Supported |
+| Anyscale | https://api.endpoints.anyscale.com/v1 | 🔄 Supported |
+| DeepInfra | https://api.deepinfra.com/v1 | 🔄 Supported |
+| Novita AI | https://api.novita.ai/v1 | 🔄 Supported |
+| SambaNova | https://api.sambanova.ai/v1 | 🔄 Supported |
+| NVIDIA NIM | https://integrate.api.nvidia.com/v1 | 🔄 Supported |
+
+### Local/On-Premise Servers
+
+| Provider | Base URL | Status |
+|----------|----------|--------|
+| Ollama | http://localhost:11434/v1 | 🔄 Supported |
+| LM Studio | http://localhost:1234/v1 | 🔄 Supported |
+| vLLM | http://localhost:8000/v1 | 🔄 Supported |
+
+### Enterprise Cloud Services
+
+| Provider | Base URL | Status |
+|----------|----------|--------|
+| Azure OpenAI | https://{resource}.openai.azure.com/v1 | 🔄 Supported |
+| AWS Bedrock | https://bedrock-runtime.{region}.amazonaws.com | 🔄 Supported |
+| Google Vertex AI | https://{region}-aiplatform.googleapis.com/v1 | 🔄 Supported |
+
+### Other Providers
+
+| Provider | Base URL | Status |
+|----------|----------|--------|
+| Hugging Face | https://api-inference.huggingface.co | 🔄 Supported |
+| AI21 Labs | https://api.ai21.com/v1 | 🔄 Supported |
+| Aleph Alpha | https://api.aleph-alpha.com/v1 | 🔄 Supported |
 
 ✅ = Tested | 🔄 = Supported (pending test)
+
+> **Note**: For Azure, Bedrock, and Vertex AI, replace `{resource}` or `{region}` with your specific resource/region. Enterprise providers may require additional configuration (IAM roles, managed identities, etc.).
 
 ### OpenCode Integration
 
@@ -419,6 +463,125 @@ See [src/app/services/execution_plan/README.md](src/app/services/execution_plan/
 | `Failover` | Secondary accounts on failure |
 | `LoadBalanced` | Round-robin distribution |
 | `CostOptimized` | Lowest cost selection |
+| `Cascading` | Quality-based escalation across model tiers |
+
+## Intelligent Routing
+
+The router provides two complementary routing strategies for cost optimization:
+
+### Cost-Aware Routing (Static Selection)
+
+**Issue #23**: Routes queries to the cheapest model capable of handling complexity *before* making the request.
+
+#### How It Works
+
+1. **Classify Query**: Analyzes message length, conversation history, and keywords
+2. **Map to Complexity**: Low → budget models, Medium → mid-tier, High → premium
+3. **Select Model**: Picks the cheapest model whose tier meets complexity
+4. **Apply Constraints**: Respects optional cost ceiling per million tokens
+
+#### When to Use
+
+- You want cheapest capable model **upfront**
+- Queries vary predictably in complexity
+- You prefer static cost budgeting
+
+#### Configuration
+
+```rust
+use rust_llm_api_router::domain::services::model_selector::CostAwareSelector;
+
+// Default: complexity-based selection
+let selector = CostAwareSelector::new();
+
+// With cost ceiling: exclude models above $10/1M tokens
+let selector = CostAwareSelector::new().with_max_cost(10.0);
+
+// Custom classifier thresholds
+use rust_llm_api_router::domain::services::query_complexity::ClassifierConfig;
+let config = ClassifierConfig {
+    low_char_threshold: 50,
+    medium_char_threshold: 300,
+    high_complexity_keywords: vec!["quantum".to_string()],
+    ..Default::default()
+};
+let selector = CostAwareSelector::with_classifier(
+    QueryClassifier::with_config(config)
+);
+```
+
+#### Complexity Heuristics
+
+| Complexity | Triggers | Example Models |
+|------------|----------|----------------|
+| **Low** | Short messages (<100 chars), simple greetings | Llama-3 8B, GPT-4o Mini |
+| **Medium** | Medium messages (100-500 chars), code keywords, 4+ messages | GPT-4o, Claude 3 Sonnet |
+| **High** | Long messages (>500 chars), analysis keywords, 8+ messages | GPT-4 Turbo, Claude 3 Opus |
+
+### Cascading Routing (Dynamic Escalation)
+
+**Issue #24**: Starts with cheapest tier, evaluates quality, escalates only if response quality is poor.
+
+#### How It Works
+
+1. **Execute Cheapest**: Sends request to lowest-cost model tier
+2. **Evaluate Quality**: Checks response completeness, length, structure, coherence
+3. **Escalate if Needed**: If quality < threshold (default: 0.75), try next tier
+4. **Repeat**: Continue until quality acceptable or tiers exhausted
+5. **Track Costs**: Accumulates cost across all tier attempts
+
+#### When to Use
+
+- You want to save costs but **ensure quality**
+- Some queries can be handled by cheaper models
+- You're willing to trade latency for cost savings
+
+#### Quality Evaluation
+
+The `HeuristicQualityEvaluator` performs 4 checks:
+
+| Check | What It Measures | Failure Condition |
+|-------|------------------|-------------------|
+| **Completeness** | Response not truncated | Ends with open punctuation |
+| **Length** | Minimum response size | < 10 characters |
+| **Structure** | Valid JSON when expected | Unmatched braces/brackets |
+| **Coherence** | No error patterns | Contains "I cannot", repeated words |
+
+#### Configuration
+
+```rust
+use rust_llm_api_router::app::services::quality::evaluator::QualityConfig;
+
+// Default: 3 tiers, 0.75 quality threshold
+let config = QualityConfig::default();
+
+// Custom: 4 tiers, higher quality bar
+let config = QualityConfig {
+    min_quality_score: 0.85,
+    max_tiers: 4,
+    per_tier_timeout_ms: 3000,
+    ..Default::default()
+};
+```
+
+#### Streaming Guard
+
+Cascading is **disabled for streaming requests** because:
+- Quality can't be evaluated until stream completes
+- Cascading would break real-time token delivery
+- Falls back to Standard execution plan automatically
+
+### Comparison: Cost-Aware vs Cascading
+
+| Aspect | Cost-Aware Routing | Cascading Routing |
+|--------|-------------------|-------------------|
+| **When** | Before request | After each tier |
+| **Decision** | Static selection | Dynamic escalation |
+| **Latency** | Same as single request | Multiple tier attempts |
+| **Cost Model** | Predictable per-request | Accumulative across tiers |
+| **Quality** | Assumed from tier | Verified after response |
+| **Streaming** | Compatible | Incompatible (guard) |
+| **Best For** | Budget-critical, predictable queries | Quality-critical, variable queries |
 
 ## Failover
 
@@ -545,19 +708,21 @@ Contributions are welcome! Please read our contributing guidelines before submit
 - [x] **Streaming (SSE)** for /v1/chat/completions
 - [x] **Endpoint /v1/models** with real model list
 - [x] **Anthropic Adapters** (different format)
-- [x] **Supported Providers**: Groq, OpenRouter, Mistral, Cerebras, Cloudflare, Anthropic, OpenAI
+- [x] **Supported Providers**: 29 LLM providers (OpenAI, Anthropic, Groq, Mistral, and 25 more including local and enterprise options)
 - [x] **80.35% Code Coverage** with 492 tests
 - [x] **Execution Planning Module** with proactive failover
 - [x] **Auth Login with --provider argument** (configurable provider)
 - [x] **Provider List with account status** (shows configured/not set)
 - [x] **Provider Models command** (list available models)
+- [x] **Cost-Aware Routing** (#23) - Static model selection by query complexity
+- [x] **Cascading Routing** (#24) - Dynamic quality-based escalation
 
 ### Pending 🔄
 
 - [ ] Docker + Kubernetes manifests
 - [ ] Complete CI/CD pipeline (GitHub Actions)
-- [ ] Additional Provider Adapters: Google AI Studio, Cohere, AI21, DeepSeek
-- [ ] NVIDIA NIM, Hugging Face inference endpoints
+- [ ] Comprehensive testing of all 29 providers (especially enterprise and specialized platforms)
+- [ ] Provider-specific authentication and configuration guides
 
 ## Project Structure
 
@@ -568,10 +733,17 @@ src/
 │   ├── traits/       # Ports/interfaces
 │   ├── errors/      # Domain errors
 │   └── services/    # Domain services
+│       ├── model_selector.rs    # CostAwareSelector (Issue #23)
+│       └── query_complexity.rs  # QueryClassifier (Issue #23)
 ├── app/             # Application layer (use cases, services)
 │   ├── services/    # Application services
 │   │   ├── account_rotation.rs
 │   │   ├── execution_plan/
+│   │   │   ├── cascading.rs     # CascadingExecutionPlan (Issue #24)
+│   │   │   ├── types.rs         # ExecutionPlanType enum
+│   │   │   └── planner.rs       # ExecutionPlanner
+│   │   ├── quality/
+│   │   │   └── evaluator.rs     # HeuristicQualityEvaluator (Issue #24)
 │   │   ├── failover.rs
 │   │   └── auth/
 │   ├── router/     # Internal routing

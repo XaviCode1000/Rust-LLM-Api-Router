@@ -41,6 +41,12 @@ pub struct ExecutionPlannerConfig {
     /// Enable load balancing by default
     pub load_balancing_enabled: bool,
 
+    /// Enable cascading by default
+    pub cascading_enabled: bool,
+
+    /// Enable budget mode by default
+    pub budget_mode_enabled: bool,
+
     /// Default max retries
     pub default_max_retries: u32,
 
@@ -64,6 +70,8 @@ impl Default for ExecutionPlannerConfig {
             cost_optimization_enabled: false,
             failover_enabled: true,
             load_balancing_enabled: true,
+            cascading_enabled: false,
+            budget_mode_enabled: false,
             default_max_retries: 3,
             default_timeout_seconds: 60,
             circuit_breaker_threshold: 5,
@@ -88,6 +96,8 @@ impl ExecutionPlannerConfig {
             cost_optimization_enabled: false,
             failover_enabled: true,
             load_balancing_enabled: true,
+            cascading_enabled: false,
+            budget_mode_enabled: false,
             default_max_retries: 5,
             default_timeout_seconds: 120,
             circuit_breaker_threshold: 3,
@@ -105,6 +115,8 @@ impl ExecutionPlannerConfig {
             cost_optimization_enabled: true,
             failover_enabled: false,
             load_balancing_enabled: false,
+            cascading_enabled: false,
+            budget_mode_enabled: true,
             default_max_retries: 1,
             default_timeout_seconds: 30,
             circuit_breaker_threshold: 5,
@@ -122,6 +134,8 @@ impl ExecutionPlannerConfig {
             cost_optimization_enabled: false,
             failover_enabled: false,
             load_balancing_enabled: true,
+            cascading_enabled: false,
+            budget_mode_enabled: false,
             default_max_retries: 1,
             default_timeout_seconds: 15,
             circuit_breaker_threshold: 3,
@@ -403,6 +417,15 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
 
         if options.enable_failover || self.config.failover_enabled {
             return ExecutionPlanType::Failover;
+        }
+
+        // Check for cascading (quality-based escalation)
+        if options.enable_cascading
+            || self.config.cascading_enabled
+            || options.budget_mode
+            || self.config.budget_mode_enabled
+        {
+            return ExecutionPlanType::Cascading;
         }
 
         // Fall back to config default

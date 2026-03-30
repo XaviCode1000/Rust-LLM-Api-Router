@@ -21,6 +21,9 @@ pub enum ExecutionPlanType {
 
     /// Cost-optimized execution
     CostOptimized,
+
+    /// Cascading execution: try cheapest first, escalate on quality failure
+    Cascading,
 }
 
 impl ExecutionPlanType {
@@ -31,6 +34,7 @@ impl ExecutionPlanType {
             Self::Failover => "Failover",
             Self::LoadBalanced => "Load Balanced",
             Self::CostOptimized => "Cost Optimized",
+            Self::Cascading => "Cascading",
         }
     }
 
@@ -46,7 +50,12 @@ impl ExecutionPlanType {
 
     /// Returns true if this plan type is cost-optimized.
     pub fn is_cost_optimized(&self) -> bool {
-        matches!(self, Self::CostOptimized)
+        matches!(self, Self::CostOptimized | Self::Cascading)
+    }
+
+    /// Returns true if this plan type supports quality-based escalation.
+    pub fn supports_cascading(&self) -> bool {
+        matches!(self, Self::Cascading)
     }
 }
 
@@ -88,6 +97,9 @@ pub struct PlannedAccount {
 
     /// Order in the execution sequence
     pub execution_order: u32,
+
+    /// Model ID associated with this account (used in cascading plans)
+    pub model_id: Option<String>,
 }
 
 impl PlannedAccount {
@@ -103,6 +115,7 @@ impl PlannedAccount {
             is_primary: true,
             is_fallback: false,
             execution_order: 0,
+            model_id: None,
         }
     }
 
@@ -129,6 +142,12 @@ impl PlannedAccount {
     /// Sets the execution order.
     pub fn with_execution_order(mut self, order: u32) -> Self {
         self.execution_order = order;
+        self
+    }
+
+    /// Sets the model ID for this account.
+    pub fn with_model_id(mut self, model_id: impl Into<String>) -> Self {
+        self.model_id = Some(model_id.into());
         self
     }
 

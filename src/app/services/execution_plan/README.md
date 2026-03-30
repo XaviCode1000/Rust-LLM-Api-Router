@@ -79,6 +79,7 @@ Four execution plan types are available:
 | `Failover` | Sequential fallback accounts | Reliability-critical requests |
 | `LoadBalanced` | Round-robin across accounts | High-volume requests |
 | `CostOptimized` | Lowest cost account selection | Budget-constrained workloads |
+| `Cascading` | Quality-based escalation across tiers | Cost optimization with quality guarantee |
 
 ### Rotation Strategies
 
@@ -209,6 +210,59 @@ let planner = ExecutionPlannerBuilder::new()
     .await?;
 ```
 
+### Cascading Execution Plan (Issue #24)
+
+The Cascading plan tries cheaper models first and escalates based on response quality:
+
+```rust
+use crate::app::services::quality::evaluator::QualityConfig;
+
+let quality_config = QualityConfig {
+    min_quality_score: 0.75,  // Escalate if quality < 75%
+    max_tiers: 3,              // Try up to 3 models
+    per_tier_timeout_ms: 5000,
+    ..Default::default()
+};
+
+// Create cascading plan with quality gate
+let plan = CascadingExecutionPlan::new(
+    context,
+    accounts,      // Sorted by cost (cheapest first)
+    pricing,
+    model_ids,
+    quality_config,
+    quality_gate,
+);
+
+// Execute with cascading logic
+let result = plan.execute(config, response_text, tokens_used);
+
+// Check results
+match result {
+    ExecutionResult::Success { tier_used, quality_score, total_cost, .. } => {
+        println!("Success with tier {} (quality: {:.2}, cost: {}µ$)", 
+            tier_used, quality_score.unwrap_or(0.0), total_cost);
+    }
+    ExecutionResult::Failure { .. } => {
+        println!("All tiers exhausted");
+    }
+}
+```
+
+**Key Features:**
+- **Quality-based escalation**: Uses `HeuristicQualityEvaluator` with 4 checks
+- **Cost tracking**: Accumulates costs across tier attempts in microdollars
+- **Streaming guard**: Automatically disabled for streaming requests
+- **Budget enforcement**: Optional max cost limit per execution
+
+**Quality Evaluation Checks:**
+1. **Completeness**: Response not truncated
+2. **Length**: Meets minimum character threshold
+3. **Structure**: Valid JSON when expected
+4. **Coherence**: No error patterns or excessive repetition
+
+See [docs/routing.md](../../docs/routing.md) for detailed comparison with Cost-Aware Routing.
+
 ## Migration Guide
 
 ### From Reactive to Proactive
@@ -229,6 +283,8 @@ let response = plan.execute().await?;
 
 ## Future Enhancements
 
+- [x] **Cascading routing** with quality-based escalation (Issue #24)
+- [x] **Cost-aware routing** with query complexity classification (Issue #23)
 - [ ] Model-specific routing (e.g., code models to specialized providers)
 - [ ] Cost-based optimization with real-time pricing
 - [ ] Predictive health scoring using ML

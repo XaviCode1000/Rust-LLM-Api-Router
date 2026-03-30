@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Pre-push hook: verify Rust formatting
+# Run cargo fmt --check to ensure code is properly formatted before push.
+
+set -euo pipefail
+
+echo "Checking Rust formatting..."
+
+if ! cargo fmt --all -- --check; then
+    echo "ERROR: Rust formatting check failed."
+    echo "Please run 'cargo fmt' to fix formatting issues."
+    exit 1
+fi
+
+echo "Formatting check passed."

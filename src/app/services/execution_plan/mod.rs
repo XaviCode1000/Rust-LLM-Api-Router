@@ -3,7 +3,9 @@
 //! This module provides the foundational types for planning and executing LLM requests.
 //! It defines the execution context, plan types, and the core trait for execution strategies.
 
+pub mod cascading;
 mod context;
+pub mod execution;
 mod implementations;
 mod metrics;
 mod outcome;
@@ -11,9 +13,11 @@ mod plan;
 mod planner;
 mod status;
 mod tracing;
-mod types;
+pub mod types;
 
+pub use cascading::{CascadingExecutionPlan, CascadingTier};
 pub use context::{ExecutionContext, PlanningOptions};
+pub use execution::{ExecutionConfig, ExecutionResult};
 pub use implementations::{
     CostOptimizedExecutionPlan, ExecutionPlanBuilder, FailoverExecutionPlan,
     LoadBalancedExecutionPlan, ProviderPricing, StandardExecutionPlan,

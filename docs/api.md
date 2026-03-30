@@ -47,6 +47,16 @@ Examples:
 - `groq:llama-3.1-8b-instant`
 - `openai:gpt-3.5-turbo`
 
+#### Intelligent Routing
+
+The router supports two intelligent routing strategies for cost optimization:
+
+**Cost-Aware Routing** (#23): Automatically selects the cheapest model capable of handling your query complexity. Classification is based on message length, conversation history, and keywords.
+
+**Cascading Routing** (#24): Starts with the cheapest model, evaluates response quality, and escalates to more capable models only when quality thresholds are not met.
+
+See [docs/routing.md](routing.md) for detailed configuration and usage examples.
+
 #### Response
 
 ```json
