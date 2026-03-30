@@ -95,6 +95,24 @@ cargo fmt --check
 cargo fmt
 ```
 
+### Git Hooks
+
+To prevent formatting issues in CI, the repository includes Git hooks that automatically run `cargo fmt` before each commit and verify formatting before push.
+
+**Pre-commit hook:** Runs `cargo fmt --all` automatically and stages formatted files. You don't need to remember to format code manually.
+
+**Pre-push hook:** Runs `cargo fmt --all -- --check` to ensure all code is properly formatted before pushing to remote.
+
+The hook scripts are stored in the `githooks/` directory (version-controlled). To install them in your local repository, run:
+
+```bash
+./scripts/setup-githooks.sh
+```
+
+This will copy the hooks to `.git/hooks/` and make them executable. If you already have custom hooks, they will be backed up with a `.backup` extension.
+
+**Note:** If you have the `pre-commit` Python tool installed, the original hook has been backed up to `.git/hooks/pre-commit.pre-commit-bak`.
+
 ---
 
 ## 📊 Performance Comparison
@@ -191,11 +209,12 @@ Rust-LLM-Api-Router/
 ### 2. Before Commit
 
 ```bash
-# Format + lint + test
-cargo fmt
+# Lint + test (formatting is automatic via pre-commit hook)
 cargo clippy -D warnings
 cargo nextest run --test-threads 2
 ```
+
+**Note:** Pre-commit hook runs `cargo fmt` automatically. Pre-push hook verifies formatting before push.
 
 ### 3. Coverage Check
 

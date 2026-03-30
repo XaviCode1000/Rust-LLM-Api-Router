@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Pre-commit hook: run cargo fmt on staged Rust files
+# This ensures consistent formatting before commit.
+
+set -euo pipefail
+
+echo "Running cargo fmt --all..."
+
+# Run cargo fmt to format all Rust code
+cargo fmt --all
+
+# Stage any formatted changes
+git add --all
+
+echo "Formatting complete. Proceeding with commit."

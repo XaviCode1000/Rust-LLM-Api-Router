@@ -22,7 +22,7 @@ A high-performance LLM proxy/router built with Clean Architecture in Rust. Route
 
 ## Features
 
-- **Multi-Provider Support**: Connect to 12+ LLM providers (Groq, OpenRouter, Mistral, Cerebras, Cloudflare, Anthropic, OpenAI, and more)
+- **Multi-Provider Support**: Connect to 29 LLM providers (OpenAI, Anthropic, Groq, Mistral, and 26 more including local and enterprise options)
 - **Multi-Account Routing**: Register multiple API keys per provider with automatic rotation
 - **Automatic Failover**: Circuit breaker pattern with intelligent retry logic
 - **Streaming (SSE)**: Real-time token-by-token streaming responses
@@ -343,24 +343,63 @@ export CLI_CUSTOM_CA_CERT=/path/to/ca.pem
 
 ## Supported Providers
 
+### Major AI Providers (Commercial)
+
+| Provider | Base URL | Status |
+|----------|----------|--------|
+| OpenAI | https://api.openai.com/v1 | ✅ Tested |
+| Anthropic | https://api.anthropic.com/v1 | ✅ Tested |
+| Mistral AI | https://api.mistral.ai/v1 | ✅ Tested |
+| Cohere | https://api.cohere.ai/v1 | ✅ Tested |
+| Google AI Studio | https://generativelanguage.googleapis.com/v1 | 🔄 Supported |
+
+### OpenAI-Compatible Platforms
+
 | Provider | Base URL | Status |
 |----------|----------|--------|
 | Groq | https://api.groq.com/openai/v1 | ✅ Tested |
 | OpenRouter | https://openrouter.ai/api/v1 | ✅ Tested |
-| Mistral AI | https://api.mistral.ai/v1 | ✅ Tested |
 | Cerebras | https://api.cerebras.ai/v1 | ✅ Tested |
-| Cloudflare Workers AI | https://api.cloudflare.com/client/v4/accounts | ✅ Tested |
-| Anthropic | https://api.anthropic.com/v1 | ✅ Tested |
-| OpenAI | https://api.openai.com/v1 | ✅ Tested |
-| NVIDIA NIM | https://integrate.api.nvidia.com/v1 | 🔄 Supported |
-| Hugging Face | https://api-inference.huggingface.co/models | 🔄 Supported |
+| Cloudflare Workers AI | https://gateway.ai.cloudflare.com/v1 | ✅ Tested |
 | DeepSeek | https://api.deepseek.com/v1 | 🔄 Supported |
+| Together | https://api.together.xyz/v1 | 🔄 Supported |
+| Fireworks AI | https://api.fireworks.ai/inference/v1 | 🔄 Supported |
 | xAI (Grok) | https://api.x.ai/v1 | 🔄 Supported |
-| Cohere | https://api.cohere.ai/v1 | 🔄 Supported |
-| AI21 | https://api.ai21.com/studio/v1 | 🔄 Supported |
-| Google AI Studio | https://generativelanguage.googleapis.com/v1beta | 🔄 Supported |
+| Perplexity AI | https://api.perplexity.ai/v1 | 🔄 Supported |
+| Replicate | https://api.replicate.com/v1 | 🔄 Supported |
+| Anyscale | https://api.endpoints.anyscale.com/v1 | 🔄 Supported |
+| DeepInfra | https://api.deepinfra.com/v1 | 🔄 Supported |
+| Novita AI | https://api.novita.ai/v1 | 🔄 Supported |
+| SambaNova | https://api.sambanova.ai/v1 | 🔄 Supported |
+| NVIDIA NIM | https://integrate.api.nvidia.com/v1 | 🔄 Supported |
+
+### Local/On-Premise Servers
+
+| Provider | Base URL | Status |
+|----------|----------|--------|
+| Ollama | http://localhost:11434/v1 | 🔄 Supported |
+| LM Studio | http://localhost:1234/v1 | 🔄 Supported |
+| vLLM | http://localhost:8000/v1 | 🔄 Supported |
+
+### Enterprise Cloud Services
+
+| Provider | Base URL | Status |
+|----------|----------|--------|
+| Azure OpenAI | https://{resource}.openai.azure.com/v1 | 🔄 Supported |
+| AWS Bedrock | https://bedrock-runtime.{region}.amazonaws.com | 🔄 Supported |
+| Google Vertex AI | https://{region}-aiplatform.googleapis.com/v1 | 🔄 Supported |
+
+### Other Providers
+
+| Provider | Base URL | Status |
+|----------|----------|--------|
+| Hugging Face | https://api-inference.huggingface.co | 🔄 Supported |
+| AI21 Labs | https://api.ai21.com/v1 | 🔄 Supported |
+| Aleph Alpha | https://api.aleph-alpha.com/v1 | 🔄 Supported |
 
 ✅ = Tested | 🔄 = Supported (pending test)
+
+> **Note**: For Azure, Bedrock, and Vertex AI, replace `{resource}` or `{region}` with your specific resource/region. Enterprise providers may require additional configuration (IAM roles, managed identities, etc.).
 
 ### OpenCode Integration
 
@@ -669,7 +708,7 @@ Contributions are welcome! Please read our contributing guidelines before submit
 - [x] **Streaming (SSE)** for /v1/chat/completions
 - [x] **Endpoint /v1/models** with real model list
 - [x] **Anthropic Adapters** (different format)
-- [x] **Supported Providers**: Groq, OpenRouter, Mistral, Cerebras, Cloudflare, Anthropic, OpenAI
+- [x] **Supported Providers**: 29 LLM providers (OpenAI, Anthropic, Groq, Mistral, and 25 more including local and enterprise options)
 - [x] **80.35% Code Coverage** with 492 tests
 - [x] **Execution Planning Module** with proactive failover
 - [x] **Auth Login with --provider argument** (configurable provider)
@@ -682,8 +721,8 @@ Contributions are welcome! Please read our contributing guidelines before submit
 
 - [ ] Docker + Kubernetes manifests
 - [ ] Complete CI/CD pipeline (GitHub Actions)
-- [ ] Additional Provider Adapters: Google AI Studio, Cohere, AI21, DeepSeek
-- [ ] NVIDIA NIM, Hugging Face inference endpoints
+- [ ] Comprehensive testing of all 29 providers (especially enterprise and specialized platforms)
+- [ ] Provider-specific authentication and configuration guides
 
 ## Project Structure
 
