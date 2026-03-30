@@ -22,34 +22,40 @@ pub struct ExecutionPlannerConfig {
     // ... existing config fields (lines 9-61)
     /// Default plan type to use when no specific strategy is selected
     pub default_plan_type: ExecutionPlanType,
-
+    
     /// Enable automatic plan selection based on context
     pub enable_auto_selection: bool,
-
+    
     /// Maximum number of accounts to include in a plan
     pub max_accounts_per_plan: usize,
-
+    
     /// Minimum health score threshold (0-100)
     pub min_health_score: f64,
-
+    
     /// Enable cost optimization by default
     pub cost_optimization_enabled: bool,
-
+    
     /// Enable failover by default
     pub failover_enabled: bool,
-
+    
     /// Enable load balancing by default
     pub load_balancing_enabled: bool,
+    
+    /// Enable cascading by default
+    pub cascading_enabled: bool,
+
+    /// Enable budget mode by default
+    pub budget_mode_enabled: bool,
 
     /// Default max retries
     pub default_max_retries: u32,
-
+    
     /// Default timeout in seconds
     pub default_timeout_seconds: u32,
-
+    
     /// Circuit breaker threshold (consecutive failures)
     pub circuit_breaker_threshold: u32,
-
+    
     /// Circuit breaker timeout in seconds
     pub circuit_breaker_timeout_seconds: u64,
 }
@@ -64,6 +70,8 @@ impl Default for ExecutionPlannerConfig {
             cost_optimization_enabled: false,
             failover_enabled: true,
             load_balancing_enabled: true,
+            cascading_enabled: false,
+            budget_mode_enabled: false,
             default_max_retries: 3,
             default_timeout_seconds: 60,
             circuit_breaker_threshold: 5,
@@ -88,6 +96,8 @@ impl ExecutionPlannerConfig {
             cost_optimization_enabled: false,
             failover_enabled: true,
             load_balancing_enabled: true,
+            cascading_enabled: false,
+            budget_mode_enabled: false,
             default_max_retries: 5,
             default_timeout_seconds: 120,
             circuit_breaker_threshold: 3,
@@ -105,6 +115,8 @@ impl ExecutionPlannerConfig {
             cost_optimization_enabled: true,
             failover_enabled: false,
             load_balancing_enabled: false,
+            cascading_enabled: false,
+            budget_mode_enabled: true,
             default_max_retries: 1,
             default_timeout_seconds: 30,
             circuit_breaker_threshold: 5,
@@ -122,6 +134,8 @@ impl ExecutionPlannerConfig {
             cost_optimization_enabled: false,
             failover_enabled: false,
             load_balancing_enabled: true,
+            cascading_enabled: false,
+            budget_mode_enabled: false,
             default_max_retries: 1,
             default_timeout_seconds: 15,
             circuit_breaker_threshold: 3,
@@ -403,6 +417,11 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
 
         if options.enable_failover || self.config.failover_enabled {
             return ExecutionPlanType::Failover;
+        }
+
+        // Check for cascading (quality-based escalation)
+        if options.enable_cascading || self.config.cascading_enabled || options.budget_mode || self.config.budget_mode_enabled {
+            return ExecutionPlanType::Cascading;
         }
 
         // Fall back to config default

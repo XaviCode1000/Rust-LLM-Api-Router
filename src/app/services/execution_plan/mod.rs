@@ -5,19 +5,22 @@
 
 mod context;
 mod implementations;
+mod cascading;
 mod metrics;
 mod outcome;
 mod plan;
 mod planner;
 mod status;
 mod tracing;
-mod types;
+mod execution;
+pub mod types;
 
 pub use context::{ExecutionContext, PlanningOptions};
 pub use implementations::{
     CostOptimizedExecutionPlan, ExecutionPlanBuilder, FailoverExecutionPlan,
     LoadBalancedExecutionPlan, ProviderPricing, StandardExecutionPlan,
 };
+pub use cascading::CascadingExecutionPlan;
 pub use metrics::{ExecutionPlanMetrics, ExecutionPlanMetricsBuilder};
 pub use outcome::ExecutionOutcome;
 pub use plan::{

@@ -111,6 +111,12 @@ pub struct PlanningOptions {
     /// Enable health-aware routing (prefer healthy accounts)
     pub health_aware_routing: bool,
 
+    /// Enable cascading execution (quality-based escalation)
+    pub enable_cascading: bool,
+
+    /// Enable budget optimization (consider cost-effective execution strategies)
+    pub budget_mode: bool,
+
     /// Custom priority for this request
     pub priority: i32,
 }
@@ -124,6 +130,8 @@ impl Default for PlanningOptions {
             timeout_seconds: 60,
             cost_optimized: false,
             health_aware_routing: true,
+            enable_cascading: false,
+            budget_mode: false,
             priority: 0,
         }
     }
@@ -144,6 +152,8 @@ impl PlanningOptions {
             timeout_seconds: 120,
             cost_optimized: false,
             health_aware_routing: true,
+            enable_cascading: false,
+            budget_mode: false,
             priority: 10,
         }
     }
@@ -157,6 +167,8 @@ impl PlanningOptions {
             timeout_seconds: 30,
             cost_optimized: true,
             health_aware_routing: false,
+            enable_cascading: false,
+            budget_mode: true,
             priority: -10,
         }
     }
@@ -170,10 +182,29 @@ impl PlanningOptions {
             timeout_seconds: 15,
             cost_optimized: false,
             health_aware_routing: true,
+            enable_cascading: false,
+            budget_mode: false,
             priority: 5,
         }
     }
 
+    /// Creates options optimized for cascading execution.
+    pub fn cascading() -> Self {
+        Self {
+            enable_failover: false,
+            enable_load_balancing: false,
+            max_retries: 1,
+            timeout_seconds: 30,
+            cost_optimized: true,
+            health_aware_routing: true,
+            enable_cascading: true,
+            budget_mode: true,
+            priority: 0,
+        }
+    }
+}
+
+impl PlanningOptions {
     /// Sets enable_failover.
     pub fn with_failover(mut self, enabled: bool) -> Self {
         self.enable_failover = enabled;
@@ -248,5 +279,18 @@ mod tests {
         let latency = PlanningOptions::low_latency();
         assert!(latency.health_aware_routing);
         assert_eq!(latency.timeout_seconds, 15);
+    }
+
+    #[test]
+    fn test_planning_options_cascading() {
+        let cascading = PlanningOptions::cascading();
+        assert!(!cascading.enable_failover);
+        assert!(!cascading.enable_load_balancing);
+        assert_eq!(cascading.max_retries, 1);
+        assert_eq!(cascading.timeout_seconds, 30);
+        assert!(cascading.cost_optimized);
+        assert!(cascading.health_aware_routing);
+        assert!(cascading.enable_cascading);
+        assert_eq!(cascading.priority, 0);
     }
 }
