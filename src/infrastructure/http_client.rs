@@ -1,5 +1,6 @@
 //! HTTP client for making requests to LLM providers
 
+use reqwest::header::{HeaderMap, HeaderValue, ACCEPT};
 use reqwest::Client;
 use std::sync::Arc;
 
@@ -11,8 +12,12 @@ pub struct HttpClient {
 
 impl HttpClient {
     pub fn new() -> Result<Self, crate::Error> {
+        let mut default_headers = HeaderMap::new();
+        default_headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
+
         let client = Client::builder()
             .timeout(std::time::Duration::from_secs(120))
+            .default_headers(default_headers)
             .build()?;
         Ok(Self {
             client,
@@ -22,8 +27,12 @@ impl HttpClient {
 
     /// Create HTTP client with mock URL for testing
     pub fn with_mock_url(mock_url: &str) -> Result<Self, crate::Error> {
+        let mut default_headers = HeaderMap::new();
+        default_headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
+
         let client = Client::builder()
             .timeout(std::time::Duration::from_secs(120))
+            .default_headers(default_headers)
             .build()?;
         Ok(Self {
             client,

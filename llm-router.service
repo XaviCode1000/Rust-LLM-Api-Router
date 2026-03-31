@@ -1,0 +1,16 @@
+[Unit]
+Description=Rust LLM API Router - Multi-provider LLM proxy
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=/home/gazadev/Dev/apps/Rust-LLM-Api-Router/target/release/llm-router --host 127.0.0.1 --port 8080
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=llm-router
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=default.target

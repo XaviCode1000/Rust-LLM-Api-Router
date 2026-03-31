@@ -299,6 +299,7 @@ async fn make_provider_request(
         .post(&url)
         .header("Authorization", format!("Bearer {}", access_token))
         .header("Content-Type", "application/json")
+        .header("Accept", "application/json")
         .json(&body)
         .send()
         .await
@@ -362,6 +363,7 @@ async fn make_streaming_provider_request(
         .post(&url)
         .header("Authorization", format!("Bearer {}", access_token))
         .header("Content-Type", "application/json")
+        .header("Accept", "application/json")
         .json(&body)
         .send()
         .await
