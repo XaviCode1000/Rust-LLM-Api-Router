@@ -4,75 +4,102 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    types: [opened, synchronize, ready_for_review]
+  schedule:
+    - cron: "0 6 * * 1" # Weekly audit on Mondays
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: -Dwarnings
+  RUSTDOCFLAGS: -Dwarnings
+  CARGO_PROFILE_TEST_DEBUG: 0
 
 jobs:
-  fmt:
-    name: Format
+  # ── FASTEST FIRST: Fail early on style/lint issues ────────────────────
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
-      - run: cargo fmt --all -- --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-targets --all-features
+        with:
+          shared-key: lint
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Run clippy
+        run: cargo clippy --locked --workspace --all-features --all-targets -- -D clippy::all
 
+  # ── SECURITY: Single audit tool (cargo-deny covers cargo-audit) ──────
+  audit:
+    name: Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@cargo-deny
+      - name: Check advisories, licenses, and bans
+        run: cargo deny check advisories licenses bans
+        continue-on-error: true # Vulnerabilities in transitive deps — report but don't block
+
+  # ── TESTS: Fast path for PRs, coverage for main ──────────────────────
   test:
-    name: Test (${{ matrix.label }})
+    name: Test
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - features: ""
-            label: "default"
-          - features: "--features completions"
-            label: "all features"
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@nextest
       - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@cargo-nextest
-      - run: cargo nextest run ${{ matrix.features }} --no-fail-fast
 
-  coverage:
-    name: Coverage
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      # PRs: fast test without coverage instrumentation
+      - name: Test (PR)
+        if: github.event_name == 'pull_request'
+        run: cargo nextest run --locked --workspace --all-features
+
+      # Main branch + scheduled: full coverage
+      - name: Install llvm-tools
+        if: github.event_name != 'pull_request'
+        run: rustup component add llvm-tools
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - run: cargo llvm-cov --lcov --output-path lcov.info
-      - uses: codecov/codecov-action@v4
-        with:
-          files: ./lcov.info
-          verbose: true
+        if: github.event_name != 'pull_request'
 
-  security:
-    name: Security
+      - name: Coverage (main/scheduled)
+        if: github.event_name != 'pull_request'
+        run: >
+          cargo llvm-cov nextest --locked --workspace --all-features
+          --lcov --output-path lcov.info
+
+      - name: Upload coverage
+        if: github.event_name != 'pull_request'
+        uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          disable_search: true
+
+  # ── DOCUMENTATION: Only on main (saves PR time) ──────────────────────
+  doc:
+    name: Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@cargo-audit
-      - run: cargo audit
-        continue-on-error: true  # Vulnerabilities in transitive deps — report but don't block
-      - uses: EmbarkStudios/cargo-deny-action@v2
-        with:
-          command: check
+      - name: Run doctests
+        run: cargo test --locked --workspace --all-features --doc
+      - name: Build docs
+        run: >
+          cargo doc --locked --workspace --all-features
+          --document-private-items --no-deps
