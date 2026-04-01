@@ -376,7 +376,7 @@ async fn test_anthropic_chat_function_success() {
     Mock::given(method("POST"))
         .and(path("/v1/messages"))
         .and(header("x-api-key", "sk-anthropic-key"))
-        .and(header("anthropic-version", "2023-06-01"))
+        .and(header("anthropic-version", "2024-06-20"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "id": "msg-anthropic-test-123",
             "type": "message",

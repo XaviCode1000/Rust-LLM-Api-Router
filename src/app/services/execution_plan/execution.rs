@@ -110,6 +110,68 @@ impl ExecutionResult {
     }
 }
 
+/// Result of executing a single tier within an execution plan.
+#[derive(Debug, Clone)]
+pub struct TierExecutionResult {
+    pub tier_index: usize,
+    pub success: bool,
+    pub response_text: Option<String>,
+    pub model: Option<String>,
+    pub total_tokens: Option<u64>,
+    pub cost_estimate: f64,
+    pub error: Option<String>,
+    pub duration_ms: u64,
+}
+
+impl TierExecutionResult {
+    /// Creates a successful tier execution result.
+    pub fn success(
+        tier_index: usize,
+        response_text: String,
+        model: String,
+        total_tokens: u64,
+        cost_estimate: f64,
+        duration_ms: u64,
+    ) -> Self {
+        Self {
+            tier_index,
+            success: true,
+            response_text: Some(response_text),
+            model: Some(model),
+            total_tokens: Some(total_tokens),
+            cost_estimate,
+            error: None,
+            duration_ms,
+        }
+    }
+
+    /// Creates a failed tier execution result.
+    pub fn failure(tier_index: usize, error: String, duration_ms: u64) -> Self {
+        Self {
+            tier_index,
+            success: false,
+            response_text: None,
+            model: None,
+            total_tokens: None,
+            cost_estimate: 0.0,
+            error: Some(error),
+            duration_ms,
+        }
+    }
+}
+
+/// Trait for executing individual tiers of an execution plan.
+#[async_trait::async_trait]
+pub trait TierExecutor: Send + Sync {
+    async fn execute_tier(
+        &self,
+        tier_index: usize,
+        model: &str,
+        messages: &[serde_json::Value],
+        timeout_ms: u64,
+    ) -> Result<TierExecutionResult, Box<dyn std::error::Error + Send + Sync>>;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

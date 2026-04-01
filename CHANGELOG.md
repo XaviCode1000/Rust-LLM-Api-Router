@@ -52,11 +52,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Returns `QualityScore` with detailed check results
   - Can be implemented with custom evaluation logic
 
+#### QA Resilience Testing
+
+- **Live Contract Tests** in `tests/live_contract_tests.rs`
+  - Tests that hit REAL provider APIs (OpenAI, Anthropic, Groq) to detect schema drift
+  - Gated behind `LIVE_TEST=1` env var + individual provider API key env vars
+  - Marked `#[ignore]` so they never run in normal `cargo test`
+  - Use insta snapshots with redactions for variable fields (id, timestamps, content)
+  - CI job runs only on `push` to `main` branch when API key secrets are configured
+
+- **Atomic JSON Persistence** in `src/infrastructure/persistence/json_account_repository.rs`
+  - Write-to-temp-then-rename pattern eliminates TOCTOU race condition
+  - `fs4` advisory file locking (shared for reads, exclusive for writes)
+  - 5-second lock timeout with `DomainError::LockTimeout`
+  - Stale temp file cleanup on initialization
+  - Prevents data corruption under concurrent writes
+
+- **Dependency Cleanup**
+  - Removed unused `turmoil` and `testcontainers` dev-dependencies
+  - Updated Anthropic API version header from `2023-06-01` to `2024-06-20` in all test files
+  - Added `CASCADING_MIN_QUALITY_SCORE` env var (default: `0.75`) to Settings
+
 ### Changed
 
 - Added `Cascading` variant to `ExecutionPlanType` enum
 - Extended `PlannedAccount` with `model_id` field for tier-specific models
 - Updated execution plan module to support cascading workflows
+- `fs4` crate added for advisory file locking
+- `JsonAccountRepository` now uses atomic writes and file locking
+- Live contract tests added to CI pipeline (main branch only)
+- Anthropic API version updated to `2024-06-20` across all tests
 
 ### Technical Details
 

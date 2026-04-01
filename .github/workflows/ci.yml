@@ -103,3 +103,41 @@ jobs:
         run: >
           cargo doc --locked --workspace --all-features
           --document-private-items --no-deps
+
+  # ── LIVE CONTRACT TESTS: Only on main (detects provider schema drift) ──
+  live-contract-tests:
+    name: Live Contract Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check for API key secrets
+        id: check-secrets
+        run: |
+          missing=0
+          for var in OPENAI_API_KEY ANTHROPIC_API_KEY GROQ_API_KEY; do
+            if [ -z "${!var:-}" ]; then
+              echo "WARN: $var not set"
+              missing=$((missing + 1))
+            fi
+          done
+          echo "missing=$missing" >> "$GITHUB_OUTPUT"
+
+      - name: Run live contract tests
+        if: steps.check-secrets.outputs.missing == '0'
+        env:
+          LIVE_TEST: "1"
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: cargo test --locked --test live_contract_tests -- --ignored
+
+      - name: Skip live tests (secrets not configured)
+        if: steps.check-secrets.outputs.missing != '0'
+        run: |
+          echo "::notice::Skipping live contract tests — one or more API key secrets are not configured."
+          echo "Configure OPENAI_API_KEY, ANTHROPIC_API_KEY, and GROQ_API_KEY in repository secrets."

@@ -202,7 +202,7 @@ async fn test_anthropic_provider_list_models_success() {
     Mock::given(method("GET"))
         .and(path("/models"))
         .and(header("x-api-key", "sk-anthropic-key"))
-        .and(header("anthropic-version", "2023-06-01"))
+        .and(header("anthropic-version", "2024-06-20"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "data": [
                 {"id": "claude-3-opus-20240229", "type": "model", "display_name": "Claude 3 Opus"},
@@ -384,7 +384,7 @@ async fn test_anthropic_provider_models_fallback_to_id_for_name() {
     Mock::given(method("GET"))
         .and(path("/models"))
         .and(header("x-api-key", "sk-anthropic-key"))
-        .and(header("anthropic-version", "2023-06-01"))
+        .and(header("anthropic-version", "2024-06-20"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "data": [
                 {"id": "claude-3-unknown", "type": "model"}

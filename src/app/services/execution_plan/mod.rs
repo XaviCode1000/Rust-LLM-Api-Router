@@ -17,7 +17,7 @@ pub mod types;
 
 pub use cascading::{CascadingExecutionPlan, CascadingTier};
 pub use context::{ExecutionContext, PlanningOptions};
-pub use execution::{ExecutionConfig, ExecutionResult};
+pub use execution::{ExecutionConfig, ExecutionResult, TierExecutionResult, TierExecutor};
 pub use implementations::{
     CostOptimizedExecutionPlan, ExecutionPlanBuilder, FailoverExecutionPlan,
     LoadBalancedExecutionPlan, ProviderPricing, StandardExecutionPlan,

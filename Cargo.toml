@@ -55,6 +55,7 @@ clap_mangen = { version = "0.2", optional = true }
 
 # Directories
 dirs = "5.0"
+fs4 = { version = "0.8", features = ["tokio"] }
 
 # OAuth 2.1 / PKCE
 oauth2 = { version = "5.0", features = ["pkce-plain"] }
@@ -70,10 +71,9 @@ mockall = "0.13"
 tokio-test = "0.4"
 tempfile = "3.10"
 proptest = "1.4"
-turmoil = "0.7.1"
 insta = { version = "1.46.3", features = ["json", "redactions"] }
-testcontainers = "0.27"
 wiremock = "0.6.5"
+fs4 = "0.8"
 
 [lib]
 name = "rust_llm_api_router"

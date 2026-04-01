@@ -78,6 +78,10 @@ pub enum DomainError {
     /// Not implemented
     #[error("Not implemented: {0}")]
     NotImplemented(String),
+
+    /// Lock acquisition timed out
+    #[error("Lock timeout: {0}")]
+    LockTimeout(String),
 }
 
 // Implement conversions from external error types

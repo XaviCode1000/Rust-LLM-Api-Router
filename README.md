@@ -34,6 +34,8 @@ A high-performance LLM proxy/router built with Clean Architecture in Rust. Route
 - **Cost-Aware Routing**: Static model selection based on query complexity (#23)
 - **Cascading Routing**: Dynamic escalation when quality thresholds not met (#24)
 - **Quality Evaluation**: Heuristic-based response quality checks
+- **Live Contract Tests**: Real API schema validation detects provider drift before production breaks
+- **Atomic Persistence**: File locking + atomic writes prevent data corruption under concurrent access
 - **OAuth 2.1 / PKCE**: Secure authentication flow support
 
 ## Quick Start
@@ -608,6 +610,12 @@ PLANNING_TIMEOUT_MS=5000
 
 # Max accounts per plan (default: 3)
 MAX_ACCOUNTS_PER_PLAN=3
+
+# Cascading minimum quality score (default: 0.75)
+CASCADING_MIN_QUALITY_SCORE=0.75
+
+# Live contract tests (set to 1 to enable)
+LIVE_TEST=1
 ```
 
 ### Configuration Files
@@ -651,6 +659,22 @@ cargo llvm-cov --summary-only
 
 See [docs/TESTING_JOURNEY.md](docs/TESTING_JOURNEY.md) for more details.
 
+#### Live Contract Tests
+
+Run real API contract tests against provider APIs (requires API keys):
+
+```bash
+# Enable live tests
+LIVE_TEST=1 cargo test --test live_contract_tests -- --ignored
+
+# Individual provider tests
+LIVE_TEST=1 OPENAI_API_KEY=your-key cargo test --test live_contract_tests -- --ignored test_openai_contract
+LIVE_TEST=1 ANTHROPIC_API_KEY=your-key cargo test --test live_contract_tests -- --ignored test_anthropic_contract
+LIVE_TEST=1 GROQ_API_KEY=your-key cargo test --test live_contract_tests -- --ignored test_groq_contract
+```
+
+> **Note**: Live tests are marked `#[ignore]` and gated behind `LIVE_TEST=1` + provider API key env vars. They run on CI only on `push` to `main`.
+
 #### Optimal Development Stack 2025-26
 
 The project uses the optimal Rust development stack:
@@ -659,8 +683,10 @@ The project uses the optimal Rust development stack:
 - **cargo-llvm-cov**: Native LLVM coverage (10x faster)
 - **sccache**: Build cache (6x faster)
 - **cargo-watch**: Auto-rebuild on changes
-- **wiremock**: HTTP mocking for integration tests
+- **wiremock**: HTTP mocking for integration tests (complemented by live contract tests)
 - **mockall**: Trait mocking
+- **fs4**: Advisory file locking with tokio support
+- **insta**: Snapshot testing for drift detection
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for the complete guide.
 
@@ -716,6 +742,8 @@ Contributions are welcome! Please read our contributing guidelines before submit
 - [x] **Provider Models command** (list available models)
 - [x] **Cost-Aware Routing** (#23) - Static model selection by query complexity
 - [x] **Cascading Routing** (#24) - Dynamic quality-based escalation
+- [x] **Live Contract Tests** for provider API drift detection
+- [x] **Atomic JSON Persistence** with file locking
 
 ### Pending 🔄
 

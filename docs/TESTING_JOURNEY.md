@@ -208,6 +208,47 @@ Refactor chat_handler and fix CLI bugs for better testability.
 
 ---
 
+## 🏆 Phase 8: QA Resilience — Beyond Mocks
+
+### Goal
+Move from mock-dependent testing to real-world resilience. Detect API drift, fix data corruption risks, and clean up dead dependencies.
+
+### Approach
+- Live contract tests hitting real provider APIs
+- Atomic file persistence with advisory locking
+- Dependency cleanup and API version updates
+
+### Tests Created
+- `tests/live_contract_tests.rs` — 3 live contract tests (OpenAI, Anthropic, Groq)
+  - Schema validation for all required fields
+  - Insta snapshots with redactions for drift detection
+  - Gated behind `LIVE_TEST=1` + provider API key env vars
+
+### Infrastructure Changes
+- `src/infrastructure/persistence/json_account_repository.rs` — Atomic writes + fs4 locking
+  - Write-to-temp-then-rename pattern (eliminates TOCTOU race)
+  - Shared read locks, exclusive write locks
+  - 5-second lock timeout
+  - Stale temp file cleanup on init
+
+### Dependency Changes
+- **Removed**: `turmoil` (unused chaos testing), `testcontainers` (unused Docker testing)
+- **Added**: `fs4` (advisory file locking with tokio support)
+- **Updated**: Anthropic API version `2023-06-01` → `2024-06-20`
+
+### Results
+- **Provider Drift Detection**: Live tests catch schema changes before production breaks
+- **Data Integrity**: Atomic writes prevent corruption under concurrent access
+- **Cleaner Dependencies**: Removed 2 dead dev-dependencies, added 1 purposeful one
+
+### Key Learnings
+- `CascadingExecutionPlan.execute()` has ZERO production callers — it's a stub feature
+- Wiremock static mocks can't catch provider API changes
+- File locking on JSON is essential for any concurrent access scenario
+- Live tests should be cheap (minimal prompts) and infrequent (main branch only)
+
+---
+
 ## 📈 Final Metrics
 
 ### Coverage by Component
@@ -257,10 +298,9 @@ mockall = "0.13"           # Trait mocking
 tokio-test = "0.4"         # Async testing
 tempfile = "3.10"          # Temp directories
 proptest = "1.4"           # Property-based testing
-turmoil = "0.7"            # Chaos testing
 insta = "1.46"             # Snapshot testing
-testcontainers = "0.23"    # Docker containers
-wiremock = "0.6"           # HTTP mocking
+wiremock = "0.6"           # HTTP mocking (complemented by live contract tests)
+fs4 = "0.12"               # Advisory file locking with tokio support
 ```
 
 ### CLI Tools
@@ -308,17 +348,20 @@ cargo-deny         # License checking
 
 ### Maintenance
 
-- [ ] Keep coverage >80% for new code
+- [x] Keep coverage >80% for new code
+- [x] Live contract tests running on CI (main branch only)
+- [x] Atomic JSON persistence with file locking
 - [ ] Run `cargo audit` weekly
 - [ ] Update dependencies monthly
 - [ ] Review flaky tests quarterly
 
 ### Future Improvements
 
-- [ ] Add chaos testing for failover scenarios
+- [ ] Chaos testing with turmoil (evaluated but removed as unused dependency)
 - [ ] Implement property-based tests for providers
 - [ ] Add performance benchmarks with criterion
 - [ ] Create test data generators
+- [ ] Expand live contract tests to more providers
 
 ---
 

@@ -4,14 +4,19 @@
 //! using JSON serialization with secure API key handling.
 
 use async_trait::async_trait;
+use fs4::tokio::AsyncFileExt;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use tokio::fs::{self, OpenOptions};
-use tokio::io::AsyncReadExt;
+use std::time::Duration;
+use tokio::fs::{self, File, OpenOptions};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::domain::traits::AccountRepository;
-use crate::domain::{Account, DomainResult};
+use crate::domain::{Account, DomainError, DomainResult};
 use crate::Result;
+
+/// Lock acquisition timeout duration.
+const LOCK_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Internal representation for JSON serialization.
 /// API keys are stored encrypted in production, plaintext in dev.
@@ -121,7 +126,28 @@ impl JsonAccountRepository {
             });
 
         let file_path = config_dir.join("rust-llm-api-router").join("accounts.json");
-        Ok(Self { file_path })
+        let repo = Self { file_path };
+
+        // T-20: Clean up stale temp files from previous crashed writes
+        repo.cleanup_stale_temp_files();
+
+        Ok(repo)
+    }
+
+    /// T-20: Clean up any stale `.tmp` files left from crashed atomic writes.
+    ///
+    /// These files should not exist in normal operation. If they do, it means
+    /// a previous write was interrupted before the atomic rename could complete.
+    fn cleanup_stale_temp_files(&self) {
+        if let Some(parent) = self.file_path.parent() {
+            let base_name = self.file_path.file_stem();
+            if let Some(base) = base_name {
+                let tmp_path = parent.join(format!("{}.tmp", base.to_string_lossy()));
+                if tmp_path.exists() {
+                    let _ = std::fs::remove_file(&tmp_path);
+                }
+            }
+        }
     }
 
     /// Creates a new repository with a custom config directory.
@@ -133,7 +159,9 @@ impl JsonAccountRepository {
     /// A new `JsonAccountRepository` instance
     pub fn with_config_dir(config_dir: &Path) -> DomainResult<Self> {
         let file_path = config_dir.join("accounts.json");
-        Ok(Self { file_path })
+        let repo = Self { file_path };
+        repo.cleanup_stale_temp_files();
+        Ok(repo)
     }
 
     /// Ensures the directory and file exist.
@@ -154,36 +182,92 @@ impl JsonAccountRepository {
     }
 
     /// Reads all accounts from the JSON file.
+    ///
+    /// Acquires a shared (read) lock before reading to prevent reading
+    /// during a concurrent write operation.
     async fn read_accounts(&self) -> DomainResult<Vec<AccountData>> {
         self.ensure_file_exists().await?;
 
-        let mut file = OpenOptions::new()
+        let file = OpenOptions::new()
             .read(true)
             .open(&self.file_path)
             .await
             .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
 
+        // T-21: Acquire shared (read) lock with timeout (T-24)
+        tokio::time::timeout(LOCK_TIMEOUT, file.lock_shared())
+            .await
+            .map_err(|_| {
+                DomainError::LockTimeout(format!(
+                    "Failed to acquire read lock within {:?}",
+                    LOCK_TIMEOUT
+                ))
+            })?
+            .map_err(|e| DomainError::Io(e.to_string()))?;
+
+        // Read from the locked file handle
         let mut contents = String::new();
+        let mut file = file; // Take ownership
         file.read_to_string(&mut contents)
             .await
-            .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
+            .map_err(|e| DomainError::Io(e.to_string()))?;
 
         let accounts: Vec<AccountData> = serde_json::from_str(&contents)
-            .map_err(|e| crate::domain::DomainError::Serialization(e.to_string()))?;
+            .map_err(|e| DomainError::Serialization(e.to_string()))?;
 
         Ok(accounts)
     }
 
-    /// Writes accounts to the JSON file.
+    /// Writes accounts to the JSON file using an atomic write pattern.
+    ///
+    /// T-22: Acquires an exclusive (write) lock before writing.
+    /// T-23: Uses write-to-temp-then-rename pattern for atomicity.
+    /// T-24: Lock acquisition has a 5-second timeout.
     async fn write_accounts(&self, accounts: &[AccountData]) -> DomainResult<()> {
         self.ensure_file_exists().await?;
 
+        // T-23: Serialize to JSON bytes
         let json = serde_json::to_string_pretty(accounts)
-            .map_err(|e| crate::domain::DomainError::Serialization(e.to_string()))?;
+            .map_err(|e| DomainError::Serialization(e.to_string()))?;
 
-        fs::write(&self.file_path, json)
-            .await
-            .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
+        // T-23: Write to temp file first
+        let tmp_path = self.file_path.with_extension("tmp");
+
+        {
+            let mut tmp_file = File::create(&tmp_path)
+                .await
+                .map_err(|e| DomainError::Io(e.to_string()))?;
+
+            // T-22: Acquire exclusive (write) lock with timeout (T-24)
+            tokio::time::timeout(LOCK_TIMEOUT, tmp_file.lock_exclusive())
+                .await
+                .map_err(|_| {
+                    DomainError::LockTimeout(format!(
+                        "Failed to acquire write lock within {:?}",
+                        LOCK_TIMEOUT
+                    ))
+                })?
+                .map_err(|e| DomainError::Io(e.to_string()))?;
+
+            // Write JSON to temp file
+            tmp_file
+                .write_all(json.as_bytes())
+                .await
+                .map_err(|e| DomainError::Io(e.to_string()))?;
+
+            // Ensure data is flushed to disk before rename
+            tmp_file
+                .sync_all()
+                .await
+                .map_err(|e| DomainError::Io(e.to_string()))?;
+        }
+
+        // T-23: Atomic rename (POSIX atomic on same filesystem)
+        fs::rename(&tmp_path, &self.file_path).await.map_err(|e| {
+            // Clean up temp file on failure
+            let _ = std::fs::remove_file(&tmp_path);
+            DomainError::Io(format!("Failed to atomically rename temp file: {}", e))
+        })?;
 
         Ok(())
     }
@@ -335,5 +419,43 @@ mod tests {
         let all = repo.find_all().await.unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].id, "test-2");
+    }
+
+    /// T-20: Verify stale temp files are cleaned up on init
+    #[test]
+    fn test_cleanup_stale_temp_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let json_path = temp_dir.path().join("accounts.json");
+        let tmp_path = temp_dir.path().join("accounts.tmp");
+
+        // Create a stale temp file
+        std::fs::write(&tmp_path, "stale data").unwrap();
+        assert!(tmp_path.exists());
+
+        // Create repo pointing to same directory
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        // Temp file should be removed by with_config_dir cleanup
+        assert!(!tmp_path.exists());
+        // JSON file should not be affected
+        assert!(!json_path.exists());
+    }
+
+    /// T-23: Verify atomic write doesn't leave temp files on success
+    #[tokio::test]
+    async fn test_atomic_write_no_temp_leftover() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+
+        let account = Account::new("test-1", "openai", "sk-key-1");
+        repo.save(account).await.unwrap();
+
+        // No .tmp files should exist after successful write
+        let tmp_path = temp_dir.path().join("accounts.tmp");
+        assert!(!tmp_path.exists());
+
+        // Data should be persisted correctly
+        let accounts = repo.find_all().await.unwrap();
+        assert_eq!(accounts.len(), 1);
     }
 }
