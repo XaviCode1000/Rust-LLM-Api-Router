@@ -31,5 +31,7 @@ pub use planner::{
     ExecutionPlanner, ExecutionPlannerBuilder, ExecutionPlannerConfig, RotationStrategyType,
 };
 pub use status::ExecutionPlanStatus;
-pub use tracing::{DecisionLogBuilder, DecisionLogEntry, ExecutionSpan, PlanningSpan};
+pub use tracing::{
+    DecisionLogBuilder, DecisionLogEntry, ExecutionSpan, PlanningSpan, QualityEvaluationSpan,
+};
 pub use types::{ExecutionPlanType, PlannedAccount};

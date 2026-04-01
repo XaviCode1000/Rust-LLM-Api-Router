@@ -15,6 +15,8 @@ use crate::app::services::execution_plan::{
     ExecutionPlanner, ExecutionPlannerConfig, PlanningOptions,
 };
 use crate::domain::entities::{ChatRequest, ChatResponse, Message};
+use crate::domain::errors::DomainError;
+use crate::domain::services::TokenValidator;
 use crate::domain::traits::AccountRepository;
 use crate::error::{Error, Result};
 use crate::infrastructure::gateway::llm_gateway::ProviderConfig;
@@ -121,6 +123,37 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
     ) -> Result<ChatResponse> {
         // Step 1: Create execution context
         let context = self.create_execution_context(&request, preferred_providers);
+
+        // Step 1.5: Pre-flight token validation
+        match TokenValidator::validate(&request) {
+            Ok(token_count) => {
+                tracing::debug!(
+                    target: "token_validation",
+                    model = %request.model,
+                    token_count = token_count,
+                    "Token count within limits"
+                );
+            }
+            Err(DomainError::TokenLimitExceeded {
+                model,
+                tokens,
+                limit,
+            }) => {
+                tracing::warn!(
+                    target: "token_validation",
+                    model = %model,
+                    tokens = tokens,
+                    limit = limit,
+                    "Request exceeds model context window"
+                );
+                return Err(Error::InvalidRequest(format!(
+                    "Token limit exceeded: {tokens} tokens exceed {limit} token context window for model '{model}'"
+                )));
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Token validation error");
+            }
+        }
 
         // Step 2: Create execution plan using the planner
         let mut plan = match self.planner.create_plan(context).await {

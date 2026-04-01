@@ -57,6 +57,9 @@ clap_mangen = { version = "0.2", optional = true }
 dirs = "5.0"
 fs4 = { version = "0.8", features = ["tokio"] }
 
+# Token counting
+tiktoken-rs = "0.6"
+
 # OAuth 2.1 / PKCE
 oauth2 = { version = "5.0", features = ["pkce-plain"] }
 keyring = "2.0"

@@ -73,6 +73,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated Anthropic API version header from `2023-06-01` to `2024-06-20` in all test files
   - Added `CASCADING_MIN_QUALITY_SCORE` env var (default: `0.75`) to Settings
 
+#### Token Validation (Pre-flight Check)
+
+- **`TokenValidator`** in `src/domain/services/token_validator.rs`
+  - Counts tokens using `tiktoken-rs` (cl100k_base encoding) before sending to providers
+  - Validates request doesn't exceed model's context window
+  - Considers both prompt tokens and `max_tokens` parameter
+  - Gracefully skips validation for unknown models
+  - Supports model name prefixes (e.g., `openai:gpt-4`, `groq:llama-3.1-8b-instant`)
+
+- **`ModelContextLimits`** registry in `src/domain/services/model_context_limits.rs`
+  - Static registry covering 30+ models across 8 providers
+  - OpenAI (gpt-4o, gpt-4, gpt-3.5-turbo, o1, o3-mini)
+  - Anthropic (Claude 3.5 Sonnet, Claude 3 Opus/Sonnet/Haiku, Claude 2)
+  - Groq (Llama 3.x, Mixtral, Gemma)
+  - Mistral (Large, Small, Codestral, Nemo)
+  - Google (Gemini 2.0 Flash, Gemini 1.5 Pro/Flash)
+  - Cohere (Command R/R+), DeepSeek (Chat, Reasoner)
+  - Prefix-based fallback matching for versioned model IDs
+
+- **`TokenLimitExceeded`** error variant in `DomainError`
+  - Returns clear error with model name, token count, and limit
+  - Integrated into `LlmRouter::route_request()` as pre-flight check
+  - Prevents wasteful API calls that would fail anyway
+
+#### Structured Logging & Quality Evaluation
+
+- **`QualityEvaluationSpan`** in `src/app/services/execution_plan/tracing.rs`
+  - Structured tracing for quality evaluation lifecycle
+  - Tracks individual check results (completeness, length, structure, coherence)
+  - Logs score, acceptability, failed checks, and duration
+  - Integrates with existing `PlanningSpan`/`ExecutionSpan` patterns
+
+- **Structured logging in `HeuristicQualityEvaluator`**
+  - `tracing::debug!` at evaluation start (response length, account ID)
+  - `tracing::info!` at completion (score, checks passed/failed, acceptability)
+  - Enables production observability of quality escalation decisions
+
+- **Real quality evaluation wired in `CascadingExecutionPlan`**
+  - Replaced hardcoded `Some(0.85)` score with actual `quality_gate.evaluate_quality()` call
+  - QualityEvaluationSpan traces each tier's evaluation
+  - Enables real quality-based escalation (previously simulated)
+
 ### Changed
 
 - Added `Cascading` variant to `ExecutionPlanType` enum
@@ -82,6 +124,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `JsonAccountRepository` now uses atomic writes and file locking
 - Live contract tests added to CI pipeline (main branch only)
 - Anthropic API version updated to `2024-06-20` across all tests
+- `tiktoken-rs` crate added for token counting
+- `CascadingExecutionPlan.execute()` now calls real quality evaluation (was simulated)
+- `tiktoken-rs` crate added for token counting
+- `CascadingExecutionPlan.execute()` now calls real quality evaluation (was simulated)
 
 ### Technical Details
 

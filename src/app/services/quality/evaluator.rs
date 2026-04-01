@@ -215,6 +215,12 @@ impl QualityGate for HeuristicQualityEvaluator {
         response: &str,
         _health: &AccountHealth,
     ) -> QualityScore {
+        tracing::debug!(
+            target: "quality_evaluator",
+            response_length = response.len(),
+            "Evaluating response quality"
+        );
+
         let mut failed_checks = Vec::new();
         let mut passed_checks = 0;
 
@@ -246,12 +252,23 @@ impl QualityGate for HeuristicQualityEvaluator {
             failed_checks.push("coherence".to_string());
         }
 
-        QualityScore::new(
+        let score = QualityScore::new(
             passed_checks,
             4, // Total checks
-            failed_checks,
+            failed_checks.clone(),
             self.config.min_quality_score,
-        )
+        );
+
+        tracing::info!(
+            target: "quality_evaluator",
+            score = score.score,
+            is_acceptable = score.is_acceptable,
+            checks_failed = ?failed_checks,
+            checks_passed = 4usize.saturating_sub(failed_checks.len()),
+            "Quality evaluation complete"
+        );
+
+        score
     }
 }
 

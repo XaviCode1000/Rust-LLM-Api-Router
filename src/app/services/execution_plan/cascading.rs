@@ -4,7 +4,7 @@ use crate::app::services::execution_plan::execution::{ExecutionConfig, Execution
 use crate::app::services::execution_plan::types::{ExecutionPlanType, PlannedAccount};
 use crate::app::services::execution_plan::{
     ExecutionContext, ExecutionOutcome, ExecutionPlan, ExecutionPlanImpl, ExecutionPlanStatus,
-    ProviderPricing,
+    ProviderPricing, QualityEvaluationSpan,
 };
 use crate::app::services::quality::evaluator::{QualityConfig, QualityGate};
 use crate::domain::entities::{Account, AccountHealth, Provider};
@@ -355,8 +355,29 @@ impl CascadingExecutionPlan {
                 && !response_text.trim().is_empty()
             {
                 used_quality_escalation = true;
-                // In real implementation, this would evaluate the response against the tier's expected quality
-                Some(0.85) // Simulated quality score
+
+                // Create quality evaluation span for tracing
+                let quality_span = QualityEvaluationSpan::new(
+                    &self.inner.context().request_id,
+                    &tier.account.account_id,
+                    tier_order,
+                );
+
+                // Actually evaluate the response quality using block_on since execute() is sync
+                let quality_score =
+                    futures::executor::block_on(self.quality_gate.evaluate_quality(
+                        &tier.account,
+                        response_text,
+                        &tier.account.health,
+                    ));
+
+                quality_span.finish(
+                    quality_score.score,
+                    quality_score.is_acceptable,
+                    &quality_score.checks_failed,
+                );
+
+                Some(quality_score.score)
             } else {
                 None
             };

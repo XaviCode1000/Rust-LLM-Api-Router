@@ -82,6 +82,14 @@ pub enum DomainError {
     /// Lock acquisition timed out
     #[error("Lock timeout: {0}")]
     LockTimeout(String),
+
+    /// Request exceeds model context window
+    #[error("Token limit exceeded: {tokens} tokens exceed {limit} token context window for model '{model}'")]
+    TokenLimitExceeded {
+        model: String,
+        tokens: u32,
+        limit: u32,
+    },
 }
 
 // Implement conversions from external error types

@@ -33,7 +33,8 @@ A high-performance LLM proxy/router built with Clean Architecture in Rust. Route
 - **Execution Planning**: Proactive planning with multiple strategies (Standard, Failover, Load Balanced, Cost Optimized, Cascading)
 - **Cost-Aware Routing**: Static model selection based on query complexity (#23)
 - **Cascading Routing**: Dynamic escalation when quality thresholds not met (#24)
-- **Quality Evaluation**: Heuristic-based response quality checks
+- **Quality Evaluation**: Heuristic-based response quality checks with structured tracing
+- **Token Validation**: Pre-flight context window check prevents wasteful API calls
 - **Live Contract Tests**: Real API schema validation detects provider drift before production breaks
 - **Atomic Persistence**: File locking + atomic writes prevent data corruption under concurrent access
 - **OAuth 2.1 / PKCE**: Secure authentication flow support
