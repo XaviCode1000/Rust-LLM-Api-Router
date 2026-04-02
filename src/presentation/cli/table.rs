@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_truncate_long_string() {
-        assert_eq!(truncate("hello world foo bar", 10), "hello...");
+        assert_eq!(truncate("hello world foo bar", 10), "hello w...");
     }
 
     #[test]

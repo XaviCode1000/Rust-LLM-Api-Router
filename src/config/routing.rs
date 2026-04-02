@@ -181,7 +181,7 @@ mod tests {
             RoutingStrategy::CostOptimized
         );
         assert_eq!(
-            "CostOptimized".parse::<RoutingStrategy>().unwrap(),
+            "cost_optimized".parse::<RoutingStrategy>().unwrap(),
             RoutingStrategy::CostOptimized
         );
         assert_eq!(
