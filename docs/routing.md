@@ -1,6 +1,11 @@
 # Routing Strategies
 
-The LLM API Router provides two complementary intelligent routing strategies for cost optimization: **Cost-Aware Routing** (Issue #23) and **Cascading Routing** (Issue #24).
+The LLM API Router provides multiple intelligent routing strategies for cost optimization:
+
+- **Cost-Aware Routing** (Issue #23): Static model selection by query complexity
+- **Cascading Routing** (Issue #24): Dynamic quality-based escalation
+- **Task-Based Routing** (Issue #26): Route by task type (General, Chat, Code, Reasoning, Summarization, Translation)
+- **Routing Configuration** (Issue #29): CLI flags and environment variables for all strategies
 
 ## Overview
 
@@ -132,6 +137,85 @@ let selector = CostAwareSelector::with_classifier(
 - ✅ Latency is critical (single request)
 - ❌ You need guaranteed quality (use Cascading instead)
 
+## Task-Based Routing (Issue #26)
+
+### Purpose
+
+Routes queries based on their **task type**, enabling model selection optimized for specific use cases like coding, reasoning, or summarization.
+
+### Task Types
+
+```rust
+pub enum TaskType {
+    General,      // General conversation, Q&A
+    Chat,         // Multi-turn dialogue
+    Code,         // Code generation, debugging
+    Reasoning,    // Logical reasoning, math, analysis
+    Summarization,// Text summarization
+    Translation,  // Language translation
+}
+```
+
+### Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `TaskType` enum | `src/domain/services/query_complexity.rs` | Task categories |
+| `QueryClassification` struct | `src/domain/services/query_complexity.rs` | Combined complexity + task type |
+| `classify_task()` method | `src/domain/services/query_complexity.rs` | Classifies task type from query |
+| `classify_full()` method | `src/domain/services/query_complexity.rs` | Full classification (complexity + task) |
+
+### Task Classification
+
+The classifier uses keyword matching to identify task type:
+
+| Task Type | Keywords |
+|-----------|----------|
+| **Code** | `code`, `function`, `class`, `implement`, `debug`, `compile`, `refactor` |
+| **Reasoning** | `reason`, `prove`, `derive`, `calculate`, `logic`, `solve`, `math` |
+| **Summarize** | `summarize`, `summary`, `abstract`, `condense`, `brief` |
+| **Translate** | `translate`, `convert`, `language`, `spanish`, `french`, etc. |
+| **Chat** | (Multi-turn conversation context) |
+| **General** | Default for everything else |
+
+### How It Works
+
+```rust
+use rust_llm_api_router::domain::services::query_complexity::{QueryClassifier, TaskType};
+
+// Classify task type only
+let task = classifier.classify_task("Write a function to calculate fibonacci");
+// Returns: TaskType::Code
+
+// Classify full query (complexity + task)
+let classification = classifier.classify_full(
+    vec![Message::user("Explain quantum computing in detail")]
+);
+// Returns: QueryClassification { complexity: High, task: Reasoning }
+```
+
+### Configuration
+
+```rust
+use rust_llm_api_router::domain::services::query_complexity::ClassifierConfig;
+
+let config = ClassifierConfig {
+    // Task-specific keywords (add to existing)
+    code_keywords: vec!["rust".to_string(), "typescript".to_string()],
+    reasoning_keywords: vec!["proof".to_string(), "theorem".to_string()],
+    summarize_keywords: vec!["bullet points".to_string()],
+    translate_keywords: vec!["translate to".to_string()],
+    ..Default::default()
+};
+```
+
+### When to Use
+
+- ✅ You have different model preferences per task type
+- ✅ Code queries should use specialized coding models
+- ✅ Summarization tasks should use efficient models
+- ❌ Simple queries where task type doesn't matter much
+
 ## Cascading Routing (Issue #24)
 
 ### Purpose
@@ -259,15 +343,94 @@ let total = plan.total_cost_microdollars();
 
 ## Comparison
 
-| Aspect | Cost-Aware Routing | Cascading Routing |
-|--------|-------------------|-------------------|
-| **When** | Before request | After each tier |
-| **Decision** | Static selection | Dynamic escalation |
-| **Latency** | Same as single request | Multiple tier attempts |
-| **Cost Model** | Predictable per-request | Accumulative across tiers |
-| **Quality** | Assumed from tier | Verified after response |
-| **Streaming** | Compatible | Incompatible (guard) |
-| **Best For** | Budget-critical, predictable queries | Quality-critical, variable queries |
+| Aspect | Cost-Aware Routing | Cascading Routing | Task-Based Routing |
+|--------|-------------------|-------------------|-------------------|
+| **When** | Before request | After each tier | Before request |
+| **Decision** | Static selection | Dynamic escalation | Keyword-based classification |
+| **Latency** | Same as single request | Multiple tier attempts | Same as single request |
+| **Cost Model** | Predictable per-request | Accumulative across tiers | Predictable per-request |
+| **Quality** | Assumed from tier | Verified after response | Assumed from task type |
+| **Streaming** | Compatible | Incompatible (guard) | Compatible |
+| **Best For** | Budget-critical, predictable queries | Quality-critical, variable queries | Task-specific model preferences |
+
+## Routing Configuration (Issue #29)
+
+### Purpose
+
+Configure routing strategies via CLI flags or environment variables for flexible control without code changes.
+
+### CLI Flags
+
+The router supports global CLI flags for routing configuration:
+
+```bash
+llm-router --routing-strategy auto --cascading --quality-threshold 0.85 \
+  --budget-mode --max-retries 3 --timeout 60
+```
+
+| Flag | Description | Values | Default |
+|------|-------------|--------|---------|
+| `--routing-strategy` | Overall routing strategy | `auto`, `cost-optimized`, `cascading`, `failover`, `load-balanced` | `auto` |
+| `--cascading` | Enable cascading routing | flag (sets to true) | `false` |
+| `--quality-threshold` | Minimum quality score | 0.0-1.0 | `0.75` |
+| `--budget-mode` | Enable budget mode | flag | `false` |
+| `--max-retries` | Maximum retries per request | 1-10 | `3` |
+| `--timeout` | Request timeout in seconds | 10-300 | `60` |
+
+### Environment Variables
+
+| Variable | Description | Values | Default |
+|----------|-------------|--------|---------|
+| `ROUTING_STRATEGY` | Overall routing strategy | `auto`, `cost-optimized`, `cascading`, `failover`, `load-balanced` | `auto` |
+| `CASCADING_ENABLED` | Enable cascading routing | `true`, `false` | `false` |
+| `CASCADING_MIN_QUALITY` | Minimum quality score | 0.0-1.0 | `0.75` |
+| `CASCADING_MAX_TIERS` | Maximum tiers to try | 1-10 | `3` |
+| `CASCADING_PER_TIER_TIMEOUT_MS` | Timeout per tier | 1000-30000 | `5000` |
+| `BUDGET_MODE` | Enable budget mode | `true`, `false` | `false` |
+| `MAX_RETRIES` | Maximum retries per request | 1-10 | `3` |
+| `REQUEST_TIMEOUT_SECONDS` | Request timeout in seconds | 10-300 | `60` |
+
+### Priority Hierarchy
+
+Configuration priority (highest to lowest):
+
+1. **CLI flags** (highest priority)
+2. **Environment variables**
+3. **Default values** (lowest priority)
+
+```bash
+# CLI flag overrides environment variable
+export CASCADING_ENABLED=false
+llm-router --cascading  # Uses true (from CLI)
+```
+
+### Strategy Options
+
+| Strategy | Description | Use Case |
+|---------|-------------|----------|
+| `auto` | Automatically selects best strategy based on request | Default, general use |
+| `cost-optimized` | Uses Cost-Aware selector for static model selection | Budget-critical |
+| `cascading` | Uses CascadingExecutionPlan for quality-based escalation | Quality-critical |
+| `failover` | Sequential fallback on failure | Reliability |
+| `load-balanced` | Health-weighted distribution | High throughput |
+
+### Examples
+
+```bash
+# Enable cascading with environment variable
+export ROUTING_STRATEGY=cascading
+export CASCADING_MIN_QUALITY=0.8
+./target/release/llm-router
+
+# Enable cascading with CLI flag
+llm-router --routing-strategy cascading --quality-threshold 0.85
+
+# Budget mode with cost-optimized
+llm-router --routing-strategy cost-optimized --budget-mode
+
+# High reliability with failover
+llm-router --routing-strategy failover --max-retries 5 --timeout 120
+```
 
 ## Integration with Execution Plans
 

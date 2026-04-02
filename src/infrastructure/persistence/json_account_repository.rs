@@ -167,7 +167,9 @@ impl JsonAccountRepository {
     /// A new `JsonAccountRepository` instance
     pub fn with_config_dir(config_dir: &Path) -> DomainResult<Self> {
         let file_path = config_dir.join("accounts.json");
-        let secure_storage = create_secure_storage();
+        // Use in-memory storage for custom config dirs (tests use isolated temp dirs)
+        let secure_storage =
+            Box::new(crate::infrastructure::secure_storage::InsecureStorage::new());
         let repo = Self {
             file_path,
             secure_storage,

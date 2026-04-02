@@ -28,26 +28,44 @@ A high-performance LLM proxy/router built with Clean Architecture in Rust. Route
 - **Streaming (SSE)**: Real-time token-by-token streaming responses
 - **OpenAI-Compatible API**: Drop-in replacement for OpenAI clients
 - **Health Monitoring**: Real-time health checks and metrics
+- **Modern Interactive CLI**: Colored output, professional tables, interactive prompts, spinners (#19)
 - **Integrated CLI**: Manage providers and accounts from the terminal
 - **Shell Completions**: Auto-completion for bash, zsh, and fish (build with `--features completions`)
 - **Execution Planning**: Proactive planning with multiple strategies (Standard, Failover, Load Balanced, Cost Optimized, Cascading)
+- **Task-Based Routing**: Intelligent routing based on query type (General, Chat, Code, Reasoning, Summarization, Translation) (#26)
 - **Cost-Aware Routing**: Static model selection based on query complexity (#23)
 - **Cascading Routing**: Dynamic escalation when quality thresholds not met (#24)
+- **Routing Configuration**: CLI flags and environment variables for routing strategies (#29)
 - **Quality Evaluation**: Heuristic-based response quality checks with structured tracing
 - **Token Validation**: Pre-flight context window check prevents wasteful API calls
 - **Live Contract Tests**: Real API schema validation detects provider drift before production breaks
 - **Atomic Persistence**: File locking + atomic writes prevent data corruption under concurrent access
 - **OAuth 2.1 / PKCE**: Secure authentication flow support
+- **Secure API Key Storage**: System keyring (macOS Keychain, Windows Credential Manager, Linux Secret Service) or encrypted file fallback (#22)
+- **Docker & Containerization**: Multi-stage Dockerfile, docker-compose.yml, GitHub Actions for GHCR (#15)
 
 ## Quick Start
 
-### 1. Build
+### Option 1: Build from Source
 
 ```bash
 cargo build --release
 ```
 
-### 2. Register Providers
+### Option 2: Docker
+
+```bash
+# Pull from GHCR
+docker pull ghcr.io/xavicode1000/rust-llm-api-router:latest
+
+# Run
+docker run -d -p 8080:8080 ghcr.io/xavicode1000/rust-llm-api-router:latest
+
+# Or with docker-compose
+docker compose up -d
+```
+
+### Register Providers
 
 ```bash
 # Register a provider
@@ -217,6 +235,8 @@ curl http://localhost:8080/metrics
 ```
 
 ## CLI Reference
+
+The CLI features modern interactive output with colored feedback, professional tables, and interactive prompts.
 
 ### Providers
 
@@ -470,121 +490,27 @@ See [src/app/services/execution_plan/README.md](src/app/services/execution_plan/
 
 ## Intelligent Routing
 
-The router provides two complementary routing strategies for cost optimization:
+The router provides intelligent routing strategies for cost optimization:
 
-### Cost-Aware Routing (Static Selection)
+- **Cost-Aware Routing** (Issue #23): Static model selection by query complexity
+- **Cascading Routing** (Issue #24): Dynamic quality-based escalation
+- **Task-Based Routing** (Issue #26): Route by task type (General, Chat, Code, Reasoning, Summarization, Translation)
+- **Routing Configuration** (Issue #29): CLI flags and environment variables for all strategies
 
-**Issue #23**: Routes queries to the cheapest model capable of handling complexity *before* making the request.
+### Quick Configuration
 
-#### How It Works
+```bash
+# Via environment variables
+export ROUTING_STRATEGY=auto           # auto, cost-optimized, cascading, failover, load-balanced
+export CASCADING_ENABLED=true
+export CASCADING_MIN_QUALITY=0.75
+export BUDGET_MODE=true
 
-1. **Classify Query**: Analyzes message length, conversation history, and keywords
-2. **Map to Complexity**: Low → budget models, Medium → mid-tier, High → premium
-3. **Select Model**: Picks the cheapest model whose tier meets complexity
-4. **Apply Constraints**: Respects optional cost ceiling per million tokens
-
-#### When to Use
-
-- You want cheapest capable model **upfront**
-- Queries vary predictably in complexity
-- You prefer static cost budgeting
-
-#### Configuration
-
-```rust
-use rust_llm_api_router::domain::services::model_selector::CostAwareSelector;
-
-// Default: complexity-based selection
-let selector = CostAwareSelector::new();
-
-// With cost ceiling: exclude models above $10/1M tokens
-let selector = CostAwareSelector::new().with_max_cost(10.0);
-
-// Custom classifier thresholds
-use rust_llm_api_router::domain::services::query_complexity::ClassifierConfig;
-let config = ClassifierConfig {
-    low_char_threshold: 50,
-    medium_char_threshold: 300,
-    high_complexity_keywords: vec!["quantum".to_string()],
-    ..Default::default()
-};
-let selector = CostAwareSelector::with_classifier(
-    QueryClassifier::with_config(config)
-);
+# Via CLI flags
+llm-router --routing-strategy cascading --cascading --quality-threshold 0.85
 ```
 
-#### Complexity Heuristics
-
-| Complexity | Triggers | Example Models |
-|------------|----------|----------------|
-| **Low** | Short messages (<100 chars), simple greetings | Llama-3 8B, GPT-4o Mini |
-| **Medium** | Medium messages (100-500 chars), code keywords, 4+ messages | GPT-4o, Claude 3 Sonnet |
-| **High** | Long messages (>500 chars), analysis keywords, 8+ messages | GPT-4 Turbo, Claude 3 Opus |
-
-### Cascading Routing (Dynamic Escalation)
-
-**Issue #24**: Starts with cheapest tier, evaluates quality, escalates only if response quality is poor.
-
-#### How It Works
-
-1. **Execute Cheapest**: Sends request to lowest-cost model tier
-2. **Evaluate Quality**: Checks response completeness, length, structure, coherence
-3. **Escalate if Needed**: If quality < threshold (default: 0.75), try next tier
-4. **Repeat**: Continue until quality acceptable or tiers exhausted
-5. **Track Costs**: Accumulates cost across all tier attempts
-
-#### When to Use
-
-- You want to save costs but **ensure quality**
-- Some queries can be handled by cheaper models
-- You're willing to trade latency for cost savings
-
-#### Quality Evaluation
-
-The `HeuristicQualityEvaluator` performs 4 checks:
-
-| Check | What It Measures | Failure Condition |
-|-------|------------------|-------------------|
-| **Completeness** | Response not truncated | Ends with open punctuation |
-| **Length** | Minimum response size | < 10 characters |
-| **Structure** | Valid JSON when expected | Unmatched braces/brackets |
-| **Coherence** | No error patterns | Contains "I cannot", repeated words |
-
-#### Configuration
-
-```rust
-use rust_llm_api_router::app::services::quality::evaluator::QualityConfig;
-
-// Default: 3 tiers, 0.75 quality threshold
-let config = QualityConfig::default();
-
-// Custom: 4 tiers, higher quality bar
-let config = QualityConfig {
-    min_quality_score: 0.85,
-    max_tiers: 4,
-    per_tier_timeout_ms: 3000,
-    ..Default::default()
-};
-```
-
-#### Streaming Guard
-
-Cascading is **disabled for streaming requests** because:
-- Quality can't be evaluated until stream completes
-- Cascading would break real-time token delivery
-- Falls back to Standard execution plan automatically
-
-### Comparison: Cost-Aware vs Cascading
-
-| Aspect | Cost-Aware Routing | Cascading Routing |
-|--------|-------------------|-------------------|
-| **When** | Before request | After each tier |
-| **Decision** | Static selection | Dynamic escalation |
-| **Latency** | Same as single request | Multiple tier attempts |
-| **Cost Model** | Predictable per-request | Accumulative across tiers |
-| **Quality** | Assumed from tier | Verified after response |
-| **Streaming** | Compatible | Incompatible (guard) |
-| **Best For** | Budget-critical, predictable queries | Quality-critical, variable queries |
+See [docs/routing.md](docs/routing.md) for detailed routing documentation.
 
 ## Failover
 
@@ -597,23 +523,27 @@ Cascading is **disabled for streaming requests** because:
 ### Environment Variables
 
 ```bash
-# Server port (default: 8080)
-PORT=8080
+# Server configuration
+PORT=8080                                    # Server port (default: 8080)
+HOST=0.0.0.0                                 # Host (default: 0.0.0.0)
+LOG_LEVEL=info                               # Log level (trace, debug, info, warn, error)
 
-# Host (default: 0.0.0.0)
-HOST=0.0.0.0
+# Planning configuration
+PLANNING_TIMEOUT_MS=5000                     # Planning timeout (default: 5000ms)
+MAX_ACCOUNTS_PER_PAN=3                       # Max accounts per plan (default: 3)
 
-# Log level (trace, debug, info, warn, error)
-LOG_LEVEL=info
+# Routing configuration (Issue #29)
+ROUTING_STRATEGY=auto                        # auto, cost-optimized, cascading, failover, load-balanced
+CASCADING_ENABLED=false                     # Enable cascading routing
+CASCADING_MIN_QUALITY=0.75                   # Minimum quality score (0.0-1.0)
+CASCADING_MAX_TIERS=3                       # Maximum tiers to try
+CASCADING_PER_TIER_TIMEOUT_MS=5000         # Timeout per tier
+BUDGET_MODE=false                           # Enable budget mode
+MAX_RETRIES=3                               # Maximum retries per request
+REQUEST_TIMEOUT_SECONDS=60                  # Request timeout
 
-# Planning timeout (default: 5000ms)
-PLANNING_TIMEOUT_MS=5000
-
-# Max accounts per plan (default: 3)
-MAX_ACCOUNTS_PER_PLAN=3
-
-# Cascading minimum quality score (default: 0.75)
-CASCADING_MIN_QUALITY_SCORE=0.75
+# Secure storage (Issue #22)
+SECURE_STORAGE=auto                          # auto, keyring, encrypted, disabled
 
 # Live contract tests (set to 1 to enable)
 LIVE_TEST=1
@@ -700,6 +630,42 @@ cargo fmt
 
 ### Security
 
+### Secure API Key Storage (Issue #22)
+
+The router stores API keys securely using:
+
+- **System Keyring** (default): macOS Keychain, Windows Credential Manager, Linux Secret Service
+- **Encrypted File Fallback**: AES-256-GCM with Argon2id key derivation
+- **Automatic Migration**: Plaintext keys in `accounts.json` are migrated automatically
+
+```bash
+# Configuration via environment variable
+export SECURE_STORAGE=auto        # Default: use keyring if available
+export SECURE_STORAGE=encrypted   # Force encrypted file storage
+export SECURE_STORAGE=disabled    # Dev/testing only (not recommended)
+
+# CLI commands
+llm-router account secure-status  # Check storage status
+llm-router account migrate         # Migrate to secure storage
+```
+
+See [docs/security.md](docs/security.md) for full security documentation.
+
+### OAuth 2.1 / PKCE
+
+```bash
+# Login with OAuth 2.1 PKCE (opens browser)
+llm-router auth login --provider groq
+
+# Login with Device Flow (headless)
+llm-router auth login --provider groq --device-flow
+
+# Logout
+llm-router auth logout --provider groq
+```
+
+### Security Audit
+
 ```bash
 cargo audit
 cargo deny check
@@ -745,11 +711,15 @@ Contributions are welcome! Please read our contributing guidelines before submit
 - [x] **Cascading Routing** (#24) - Dynamic quality-based escalation
 - [x] **Live Contract Tests** for provider API drift detection
 - [x] **Atomic JSON Persistence** with file locking
+- [x] **Task-Based Routing** (#26) - Route by task type (General, Chat, Code, Reasoning, Summarization, Translation)
+- [x] **Modern Interactive CLI** (#19) - Colored output, tables, prompts, spinners
+- [x] **Routing Configuration CLI/Env** (#29) - CLI flags and environment variables for routing
+- [x] **Docker & Containerization** (#15) - Dockerfile, docker-compose, GitHub Actions
+- [x] **Secure API Key Storage** (#22) - System keyring + encrypted file fallback
 
 ### Pending 🔄
 
-- [ ] Docker + Kubernetes manifests
-- [ ] Complete CI/CD pipeline (GitHub Actions)
+- [ ] Kubernetes manifests (beyond basic docker-compose)
 - [ ] Comprehensive testing of all 29 providers (especially enterprise and specialized platforms)
 - [ ] Provider-specific authentication and configuration guides
 
@@ -763,7 +733,7 @@ src/
 │   ├── errors/      # Domain errors
 │   └── services/    # Domain services
 │       ├── model_selector.rs    # CostAwareSelector (Issue #23)
-│       └── query_complexity.rs  # QueryClassifier (Issue #23)
+│       └── query_complexity.rs  # QueryClassifier + TaskType (Issues #23, #26)
 ├── app/             # Application layer (use cases, services)
 │   ├── services/    # Application services
 │   │   ├── account_rotation.rs
@@ -784,13 +754,32 @@ src/
 │   ├── persistence/   # JSON file storage
 │   ├── provider/     # Provider adapters
 │   ├── gateway/      # LLM gateway
+│   ├── secure_storage/         # Secure API Key Storage (Issue #22)
+│   │   ├── mod.rs
+│   │   ├── keyring_adapter.rs
+│   │   └── encrypted_store.rs
 │   └── auth/         # Authentication strategies
 ├── presentation/   # Presentation layer
 │   ├── handlers/   # HTTP handlers
 │   ├── routes.rs   # Route definitions
 │   ├── state.rs    # Application state
 │   └── cli/        # CLI commands
+│       ├── mod.rs       # CLI dispatcher
+│       ├── commands/    # CLI command implementations
+│       │   ├── provider.rs    # Provider CRUD
+│       │   ├── account.rs     # Account CRUD
+│       │   ├── auth.rs        # Login/logout
+│       │   ├── login.rs      # OAuth login
+│       │   └── logout.rs     # OAuth logout
+│       └── ui/          # Modern CLI UI (Issue #19)
+│           ├── output.rs      # Colored output
+│           ├── spinner.rs     # Progress spinners
+│           ├── table.rs       # Professional tables
+│           ├── prompt.rs      # Interactive prompts
+│           └── tty.rs        # TTY detection
 ├── config/         # Configuration
+│   ├── mod.rs
+│   └── routing.rs   # Routing Configuration (Issue #29)
 ├── lib.rs          # Library root
 └── main.rs         # Binary entry point
 ```

@@ -1,15 +1,84 @@
 # CLI Reference
 
+The CLI features modern interactive output with colored feedback, professional tables, and interactive prompts.
+
 ## Global Options
 
 ```bash
 llm-router [OPTIONS] [COMMAND]
 
 Options:
-      --host <HOST>            Host to bind to (server mode) [default: 0.0.0.0]
-  -p, --port <PORT>            Port to bind to (server mode) [default: 8080]
-      --log-level <LOG_LEVEL>  Log level (trace, debug, info, warn, error) [default: info]
-  -h, --help                   Print help
+      --host <HOST>                      Host to bind to (server mode) [default: 0.0.0.0]
+  -p, --port <PORT>                      Port to bind to (server mode) [default: 8080]
+      --log-level <LOG_LEVEL>            Log level (trace, debug, info, warn, error) [default: info]
+      --routing-strategy <STRATEGY>      Routing strategy: auto, cost-optimized, cascading, failover, load-balanced [default: auto]
+      --cascading                        Enable cascading routing (equivalent to --routing-strategy cascading)
+      --quality-threshold <THRESHOLD>    Minimum quality score for cascading (0.0-1.0) [default: 0.75]
+      --budget-mode                      Enable budget mode for cost optimization
+      --max-retries <RETRIES>            Maximum retries per request [default: 3]
+      --timeout <SECONDS>                Request timeout in seconds [default: 60]
+  -h, --help                             Print help
+```
+
+## Modern CLI Features (Issue #19)
+
+The CLI provides a polished user experience with:
+
+### Colored Output
+
+- **Success**: Green checkmarks and success messages
+- **Error**: Red error messages with details
+- **Warning**: Yellow warnings for potential issues
+- **Info**: Blue informational messages
+
+```bash
+# Example output
+✓ Provider 'groq' added successfully
+✗ Failed to validate account: Invalid API key
+⚠ Warning: Provider already exists
+ℹ Use 'llm-router account add --interactive' for secure input
+```
+
+### Professional Tables
+
+List commands display formatted tables with alignment:
+
+```
+ID                   Name                           Base URL                                 Status
+----------------------------------------------------------------------------------------------------
+test-provider        Test Provider                  https://api.test.com/v1                  ✓ Enabled
+groq                 Groq                           https://api.groq.com/openai/v1           ✓ Enabled
+```
+
+### Interactive Prompts
+
+Sensitive operations like API key entry use secure input:
+
+```bash
+# Interactive mode (recommended)
+llm-router account add --id groq-account --provider groq --interactive
+# Prompts for API key with hidden input
+```
+
+### Progress Spinners
+
+Long-running operations show spinners:
+
+```
+Validating provider... ✓
+Fetching models... ✓
+```
+
+### TTY Detection
+
+The CLI automatically detects terminal capabilities and provides:
+
+- **Interactive mode**: Full colors, tables, prompts when running in a terminal
+- **Non-interactive mode**: Simplified output for scripts/automation
+
+```bash
+# Force interactive mode even in scripts
+llm-router --force-interactive provider list
 ```
 
 ## Provider Management
@@ -122,6 +191,42 @@ llm-router account remove --id <id>
 
 ```bash
 llm-router account validate --id <id>
+```
+
+## Routing Configuration (Issue #29)
+
+### CLI Flags
+
+Configure routing strategy directly from the command line:
+
+```bash
+# Enable cascading routing
+llm-router --routing-strategy cascading
+
+# With quality threshold
+llm-router --cascading --quality-threshold 0.85
+
+# Budget mode with cost-optimized
+llm-router --routing-strategy cost-optimized --budget-mode
+
+# High reliability with failover
+llm-router --routing-strategy failover --max-retries 5 --timeout 120
+```
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--routing-strategy` | Routing strategy | `--routing-strategy cascading` |
+| `--cascading` | Enable cascading | `--cascading` |
+| `--quality-threshold` | Quality score (0.0-1.0) | `--quality-threshold 0.85` |
+| `--budget-mode` | Enable budget mode | `--budget-mode` |
+| `--max-retries` | Max retries | `--max-retries 3` |
+| `--timeout` | Timeout in seconds | `--timeout 60` |
+
+### Server Mode with Routing
+
+```bash
+# Start server with specific routing
+llm-router --port 8080 --routing-strategy cascading --quality-threshold 0.8
 ```
 
 ## Auth Commands

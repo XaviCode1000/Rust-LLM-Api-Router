@@ -23,6 +23,25 @@ cargo install cargo-nextest cargo-llvm-cov sccache cargo-watch cargo-binstall
 ./scripts/coverage.sh
 ```
 
+### Docker Development (Issue #15)
+
+```bash
+# Build Docker image locally
+docker build -t llm-router:dev .
+
+# Run with hot-reload (mount source)
+docker run -it --rm \
+  -v $(pwd):/app \
+  -p 8080:8080 \
+  llm-router:dev
+
+# Run with docker-compose for full stack
+docker compose up -d
+
+# Pull latest from GHCR
+docker pull ghcr.io/xavicode1000/rust-llm-api-router:latest
+```
+
 ---
 
 ## 📦 Stack Óptimo 2025-26
@@ -34,6 +53,21 @@ cargo install cargo-nextest cargo-llvm-cov sccache cargo-watch cargo-binstall
 | **cargo-llvm-cov** | latest | Cobertura nativa LLVM (10x faster) |
 | **sccache** | 0.14.0 | Cache de compilación (6x faster) |
 | **cargo-watch** | 8.5.3 | Auto-recompilar en cambios |
+| **Docker** | 20.10+ | Containerization |
+| **docker-compose** | v2+ | Multi-container orchestration |
+
+### New Dependencies (Issues #19, #22)
+
+| Crate | Purpose | Issue |
+|-------|---------|-------|
+| `owo-colors` | Colored terminal output | #19 |
+| `comfy-table` | Professional CLI tables | #19 |
+| `inquire` | Interactive CLI prompts | #19 |
+| `indicatif` | Progress spinners | #19 |
+| `is-terminal` | TTY detection | #19 |
+| `keyring` | System keyring access | #22 |
+| `aes-gcm` | Encrypted file storage | #22 |
+| `argon2` | Key derivation | #22 |
 
 ---
 
@@ -259,6 +293,98 @@ cargo clean
 
 # Regenerar
 cargo llvm-cov --clean --html
+```
+
+---
+
+## 🔐 Secure Storage Setup for Development (Issue #22)
+
+### Overview
+
+The project supports secure API key storage via system keyrings or encrypted files.
+
+### Configuration
+
+```bash
+# Default: auto-detect (use keyring if available)
+export SECURE_STORAGE=auto
+
+# Force encrypted file storage
+export SECURE_STORAGE=encrypted
+
+# Disable secure storage (for testing only!)
+export SECURE_STORAGE=disabled
+```
+
+### Development Setup
+
+```bash
+# For local development with keyring support (Linux)
+# Install libsecret for Secret Service
+sudo apt install libsecret-1-dev
+
+# Verify keyring is available
+llm-router account secure-status
+
+# Migrate existing keys to secure storage
+llm-router account migrate
+```
+
+### Testing Secure Storage
+
+```bash
+# Test with encrypted file storage
+SECURE_STORAGE=encrypted cargo nextest run
+
+# Test disabled (for rapid iteration)
+SECURE_STORAGE=disabled cargo nextest run
+```
+
+---
+
+## 🖥️ CLI Testing (Issue #19)
+
+The CLI has been enhanced with modern interactive features.
+
+### Testing Interactive Prompts
+
+```bash
+# Test interactive account add
+llm-router account add --interactive
+
+# Test provider add
+llm-router provider add --interactive
+
+# Force interactive mode in non-TTY
+llm-router --force-interactive account list
+```
+
+### Testing Colored Output
+
+```bash
+# Verify colors work
+llm-router provider list
+
+# Check for color codes in output
+llm-router provider list | cat -v
+```
+
+### Testing Tables
+
+```bash
+# Verify table formatting
+llm-router provider list
+llm-router account list
+```
+
+### Testing TTY Detection
+
+```bash
+# Run with TTY
+script -q /dev/null -c "llm-router account list"
+
+# Run without TTY (should show simplified output)
+llm-router account list | cat
 ```
 
 ---
