@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  llm-router:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: llm-router
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8080
+      - LOG_LEVEL=info
+      - ROUTING_STRATEGY=auto
+      - CASCADING_ENABLED=false
+      - CASCADING_MIN_QUALITY=0.75
+      - BUDGET_MODE=false
+      - MAX_RETRIES=3
+      - REQUEST_TIMEOUT_SECONDS=60
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
