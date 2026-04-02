@@ -12,6 +12,7 @@ use clap::{Args, Subcommand};
 use crate::domain::traits::AccountRepository;
 use crate::domain::Account;
 use crate::presentation::cli::input::read_api_key_interactive;
+use crate::presentation::cli::{output, prompt, table};
 use crate::Result;
 
 /// Add account arguments
@@ -113,7 +114,7 @@ pub async fn cmd_add_account(args: AddAccountArgs, repo: &impl AccountRepository
     };
 
     if api_key.is_none() && !args.interactive {
-        eprintln!("Warning: No API key provided. Use --api-key or --interactive.");
+        output::warning("No API key provided. Use --api-key or --interactive.");
     }
 
     let account = if args.inactive {
@@ -127,10 +128,10 @@ pub async fn cmd_add_account(args: AddAccountArgs, repo: &impl AccountRepository
         .await
         .map_err(|e| crate::Error::Internal(e.to_string()))?;
 
-    println!(
-        "✓ Account '{}' added for provider '{}'",
+    output::success(&format!(
+        "Account '{}' added for provider '{}'",
         args.id, args.provider
-    );
+    ));
     Ok(())
 }
 
@@ -142,36 +143,11 @@ pub async fn cmd_list_accounts(repo: &impl AccountRepository) -> Result<()> {
         .map_err(|e| crate::Error::Internal(e.to_string()))?;
 
     if accounts.is_empty() {
-        println!("No accounts registered.");
+        output::info("No accounts registered.");
         return Ok(());
     }
 
-    println!(
-        "{:<20} {:<20} {:<10} {:<8} API Key",
-        "ID", "Provider", "Priority", "Status"
-    );
-    println!("{:-<90}", "");
-
-    for account in accounts {
-        let status = if account.is_active {
-            "✓ Active"
-        } else {
-            "✗ Inactive"
-        };
-        let api_key_display = if let Some(ref key) = account.api_key {
-            if key.len() > 8 {
-                format!("{}...", &key[..8])
-            } else {
-                "****".to_string()
-            }
-        } else {
-            "None".to_string()
-        };
-        println!(
-            "{:<20} {:<20} {:<10} {:<8} {}",
-            account.id, account.provider_id, account.priority, status, api_key_display
-        );
-    }
+    println!("{}", table::account_table(&accounts));
 
     Ok(())
 }
@@ -181,12 +157,29 @@ pub async fn cmd_remove_account(
     args: RemoveAccountArgs,
     repo: &impl AccountRepository,
 ) -> Result<()> {
+    // First check if account exists
+    repo.find_by_id(&args.id)
+        .await
+        .map_err(|_| crate::Error::ProviderNotFound(args.id.clone()))?;
+
+    // Confirmation prompt
+    if !prompt::confirm(&format!(
+        "Are you sure you want to remove account '{}'?",
+        args.id
+    ))? {
+        output::info(&format!(
+            "Cancelled. Account '{}' was not removed.",
+            args.id
+        ));
+        return Ok(());
+    }
+
     // Delete account (this now persists automatically)
     repo.delete(&args.id)
         .await
         .map_err(|_| crate::Error::ProviderNotFound(args.id.clone()))?;
 
-    println!("✓ Account '{}' removed successfully", args.id);
+    output::success(&format!("Account '{}' removed successfully", args.id));
     Ok(())
 }
 
@@ -203,7 +196,10 @@ pub async fn cmd_set_priority(args: SetPriorityArgs, repo: &impl AccountReposito
         .await
         .map_err(|e| crate::Error::Internal(e.to_string()))?;
 
-    println!("✓ Account '{}' priority set to {}", args.id, args.priority);
+    output::success(&format!(
+        "Account '{}' priority set to {}",
+        args.id, args.priority
+    ));
     Ok(())
 }
 
@@ -217,15 +213,15 @@ pub async fn cmd_validate_account(
         .await
         .map_err(|_| crate::Error::ProviderNotFound(args.id.clone()))?;
 
-    println!(
+    output::info(&format!(
         "Validating account '{}' for provider '{}'...",
         account.id, account.provider_id
-    );
+    ));
 
     let api_key = match &account.api_key {
         Some(key) => key,
         None => {
-            println!("⚠ Account has no API key set");
+            output::warning("Account has no API key set");
             return Ok(());
         }
     };
@@ -233,10 +229,13 @@ pub async fn cmd_validate_account(
     // TODO: Make actual API call to validate the key
     // For now, just check key format
     if api_key.len() < 8 {
-        println!("✗ API key too short (min 8 chars)");
+        output::error("API key too short (min 8 chars)");
     } else {
-        println!("✓ API key format looks valid (length: {})", api_key.len());
-        println!("Note: Full validation will be done on first request");
+        output::success(&format!(
+            "API key format looks valid (length: {})",
+            api_key.len()
+        ));
+        output::dim("Note: Full validation will be done on first request");
     }
 
     Ok(())

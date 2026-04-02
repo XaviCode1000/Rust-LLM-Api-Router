@@ -53,6 +53,13 @@ clap = { version = "4.4", features = ["derive"] }
 clap_complete = { version = "4", optional = true }
 clap_mangen = { version = "0.2", optional = true }
 
+# CLI - Interactive experience
+owo-colors = "4"
+comfy-table = "7"
+inquire = "0.7"
+indicatif = "0.17"
+is-terminal = "0.4"
+
 # Directories
 dirs = "5.0"
 fs4 = { version = "0.8", features = ["tokio"] }

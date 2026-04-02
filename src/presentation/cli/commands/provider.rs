@@ -14,6 +14,7 @@ use clap::{Args, Subcommand};
 use crate::domain::traits::{AccountRepository, ProviderRepository};
 use crate::domain::Provider;
 use crate::presentation::cli::input::read_api_key_interactive;
+use crate::presentation::cli::{output, prompt, spinner, table};
 use crate::Result;
 
 /// Add provider arguments
@@ -136,7 +137,7 @@ pub async fn cmd_add_provider(args: AddProviderArgs, repo: &impl ProviderReposit
     };
 
     if api_key.is_empty() && !args.interactive {
-        eprintln!("Warning: No API key provided. Use --api-key or --interactive.");
+        output::warning("No API key provided. Use --api-key or --interactive.");
     }
 
     let provider = if args.disabled {
@@ -149,7 +150,7 @@ pub async fn cmd_add_provider(args: AddProviderArgs, repo: &impl ProviderReposit
         .await
         .map_err(|e| crate::Error::Internal(e.to_string()))?;
 
-    println!("✓ Provider '{}' added successfully", args.id);
+    output::success(&format!("Provider '{}' added successfully", args.id));
     Ok(())
 }
 
@@ -164,42 +165,30 @@ pub async fn cmd_list_providers(
         .map_err(|e| crate::Error::Internal(e.to_string()))?;
 
     if providers.is_empty() {
-        println!("No providers registered.");
+        output::info("No providers registered.");
         return Ok(());
     }
 
-    println!(
-        "{:<18} {:<28} {:<35} {:<12} Account",
-        "ID", "Name", "Base URL", "Status"
-    );
-    println!("{:-<110}", "");
+    // Get provider IDs with active accounts
+    let mut provider_ids_with_accounts: std::collections::HashSet<String> =
+        std::collections::HashSet::new();
+    for provider in &providers {
+        if let Ok(accounts) = account_repo.find_active_by_provider(&provider.id).await {
+            if !accounts.is_empty() {
+                provider_ids_with_accounts.insert(provider.id.clone());
+            }
+        }
+    }
 
-    for provider in providers {
-        let status = if provider.enabled {
-            "✓ Enabled"
+    println!("{}", table::provider_table(&providers));
+
+    // Print additional info about accounts
+    for provider in &providers {
+        if provider_ids_with_accounts.contains(&provider.id) {
+            output::dim(&format!("  {}: has active account(s)", provider.id));
         } else {
-            "✗ Disabled"
-        };
-
-        // Check if there's an active account for this provider
-        let account_status = match account_repo.find_active_by_provider(&provider.id).await {
-            Ok(accounts) if !accounts.is_empty() => "✓ Configured",
-            _ => "✗ Not set",
-        };
-
-        println!(
-            "{:<18} {:<28} {:<35} {:<12} {}",
-            provider.id,
-            provider.name,
-            // Truncate base URL if too long
-            if provider.base_url.len() > 35 {
-                &provider.base_url[..32]
-            } else {
-                &provider.base_url
-            },
-            status,
-            account_status
-        );
+            output::dim(&format!("  {}: no account configured", provider.id));
+        }
     }
 
     Ok(())
@@ -222,14 +211,14 @@ pub async fn cmd_list_models(
     let account = match accounts.into_iter().find(|a| a.is_active) {
         Some(acc) => acc,
         None => {
-            println!(
-                "Error: No active account found for provider '{}'",
+            output::error(&format!(
+                "No active account found for provider '{}'",
                 provider_id
-            );
-            println!(
+            ));
+            output::info(&format!(
                 "Please run: llm-router auth login --provider {}",
                 provider_id
-            );
+            ));
             return Ok(());
         }
     };
@@ -237,15 +226,18 @@ pub async fn cmd_list_models(
     let api_key = match &account.api_key {
         Some(key) if !key.is_empty() => key.clone(),
         _ => {
-            println!(
-                "Error: No API key configured for provider '{}'",
+            output::error(&format!(
+                "No API key configured for provider '{}'",
                 provider_id
-            );
+            ));
             return Ok(());
         }
     };
 
-    println!("Fetching models for provider '{}'...", provider_id);
+    output::info(&format!(
+        "Fetching models for provider '{}'...",
+        provider_id
+    ));
 
     // Create HTTP client and fetch models
     let http_client = reqwest::Client::new();
@@ -269,10 +261,10 @@ pub async fn cmd_list_models(
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_default();
-        println!(
-            "Error: Failed to fetch models (HTTP {}): {}",
+        output::error(&format!(
+            "Failed to fetch models (HTTP {}): {}",
             status, error_text
-        );
+        ));
         return Ok(());
     }
 
@@ -294,11 +286,14 @@ pub async fn cmd_list_models(
     match response.json::<ProviderModelsResponse>().await {
         Ok(models_response) => {
             if models_response.data.is_empty() {
-                println!("No models available for provider '{}'", provider_id);
+                output::info(&format!(
+                    "No models available for provider '{}'",
+                    provider_id
+                ));
                 return Ok(());
             }
 
-            println!("\nAvailable models for '{}':\n", provider_id);
+            output::info(&format!("\nAvailable models for '{}':\n", provider_id));
             println!("{:<50} Name", "Model ID");
             println!("{:-<70}", "");
 
@@ -308,11 +303,11 @@ pub async fn cmd_list_models(
             }
 
             let total = models_response.data.len();
-            println!("\nTotal: {} models", total);
+            output::info(&format!("\nTotal: {} models", total));
         }
         Err(e) => {
             // Try alternative format (some providers return different structure)
-            println!("Error parsing models response: {}", e);
+            output::error(&format!("Error parsing models response: {}", e));
         }
     }
 
@@ -335,12 +330,21 @@ pub async fn cmd_remove_provider(
         .await
         .map_err(|_| crate::Error::ProviderNotFound(args.id.clone()))?;
 
+    // Confirmation prompt
+    if !prompt::confirm(&format!(
+        "Are you sure you want to remove provider '{}'? This will also remove all associated accounts.",
+        args.id
+    ))? {
+        output::info(&format!("Cancelled. Provider '{}' was not removed.", args.id));
+        return Ok(());
+    }
+
     // Use repository delete method which properly persists the deletion
     repo.delete(&args.id)
         .await
         .map_err(|e| crate::Error::Internal(e.to_string()))?;
 
-    println!("✓ Provider '{}' removed successfully", args.id);
+    output::success(&format!("Provider '{}' removed successfully", args.id));
     Ok(())
 }
 
@@ -360,7 +364,7 @@ pub async fn cmd_enable_provider(
         .await
         .map_err(|e| crate::Error::Internal(e.to_string()))?;
 
-    println!("✓ Provider '{}' enabled", args.id);
+    output::success(&format!("Provider '{}' enabled", args.id));
     Ok(())
 }
 
@@ -380,7 +384,7 @@ pub async fn cmd_disable_provider(
         .await
         .map_err(|e| crate::Error::Internal(e.to_string()))?;
 
-    println!("✓ Provider '{}' disabled", args.id);
+    output::success(&format!("Provider '{}' disabled", args.id));
     Ok(())
 }
 
@@ -395,15 +399,15 @@ pub async fn cmd_validate_provider(
             return Err(crate::Error::ProviderNotFound(id));
         }
         Err(crate::domain::DomainError::ProviderDisabled(id)) => {
-            eprintln!("Warning: Provider '{}' is disabled. Enable it first.", id);
+            output::warning(&format!("Provider '{}' is disabled. Enable it first.", id));
             return Ok(());
         }
         Err(e) => return Err(crate::Error::Internal(e.to_string())),
     };
 
-    println!("Validating provider '{}'...", provider.id);
-    println!("Note: Actual credential validation requires API key storage.");
-    println!("This feature will be implemented when account management is added.");
+    let spinner = spinner::CliSpinner::new(&format!("Validating provider '{}'...", args.id));
+    output::dim("Note: Actual credential validation requires API key storage.");
+    output::dim("This feature will be implemented when account management is added.");
 
     // TODO: Implement actual validation when Account entity is available
     // For now, just check if provider is reachable
@@ -411,20 +415,32 @@ pub async fn cmd_validate_provider(
     match client.get(&provider.base_url).send().await {
         Ok(response) => {
             if response.status().is_success() || response.status().is_client_error() {
-                println!(
+                spinner.finish_with_message(&format!(
                     "✓ Provider '{}' is reachable at {}",
                     provider.id, provider.base_url
-                );
+                ));
             } else {
-                println!(
+                spinner.finish_with_message(&format!(
                     "⚠ Provider '{}' returned status: {}",
                     provider.id,
                     response.status()
-                );
+                ));
+                output::warning(&format!(
+                    "Provider '{}' returned status: {}",
+                    provider.id,
+                    response.status()
+                ));
             }
         }
         Err(e) => {
-            println!("✗ Provider '{}' is not reachable: {}", provider.id, e);
+            spinner.finish_with_message(&format!(
+                "✗ Provider '{}' is not reachable: {}",
+                provider.id, e
+            ));
+            output::error(&format!(
+                "Provider '{}' is not reachable: {}",
+                provider.id, e
+            ));
         }
     }
 

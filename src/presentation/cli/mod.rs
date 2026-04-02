@@ -1,5 +1,10 @@
 pub mod commands;
 pub mod input;
+pub mod output;
+pub mod prompt;
+pub mod spinner;
+pub mod table;
+pub mod tty;
 
 use clap::Parser;
 
@@ -53,6 +58,9 @@ pub enum CliCommands {
 
 /// Handle CLI commands
 pub async fn handle_command(command: CliCommands) -> crate::error::Result<()> {
+    // Initialize TTY detection for coloured output
+    tty::init();
+
     match command {
         CliCommands::Provider(provider_cmd) => {
             let repo =
