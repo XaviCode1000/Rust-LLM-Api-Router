@@ -1,0 +1,16 @@
+---
+source: tests/live_contract_tests.rs
+expression: body
+---
+{
+  "choices": "[choices-redacted]",
+  "created": "[redacted]",
+  "id": "[redacted]",
+  "model": "llama-3.1-8b-instant",
+  "object": "chat.completion",
+  "service_tier": "on_demand",
+  "system_fingerprint": "[redacted]",
+  "usage": "[usage-redacted]",
+  "usage_breakdown": null,
+  "x_groq": "[x_groq-redacted]"
+}

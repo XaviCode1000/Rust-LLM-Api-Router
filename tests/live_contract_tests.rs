@@ -132,7 +132,7 @@ async fn test_openai_contract() {
     let mut settings = insta::Settings::clone_current();
     settings.add_redaction(".id", "[redacted]");
     settings.add_redaction(".created", "[redacted]");
-    settings.add_redaction(".choices[*].finish_reason", "[redacted]");
+    settings.add_redaction(".choices", "[choices-redacted]");
     settings.bind(|| {
         insta::assert_json_snapshot!("openai_contract", body);
     });
@@ -214,10 +214,15 @@ async fn test_anthropic_contract() {
     );
 
     // ── Snapshot with redactions ───────────────────────────────────────
+    // Note: Live API responses have variable fields (timestamps, tokens, content).
+    // We redact these to ensure snapshot stability across runs.
     let mut settings = insta::Settings::clone_current();
     settings.add_redaction(".id", "[redacted]");
-    settings.add_redaction(".content[*].text", "[redacted-content]");
-    settings.add_redaction(".model", "[redacted-model]");
+    settings.add_redaction(".created", "[redacted]");
+    settings.add_redaction(".choices", "[choices-redacted]");
+    settings.add_redaction(".usage", "[usage-redacted]");
+    settings.add_redaction(".system_fingerprint", "[redacted]");
+    settings.add_redaction(".x_groq", "[x_groq-redacted]");
     settings.bind(|| {
         insta::assert_json_snapshot!("anthropic_contract", body);
     });
@@ -308,10 +313,15 @@ async fn test_groq_contract() {
     );
 
     // ── Snapshot with redactions ───────────────────────────────────────
+    // Note: Live API responses have variable fields (timestamps, tokens, content).
+    // We redact these to ensure snapshot stability across runs.
     let mut settings = insta::Settings::clone_current();
     settings.add_redaction(".id", "[redacted]");
     settings.add_redaction(".created", "[redacted]");
-    settings.add_redaction(".choices[*].finish_reason", "[redacted]");
+    settings.add_redaction(".choices", "[choices-redacted]");
+    settings.add_redaction(".system_fingerprint", "[redacted]");
+    settings.add_redaction(".usage", "[usage-redacted]");
+    settings.add_redaction(".x_groq", "[x_groq-redacted]");
     settings.bind(|| {
         insta::assert_json_snapshot!("groq_contract", body);
     });
