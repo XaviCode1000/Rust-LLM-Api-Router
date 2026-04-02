@@ -7,6 +7,7 @@ use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 
+use crate::config::RoutingConfig;
 use crate::domain::entities::{Account, AccountHealth, Provider};
 use crate::domain::traits::AccountRepository;
 use crate::domain::DomainResult;
@@ -84,6 +85,31 @@ impl ExecutionPlannerConfig {
     /// Creates a new config with default values.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Creates an ExecutionPlannerConfig from RoutingConfig.
+    ///
+    /// This converts the high-level routing configuration into planner-specific
+    /// settings, mapping routing strategy to execution plan type and flags.
+    pub fn from_routing_config(config: &RoutingConfig) -> Self {
+        let mut planner_config = Self::default();
+
+        // Map routing strategy to planner config flags
+        planner_config.cascading_enabled = config.cascading_enabled
+            || config.strategy == crate::config::RoutingStrategy::Cascading;
+        planner_config.cost_optimization_enabled =
+            config.strategy == crate::config::RoutingStrategy::CostOptimized || config.budget_mode;
+        planner_config.load_balancing_enabled =
+            config.strategy == crate::config::RoutingStrategy::LoadBalanced;
+        planner_config.failover_enabled =
+            config.strategy == crate::config::RoutingStrategy::Failover;
+        planner_config.budget_mode_enabled = config.budget_mode;
+
+        // Set max retries and timeout from routing config
+        planner_config.default_max_retries = config.max_retries as u32;
+        planner_config.default_timeout_seconds = config.timeout_seconds as u32;
+
+        planner_config
     }
 
     /// Creates a config optimized for reliability.

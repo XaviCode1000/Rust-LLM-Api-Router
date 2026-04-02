@@ -19,6 +19,7 @@
 //! ```
 
 use clap::Parser;
+use rust_llm_api_router::config::RoutingConfig;
 use rust_llm_api_router::presentation::cli::Cli;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -52,8 +53,33 @@ async fn main() -> Result<()> {
     settings.app_port = cli.port;
     settings.log_level = cli.log_level;
 
-    // Create application state
-    let state = AppState::new(settings)?;
+    // Create routing config from CLI args and environment variables
+    let routing_config = match RoutingConfig::from_cli_and_env(
+        &cli.routing_strategy,
+        cli.cascading,
+        cli.quality_threshold,
+        cli.budget_mode,
+        cli.max_retries,
+        cli.timeout,
+    ) {
+        Ok(config) => config,
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    tracing::info!(
+        "Routing config: strategy={}, cascading={}, budget_mode={}, max_retries={}, timeout={}s",
+        routing_config.strategy,
+        routing_config.cascading_enabled,
+        routing_config.budget_mode,
+        routing_config.max_retries,
+        routing_config.timeout_seconds
+    );
+
+    // Create application state with routing config
+    let state = AppState::new(settings, routing_config)?;
     let state = Arc::new(state);
 
     // Get port before moving state

@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use crate::app::router::llm_router::LlmRouter;
 use crate::app::services::execution_plan::ExecutionPlannerConfig;
-use crate::config::Settings;
+use crate::config::{RoutingConfig, Settings};
 use crate::domain::traits::AccountRepository;
 use crate::infrastructure::gateway::llm_gateway::ProviderConfig;
 use crate::infrastructure::{HttpClient, JsonAccountRepository, LlmGatewayImpl, Metrics};
@@ -23,7 +23,8 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(config: Settings) -> Result<Self, crate::Error> {
+    /// Create a new AppState with routing configuration.
+    pub fn new(config: Settings, routing_config: RoutingConfig) -> Result<Self, crate::Error> {
         let http_client = Arc::new(HttpClient::new()?);
         let metrics = Arc::new(Metrics::new()?);
         let account_repo: Arc<dyn AccountRepository> = Arc::new(
@@ -40,13 +41,16 @@ impl AppState {
             3600, // 1 hour cache TTL
         ));
 
-        // Create LLM Router with ExecutionPlanner
-        let planner_config = ExecutionPlannerConfig::default();
-        let llm_router = Arc::new(LlmRouter::new(
+        // Create planner config from routing config
+        let planner_config = ExecutionPlannerConfig::from_routing_config(&routing_config);
+
+        // Create LLM Router with ExecutionPlanner and routing config
+        let llm_router = Arc::new(LlmRouter::with_routing_config(
             http_client.clone(),
             account_repo.clone(),
             provider_config.clone(),
             planner_config,
+            routing_config,
         ));
 
         Ok(Self {

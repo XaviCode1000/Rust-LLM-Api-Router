@@ -1,0 +1,12 @@
+status: planning_complete
+executive_summary: "Planning completo para Issue #29: CLI and Configuration Options for Routing Strategies. Proposal, Spec, Design y Tasks creados. RoutingConfig struct unifica CLI flags + env vars + defaults. 4 fases: RoutingConfig module, CLI flags, Integration, Verification."
+artifacts:
+  - sdd/routing-config/proposal.md
+  - sdd/routing-config/spec.md
+  - sdd/routing-config/design.md
+  - sdd/routing-config/tasks.md
+next_recommended: apply
+risks:
+  - "Config priority debe ser clara: CLI > Env > Defaults"
+  - "Backward compat con env vars existentes (EXECUTION_PLAN_TYPE, etc.)"
+skill_resolution: "none"

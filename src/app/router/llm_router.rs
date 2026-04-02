@@ -14,6 +14,7 @@ use crate::app::services::execution_plan::{
     ExecutionContext, ExecutionOutcome, ExecutionPlan, ExecutionPlanImpl, ExecutionPlanStatus,
     ExecutionPlanner, ExecutionPlannerConfig, PlanningOptions,
 };
+use crate::config::RoutingConfig;
 use crate::domain::entities::{ChatRequest, ChatResponse, Message};
 use crate::domain::errors::DomainError;
 use crate::domain::services::TokenValidator;
@@ -68,6 +69,9 @@ pub struct LlmRouter<R: AccountRepository + ?Sized> {
 
     /// Router configuration
     config: LlmRouterConfig,
+
+    /// Routing configuration for logging purposes
+    routing_config: Option<RoutingConfig>,
 }
 
 impl<R: AccountRepository + ?Sized> LlmRouter<R> {
@@ -86,6 +90,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             account_repo,
             planner,
             config: LlmRouterConfig::default(),
+            routing_config: None,
         }
     }
 
@@ -105,6 +110,28 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             account_repo,
             planner,
             config: router_config,
+            routing_config: None,
+        }
+    }
+
+    /// Creates a new LlmRouter with routing config.
+    #[allow(dead_code)]
+    pub fn with_routing_config(
+        http_client: Arc<HttpClient>,
+        account_repo: Arc<R>,
+        provider_configs: Arc<std::collections::HashMap<String, ProviderConfig>>,
+        planner_config: ExecutionPlannerConfig,
+        routing_config: RoutingConfig,
+    ) -> Self {
+        let planner = ExecutionPlanner::new(account_repo.clone(), planner_config);
+
+        Self {
+            http_client,
+            provider_configs,
+            account_repo,
+            planner,
+            config: LlmRouterConfig::default(),
+            routing_config: Some(routing_config),
         }
     }
 
@@ -123,6 +150,9 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
     ) -> Result<ChatResponse> {
         // Step 1: Create execution context
         let context = self.create_execution_context(&request, preferred_providers);
+
+        // Get request_id for logging before context is moved
+        let request_id_for_log = context.request_id.clone();
 
         // Step 1.5: Pre-flight token validation
         match TokenValidator::validate(&request) {
@@ -166,6 +196,29 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
                 )));
             }
         };
+
+        // Log routing information with strategy details
+        let strategy_name = plan.plan_type().name();
+        let account_count = plan.account_count();
+
+        if let Some(ref routing_config) = self.routing_config {
+            tracing::info!(
+                request_id = %request_id_for_log,
+                strategy = %routing_config.strategy,
+                plan_type = %strategy_name,
+                accounts = account_count,
+                cascading_enabled = routing_config.cascading_enabled,
+                budget_mode = routing_config.budget_mode,
+                "Routing request"
+            );
+        } else {
+            tracing::info!(
+                request_id = %request_id_for_log,
+                plan_type = %strategy_name,
+                accounts = account_count,
+                "Routing request"
+            );
+        }
 
         if self.config.verbose_logging {
             tracing::info!(
