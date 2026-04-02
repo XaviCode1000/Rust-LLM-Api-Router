@@ -10,10 +10,7 @@ static IS_TTY: AtomicBool = AtomicBool::new(false);
 
 /// Initialise TTY detection. Call once at program start.
 pub fn init() {
-    IS_TTY.store(
-        is_terminal::is_terminal(std::io::stdout()),
-        Ordering::Relaxed,
-    );
+    IS_TTY.store(is_terminal::is_terminal(std::io::stdout()), Ordering::Relaxed);
     NO_COLOR.store(std::env::var_os("NO_COLOR").is_some(), Ordering::Relaxed);
 }
 

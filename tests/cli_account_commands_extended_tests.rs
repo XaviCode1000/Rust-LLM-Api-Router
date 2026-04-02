@@ -198,10 +198,7 @@ async fn test_cmd_remove_account_not_found() {
     let result = cmd_remove_account(args, &repo).await;
 
     assert!(result.is_err());
-    assert!(matches!(
-        result.unwrap_err(),
-        rust_llm_api_router::Error::ProviderNotFound(_)
-    ));
+    assert!(matches!(result.unwrap_err(), rust_llm_api_router::Error::ProviderNotFound(_)));
 }
 
 #[tokio::test]

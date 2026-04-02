@@ -155,14 +155,8 @@ mod tests {
             provider.auth_url,
             Some("https://auth.example.com/oauth2/authorize".to_string())
         );
-        assert_eq!(
-            provider.token_url,
-            Some("https://auth.example.com/oauth2/token".to_string())
-        );
-        assert_eq!(
-            provider.redirect_uri,
-            Some("http://localhost:3000/callback".to_string())
-        );
+        assert_eq!(provider.token_url, Some("https://auth.example.com/oauth2/token".to_string()));
+        assert_eq!(provider.redirect_uri, Some("http://localhost:3000/callback".to_string()));
         assert!(provider.is_oauth_configured());
         assert!(!provider.is_device_flow_configured()); // device_auth_url not set
     }

@@ -108,14 +108,7 @@ impl CascadingExecutionPlan {
                     })
                     .unwrap_or(u64::MAX);
 
-                (
-                    account,
-                    provider,
-                    health,
-                    model_id,
-                    cost_per_request,
-                    idx as u32,
-                )
+                (account, provider, health, model_id, cost_per_request, idx as u32)
             })
             .collect();
 

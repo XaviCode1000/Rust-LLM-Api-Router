@@ -203,11 +203,8 @@ async fn test_anthropic_provider_list_models_missing_display_name() {
         .await;
 
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let provider = AnthropicProvider::new(
-        mock_server.uri(),
-        "sk-anthropic-key".to_string(),
-        http_client,
-    );
+    let provider =
+        AnthropicProvider::new(mock_server.uri(), "sk-anthropic-key".to_string(), http_client);
 
     let models = provider.list_models("sk-anthropic-key").await.unwrap();
 
@@ -228,11 +225,8 @@ async fn test_anthropic_provider_list_models_503_service_unavailable() {
         .await;
 
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let provider = AnthropicProvider::new(
-        mock_server.uri(),
-        "sk-anthropic-key".to_string(),
-        http_client,
-    );
+    let provider =
+        AnthropicProvider::new(mock_server.uri(), "sk-anthropic-key".to_string(), http_client);
 
     let result = provider.list_models("sk-anthropic-key").await;
 
@@ -254,11 +248,8 @@ async fn test_anthropic_provider_list_models_403_forbidden() {
         .await;
 
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let provider = AnthropicProvider::new(
-        mock_server.uri(),
-        "sk-anthropic-key".to_string(),
-        http_client,
-    );
+    let provider =
+        AnthropicProvider::new(mock_server.uri(), "sk-anthropic-key".to_string(), http_client);
 
     let result = provider.list_models("sk-anthropic-key").await;
 
@@ -283,11 +274,8 @@ async fn test_anthropic_provider_list_models_with_display_name() {
         .await;
 
     let http_client = Arc::new(HttpClient::new().unwrap());
-    let provider = AnthropicProvider::new(
-        mock_server.uri(),
-        "sk-anthropic-key".to_string(),
-        http_client,
-    );
+    let provider =
+        AnthropicProvider::new(mock_server.uri(), "sk-anthropic-key".to_string(), http_client);
 
     let models = provider.list_models("sk-anthropic-key").await.unwrap();
 

@@ -14,6 +14,7 @@ pub mod logging;
 pub mod metrics;
 pub mod persistence;
 pub mod provider;
+pub mod secure_storage;
 
 pub use gateway::LlmGatewayImpl;
 pub use http_client::HttpClient;

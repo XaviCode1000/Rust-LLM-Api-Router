@@ -166,10 +166,7 @@ async fn _disabled_test_chat_handler_complete_request_flow() {
     let response_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(response_json["id"], "complete-flow");
-    assert_eq!(
-        response_json["choices"][0]["message"]["content"],
-        "Complete flow response"
-    );
+    assert_eq!(response_json["choices"][0]["message"]["content"], "Complete flow response");
     assert_eq!(response_json["usage"]["total_tokens"], 15);
 
     mock_server.verify().await;

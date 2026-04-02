@@ -1,0 +1,13 @@
+status: planning_complete
+executive_summary: "Planning completo para Issue #22: Secure API Key Storage with System Keyring. Proposal, Spec, Design y Tasks creados. Hybrid approach: Keyring primary + EncryptedFile fallback. keyring y secrecy ya están en Cargo.toml pero NO se usan."
+artifacts:
+  - sdd/secure-keyring/proposal.md
+  - sdd/secure-keyring/spec.md
+  - sdd/secure-keyring/design.md
+  - sdd/secure-keyring/tasks.md
+next_recommended: apply
+risks:
+  - "Linux keyring requiere libsecret/Secret Service — fallback automático"
+  - "Migración automática de keys existentes — loguear para debugging"
+  - "Containers sin keyring — fallback a encrypted file"
+skill_resolution: "none"

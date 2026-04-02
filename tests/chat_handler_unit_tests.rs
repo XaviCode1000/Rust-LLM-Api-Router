@@ -89,10 +89,7 @@ fn test_convert_to_openai_response_basic() {
     assert_eq!(openai_response.model, "gpt-4");
     assert_eq!(openai_response.choices.len(), 1);
     assert_eq!(openai_response.choices[0].message.content, "Hello!");
-    assert_eq!(
-        openai_response.choices[0].finish_reason,
-        Some("stop".to_string())
-    );
+    assert_eq!(openai_response.choices[0].finish_reason, Some("stop".to_string()));
     assert_eq!(openai_response.usage.prompt_tokens, 10);
     assert_eq!(openai_response.usage.completion_tokens, 5);
     assert_eq!(openai_response.usage.total_tokens, 15);
@@ -281,10 +278,7 @@ async fn test_streaming_with_empty_chunk() {
     );
 
     let app = axum::Router::new()
-        .route(
-            "/v1/chat/completions",
-            axum::routing::post(chat_completions),
-        )
+        .route("/v1/chat/completions", axum::routing::post(chat_completions))
         .with_state(state);
 
     // Mock with empty chunk
@@ -350,10 +344,7 @@ async fn test_streaming_with_valid_utf8_handling() {
     );
 
     let app = axum::Router::new()
-        .route(
-            "/v1/chat/completions",
-            axum::routing::post(chat_completions),
-        )
+        .route("/v1/chat/completions", axum::routing::post(chat_completions))
         .with_state(state);
 
     // Mock with valid SSE data that will be processed

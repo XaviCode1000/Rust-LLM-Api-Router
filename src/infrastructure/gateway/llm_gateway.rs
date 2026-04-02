@@ -58,10 +58,8 @@ impl ProviderConfig {
     /// Create default config with URL (for backward compatibility)
     pub fn default_with_url(base_url: &str, _api_key: &str) -> HashMap<String, Self> {
         let mut providers = HashMap::new();
-        providers.insert(
-            "default".to_string(),
-            Self::new("default", "Default", base_url, "/models"),
-        );
+        providers
+            .insert("default".to_string(), Self::new("default", "Default", base_url, "/models"));
         providers
     }
 }
@@ -112,57 +110,17 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
     let entries: &[(&str, &str, &str, &str)] = &[
         // Major providers
         ("openai", "OpenAI", "https://api.openai.com/v1", "/models"),
-        (
-            "anthropic",
-            "Anthropic",
-            "https://api.anthropic.com/v1",
-            "/models",
-        ),
+        ("anthropic", "Anthropic", "https://api.anthropic.com/v1", "/models"),
         ("groq", "Groq", "https://api.groq.com/openai/v1", "/models"),
         // OpenAI-compatible cloud providers
-        (
-            "deepseek",
-            "DeepSeek",
-            "https://api.deepseek.com/v1",
-            "/models",
-        ),
-        (
-            "together",
-            "Together AI",
-            "https://api.together.xyz/v1",
-            "/models",
-        ),
-        (
-            "fireworks",
-            "Fireworks AI",
-            "https://api.fireworks.ai/inference/v1",
-            "/models",
-        ),
+        ("deepseek", "DeepSeek", "https://api.deepseek.com/v1", "/models"),
+        ("together", "Together AI", "https://api.together.xyz/v1", "/models"),
+        ("fireworks", "Fireworks AI", "https://api.fireworks.ai/inference/v1", "/models"),
         ("xai", "xAI (Grok)", "https://api.x.ai/v1", "/models"),
-        (
-            "perplexity",
-            "Perplexity",
-            "https://api.perplexity.ai/v1",
-            "/models",
-        ),
-        (
-            "openrouter",
-            "OpenRouter",
-            "https://openrouter.ai/api/v1",
-            "/models",
-        ),
-        (
-            "mistral",
-            "Mistral AI",
-            "https://api.mistral.ai/v1",
-            "/models",
-        ),
-        (
-            "cerebras",
-            "Cerebras",
-            "https://api.cerebras.ai/v1",
-            "/models",
-        ),
+        ("perplexity", "Perplexity", "https://api.perplexity.ai/v1", "/models"),
+        ("openrouter", "OpenRouter", "https://openrouter.ai/api/v1", "/models"),
+        ("mistral", "Mistral AI", "https://api.mistral.ai/v1", "/models"),
+        ("cerebras", "Cerebras", "https://api.cerebras.ai/v1", "/models"),
         (
             "cloudflare",
             "Cloudflare AI Gateway",
@@ -171,52 +129,17 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
         ),
         // Local inference servers
         ("ollama", "Ollama", "http://localhost:11434/v1", "/models"),
-        (
-            "lmstudio",
-            "LM Studio",
-            "http://localhost:1234/v1",
-            "/models",
-        ),
+        ("lmstudio", "LM Studio", "http://localhost:1234/v1", "/models"),
         ("vllm", "vLLM", "http://localhost:8000/v1", "/models"),
         // Platform / specialized providers
-        (
-            "replicate",
-            "Replicate",
-            "https://api.replicate.com/v1",
-            "/models",
-        ),
-        (
-            "huggingface",
-            "HuggingFace",
-            "https://api-inference.huggingface.co",
-            "/models",
-        ),
-        (
-            "anyscale",
-            "Anyscale",
-            "https://api.endpoints.anyscale.com/v1",
-            "/models",
-        ),
-        (
-            "deepinfra",
-            "DeepInfra",
-            "https://api.deepinfra.com/v1",
-            "/models",
-        ),
+        ("replicate", "Replicate", "https://api.replicate.com/v1", "/models"),
+        ("huggingface", "HuggingFace", "https://api-inference.huggingface.co", "/models"),
+        ("anyscale", "Anyscale", "https://api.endpoints.anyscale.com/v1", "/models"),
+        ("deepinfra", "DeepInfra", "https://api.deepinfra.com/v1", "/models"),
         ("novita", "Novita AI", "https://api.novita.ai/v1", "/models"),
-        (
-            "sambanova",
-            "SambaNova",
-            "https://api.sambanova.ai/v1",
-            "/models",
-        ),
+        ("sambanova", "SambaNova", "https://api.sambanova.ai/v1", "/models"),
         // Cloud hyperscaler services
-        (
-            "azure",
-            "Azure OpenAI",
-            "https://{resource}.openai.azure.com/v1",
-            "/models",
-        ),
+        ("azure", "Azure OpenAI", "https://{resource}.openai.azure.com/v1", "/models"),
         (
             "bedrock",
             "AWS Bedrock",
@@ -232,18 +155,8 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
         // Additional model providers
         ("cohere", "Cohere", "https://api.cohere.ai/v1", "/models"),
         ("ai21", "AI21 Labs", "https://api.ai21.com/v1", "/models"),
-        (
-            "aleph_alpha",
-            "Aleph Alpha",
-            "https://api.aleph-alpha.com/v1",
-            "/models",
-        ),
-        (
-            "nvidia",
-            "NVIDIA NIM",
-            "https://integrate.api.nvidia.com/v1",
-            "/models",
-        ),
+        ("aleph_alpha", "Aleph Alpha", "https://api.aleph-alpha.com/v1", "/models"),
+        ("nvidia", "NVIDIA NIM", "https://integrate.api.nvidia.com/v1", "/models"),
         (
             "google",
             "Google AI Studio",
@@ -253,10 +166,7 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
     ];
 
     for &(id, name, base_url, models_endpoint) in entries {
-        providers.insert(
-            id.to_string(),
-            ProviderConfig::new(id, name, base_url, models_endpoint),
-        );
+        providers.insert(id.to_string(), ProviderConfig::new(id, name, base_url, models_endpoint));
     }
 
     providers
@@ -464,7 +374,7 @@ impl LlmGateway for LlmGatewayImpl {
                 Err(e) => {
                     // Log error but continue with other providers
                     tracing::warn!("Failed to fetch models from provider: {}", e);
-                }
+                },
             }
         }
 
@@ -527,12 +437,7 @@ mod tests {
         let http_client = Arc::new(HttpClient::new().unwrap());
 
         let config = ProviderConfig::builder()
-            .with_provider(
-                "test-provider",
-                "Test",
-                "https://test.api.com/v1",
-                "/models",
-            )
+            .with_provider("test-provider", "Test", "https://test.api.com/v1", "/models")
             .build();
 
         let gateway = LlmGatewayImpl::with_config(http_client, repo, config, 3600);

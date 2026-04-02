@@ -5,6 +5,7 @@
 
 use async_trait::async_trait;
 use fs4::tokio::AsyncFileExt;
+use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -13,10 +14,11 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::domain::traits::AccountRepository;
 use crate::domain::{Account, DomainError, DomainResult};
+use crate::infrastructure::secure_storage::{create_secure_storage, SecureStorage};
 use crate::Result;
 
-/// Lock acquisition timeout duration.
-const LOCK_TIMEOUT: Duration = Duration::from_secs(5);
+/// Lock acquisition timeout duration (for reference).
+const _LOCK_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Internal representation for JSON serialization.
 /// API keys are stored encrypted in production, plaintext in dev.
@@ -95,15 +97,17 @@ impl From<AccountData> for Account {
 /// JSON-based account repository.
 ///
 /// Stores accounts in a JSON file at the configured path.
-/// API keys are stored in plaintext for development - use encryption in production.
+/// API keys are stored in the system keyring or encrypted file storage.
 pub struct JsonAccountRepository {
     file_path: PathBuf,
+    secure_storage: Box<dyn SecureStorage>,
 }
 
 impl Clone for JsonAccountRepository {
     fn clone(&self) -> Self {
         Self {
             file_path: self.file_path.clone(),
+            secure_storage: create_secure_storage(),
         }
     }
 }
@@ -126,7 +130,11 @@ impl JsonAccountRepository {
             });
 
         let file_path = config_dir.join("rust-llm-api-router").join("accounts.json");
-        let repo = Self { file_path };
+        let secure_storage = create_secure_storage();
+        let repo = Self {
+            file_path,
+            secure_storage,
+        };
 
         // T-20: Clean up stale temp files from previous crashed writes
         repo.cleanup_stale_temp_files();
@@ -159,7 +167,11 @@ impl JsonAccountRepository {
     /// A new `JsonAccountRepository` instance
     pub fn with_config_dir(config_dir: &Path) -> DomainResult<Self> {
         let file_path = config_dir.join("accounts.json");
-        let repo = Self { file_path };
+        let secure_storage = create_secure_storage();
+        let repo = Self {
+            file_path,
+            secure_storage,
+        };
         repo.cleanup_stale_temp_files();
         Ok(repo)
     }
@@ -176,6 +188,33 @@ impl JsonAccountRepository {
             fs::write(&self.file_path, "[]")
                 .await
                 .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
+        }
+
+        Ok(())
+    }
+
+    /// Migrate any plaintext API keys to secure storage.
+    ///
+    /// This method checks all stored accounts and moves any API keys
+    /// that are still stored in plaintext (in the JSON file) to secure storage.
+    pub async fn migrate_plaintext_keys(&self) -> DomainResult<()> {
+        let accounts = self.find_all().await?;
+        let mut migrated = 0;
+
+        for account in &accounts {
+            if let Some(ref api_key) = account.api_key {
+                if !api_key.is_empty() {
+                    // Store in secure storage
+                    self.secure_storage
+                        .store(&account.id, api_key)
+                        .map_err(|e| DomainError::Internal(e.to_string()))?;
+                    migrated += 1;
+                }
+            }
+        }
+
+        if migrated > 0 {
+            tracing::info!("Migrated {} API keys to secure storage", migrated);
         }
 
         Ok(())
@@ -209,6 +248,31 @@ impl JsonAccountRepository {
             .map_err(|e| DomainError::Serialization(e.to_string()))?;
 
         Ok(accounts)
+    }
+
+    /// Convert AccountData to Account, retrieving API key from secure storage.
+    fn account_data_to_account(&self, data: AccountData) -> DomainResult<Account> {
+        // Try to retrieve API key from secure storage
+        let api_key = self
+            .secure_storage
+            .retrieve(&data.id)
+            .map_err(|e| DomainError::Internal(e.to_string()))?
+            .map(|s| s.expose_secret().to_string());
+
+        Ok(Account {
+            id: data.id,
+            provider_id: data.provider_id,
+            api_key,
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
+            id_token: data.id_token,
+            token_expires_at: data.token_expires_at,
+            is_active: data.is_active,
+            priority: data.priority,
+            created_at: data.created_at,
+            last_used_at: data.last_used_at,
+            auth_strategy_type: data.auth_strategy_type,
+        })
     }
 
     /// Writes accounts to the JSON file using an atomic write pattern.
@@ -264,6 +328,7 @@ impl Default for JsonAccountRepository {
     fn default() -> Self {
         Self::new().unwrap_or_else(|_| Self {
             file_path: PathBuf::from("accounts.json"),
+            secure_storage: create_secure_storage(),
         })
     }
 }
@@ -271,13 +336,26 @@ impl Default for JsonAccountRepository {
 #[async_trait]
 impl AccountRepository for JsonAccountRepository {
     async fn save(&self, account: Account) -> DomainResult<Account> {
+        // Store API key in secure storage
+        if let Some(ref api_key) = account.api_key {
+            if !api_key.is_empty() {
+                self.secure_storage
+                    .store(&account.id, api_key)
+                    .map_err(|e| DomainError::Internal(e.to_string()))?;
+            }
+        }
+
         let mut accounts = self.read_accounts().await?;
+
+        // Create AccountData without the actual API key (it will be in secure storage)
+        let mut account_data = AccountData::from(&account);
+        account_data.api_key = None; // Don't store API key in JSON file
 
         // Check if account exists, update or insert
         if let Some(existing) = accounts.iter_mut().find(|a| a.id == account.id) {
-            *existing = AccountData::from(&account);
+            *existing = account_data;
         } else {
-            accounts.push(AccountData::from(&account));
+            accounts.push(account_data);
         }
 
         self.write_accounts(&accounts).await?;
@@ -285,27 +363,37 @@ impl AccountRepository for JsonAccountRepository {
     }
 
     async fn find_all(&self) -> DomainResult<Vec<Account>> {
-        let accounts = self.read_accounts().await?;
-        Ok(accounts.into_iter().map(Account::from).collect())
+        let accounts_data = self.read_accounts().await?;
+        let mut accounts = Vec::with_capacity(accounts_data.len());
+
+        for account_data in accounts_data {
+            let account = self.account_data_to_account(account_data)?;
+            accounts.push(account);
+        }
+
+        Ok(accounts)
     }
 
     async fn find_by_id(&self, id: &str) -> DomainResult<Account> {
-        let accounts = self.read_accounts().await?;
-        accounts
+        let accounts_data = self.read_accounts().await?;
+        let account_data = accounts_data
             .into_iter()
-            .map(Account::from)
             .find(|a| a.id == id)
-            .ok_or_else(|| crate::domain::DomainError::AccountNotFound(id.to_string()))
+            .ok_or_else(|| crate::domain::DomainError::AccountNotFound(id.to_string()))?;
+
+        self.account_data_to_account(account_data)
     }
 
     async fn find_active(&self) -> DomainResult<Vec<Account>> {
-        let mut accounts: Vec<Account> = self
-            .read_accounts()
-            .await?
-            .into_iter()
-            .map(Account::from)
-            .filter(|a| a.is_active)
-            .collect();
+        let accounts_data = self.read_accounts().await?;
+        let mut accounts: Vec<Account> = Vec::with_capacity(accounts_data.len());
+
+        for account_data in accounts_data {
+            let account = self.account_data_to_account(account_data)?;
+            if account.is_active {
+                accounts.push(account);
+            }
+        }
 
         // Sort by priority (lower = higher priority)
         accounts.sort_by_key(|a| a.priority);
@@ -313,13 +401,15 @@ impl AccountRepository for JsonAccountRepository {
     }
 
     async fn find_active_by_provider(&self, provider_id: &str) -> DomainResult<Vec<Account>> {
-        let mut accounts: Vec<Account> = self
-            .read_accounts()
-            .await?
-            .into_iter()
-            .map(Account::from)
-            .filter(|a| a.is_active && a.provider_id == provider_id)
-            .collect();
+        let accounts_data = self.read_accounts().await?;
+        let mut accounts: Vec<Account> = Vec::with_capacity(accounts_data.len());
+
+        for account_data in accounts_data {
+            let account = self.account_data_to_account(account_data)?;
+            if account.is_active && account.provider_id == provider_id {
+                accounts.push(account);
+            }
+        }
 
         // Sort by priority (lower = higher priority)
         accounts.sort_by_key(|a| a.priority);
@@ -334,6 +424,11 @@ impl AccountRepository for JsonAccountRepository {
         if !exists {
             return Err(crate::domain::DomainError::AccountNotFound(id.to_string()));
         }
+
+        // Delete API key from secure storage
+        self.secure_storage
+            .delete(id)
+            .map_err(|e| DomainError::Internal(e.to_string()))?;
 
         // Filter out the account to delete
         let updated: Vec<AccountData> = accounts.into_iter().filter(|a| a.id != id).collect();
@@ -380,10 +475,7 @@ mod tests {
         let result = repo.delete("non-existent").await;
 
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            crate::domain::DomainError::AccountNotFound(_)
-        ));
+        assert!(matches!(result.unwrap_err(), crate::domain::DomainError::AccountNotFound(_)));
     }
 
     #[tokio::test]

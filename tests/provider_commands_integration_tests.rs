@@ -57,19 +57,11 @@ async fn test_cli_add_provider_url_validation() {
     let (repo, _account_repo, _temp_dir) = create_test_repo();
 
     // Invalid URL - should still add (validation is minimal)
-    let args = create_add_args(
-        "bad-url",
-        "Bad URL Provider",
-        "not-a-valid-url",
-        Some("sk-key"),
-    );
+    let args = create_add_args("bad-url", "Bad URL Provider", "not-a-valid-url", Some("sk-key"));
 
     // Current implementation doesn't validate URL format strictly
     let result = cmd_add_provider(args, &repo).await;
-    assert!(
-        result.is_ok(),
-        "Should add provider even with invalid URL format"
-    );
+    assert!(result.is_ok(), "Should add provider even with invalid URL format");
 
     // Empty URL - should add (no validation)
     let args2 = create_add_args("empty-url", "Empty URL Provider", "", Some("sk-key"));
@@ -83,12 +75,7 @@ async fn test_cli_add_provider_without_api_key() {
     let (repo, _account_repo, _temp_dir) = create_test_repo();
 
     // Provider without API key (warning should be printed)
-    let args = create_add_args(
-        "no-key-provider",
-        "No Key Provider",
-        "https://api.nokey.com",
-        None,
-    );
+    let args = create_add_args("no-key-provider", "No Key Provider", "https://api.nokey.com", None);
 
     let result = cmd_add_provider(args, &repo).await;
 
@@ -125,12 +112,8 @@ async fn test_cli_add_duplicate_provider() {
     let (repo, _account_repo, _temp_dir) = create_test_repo();
 
     // Add provider first time
-    let args1 = create_add_args(
-        "duplicate",
-        "Duplicate Provider",
-        "https://api.dup1.com",
-        Some("sk-key1"),
-    );
+    let args1 =
+        create_add_args("duplicate", "Duplicate Provider", "https://api.dup1.com", Some("sk-key1"));
     let result1 = cmd_add_provider(args1, &repo).await;
     assert!(result1.is_ok());
 
@@ -191,12 +174,8 @@ async fn test_cli_enable_disable_provider_workflow() {
     let (repo, _account_repo, _temp_dir) = create_test_repo();
 
     // Add provider
-    let args = create_add_args(
-        "test-enable",
-        "Test Enable",
-        "https://api.enable.com",
-        Some("sk-key"),
-    );
+    let args =
+        create_add_args("test-enable", "Test Enable", "https://api.enable.com", Some("sk-key"));
     cmd_add_provider(args, &repo).await.unwrap();
 
     // Verify initially enabled
@@ -265,12 +244,7 @@ async fn test_cli_remove_provider_workflow() {
     let (repo, _account_repo, _temp_dir) = create_test_repo();
 
     // Add provider
-    let args = create_add_args(
-        "to-remove",
-        "To Remove",
-        "https://api.remove.com",
-        Some("sk-key"),
-    );
+    let args = create_add_args("to-remove", "To Remove", "https://api.remove.com", Some("sk-key"));
     cmd_add_provider(args, &repo).await.unwrap();
 
     // Verify exists
@@ -311,12 +285,8 @@ async fn test_cli_remove_and_readd_provider() {
     let (repo, _account_repo, _temp_dir) = create_test_repo();
 
     // Add provider
-    let args1 = create_add_args(
-        "readd",
-        "Readd Provider",
-        "https://api.readd1.com",
-        Some("sk-key1"),
-    );
+    let args1 =
+        create_add_args("readd", "Readd Provider", "https://api.readd1.com", Some("sk-key1"));
     cmd_add_provider(args1, &repo).await.unwrap();
 
     // Remove provider
@@ -326,12 +296,8 @@ async fn test_cli_remove_and_readd_provider() {
     cmd_remove_provider(remove_args, &repo).await.unwrap();
 
     // Re-add with same ID but different data
-    let args2 = create_add_args(
-        "readd",
-        "Readd Provider New",
-        "https://api.readd2.com",
-        Some("sk-key2"),
-    );
+    let args2 =
+        create_add_args("readd", "Readd Provider New", "https://api.readd2.com", Some("sk-key2"));
     cmd_add_provider(args2, &repo).await.unwrap();
 
     // Verify new data
@@ -388,12 +354,7 @@ async fn test_cli_provider_with_long_name() {
     let (repo, _account_repo, _temp_dir) = create_test_repo();
 
     let long_name = "A".repeat(200); // 200 character name
-    let args = create_add_args(
-        "long-name",
-        &long_name,
-        "https://api.long.com",
-        Some("sk-key"),
-    );
+    let args = create_add_args("long-name", &long_name, "https://api.long.com", Some("sk-key"));
 
     let result = cmd_add_provider(args, &repo).await;
     assert!(result.is_ok());
@@ -408,12 +369,8 @@ async fn test_cli_provider_url_with_different_schemes() {
     let (repo, _account_repo, _temp_dir) = create_test_repo();
 
     // HTTP URL
-    let args1 = create_add_args(
-        "http-provider",
-        "HTTP Provider",
-        "http://api.http.com",
-        Some("sk-key"),
-    );
+    let args1 =
+        create_add_args("http-provider", "HTTP Provider", "http://api.http.com", Some("sk-key"));
     cmd_add_provider(args1, &repo).await.unwrap();
 
     // HTTPS URL
@@ -453,12 +410,8 @@ async fn test_cli_provider_enable_disable_multiple_times() {
     let (repo, _account_repo, _temp_dir) = create_test_repo();
 
     // Add provider
-    let args = create_add_args(
-        "toggle",
-        "Toggle Provider",
-        "https://api.toggle.com",
-        Some("sk-key"),
-    );
+    let args =
+        create_add_args("toggle", "Toggle Provider", "https://api.toggle.com", Some("sk-key"));
     cmd_add_provider(args, &repo).await.unwrap();
 
     // Toggle multiple times
@@ -471,11 +424,7 @@ async fn test_cli_provider_enable_disable_multiple_times() {
             cmd_disable_provider(disable_args, &repo).await.unwrap();
 
             let provider = repo.find_by_id("toggle").await.unwrap();
-            assert!(
-                !provider.enabled,
-                "Should be disabled after iteration {}",
-                i
-            );
+            assert!(!provider.enabled, "Should be disabled after iteration {}", i);
         } else {
             // Enable
             let enable_args = EnableProviderArgs {
@@ -558,12 +507,8 @@ async fn test_cli_provider_crud_complete_workflow() {
     let (repo, _account_repo, _temp_dir) = create_test_repo();
 
     // CREATE
-    let add_args = create_add_args(
-        "crud-test",
-        "CRUD Test Provider",
-        "https://api.crud.com",
-        Some("sk-key"),
-    );
+    let add_args =
+        create_add_args("crud-test", "CRUD Test Provider", "https://api.crud.com", Some("sk-key"));
     cmd_add_provider(add_args, &repo).await.unwrap();
 
     // Verify created

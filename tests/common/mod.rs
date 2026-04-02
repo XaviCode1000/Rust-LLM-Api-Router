@@ -60,11 +60,7 @@ pub async fn create_repo_with_account(provider_id: &str) -> Arc<dyn AccountRepos
     let repo: Arc<dyn AccountRepository> =
         Arc::new(JsonAccountRepository::new().expect("Should create repository"));
 
-    let account = Account::new(
-        format!("{}-account-1", provider_id),
-        provider_id,
-        "sk-test-key",
-    );
+    let account = Account::new(format!("{}-account-1", provider_id), provider_id, "sk-test-key");
     repo.save(account).await.expect("Should save account");
 
     repo

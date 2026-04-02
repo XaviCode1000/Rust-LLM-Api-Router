@@ -128,10 +128,7 @@ pub async fn cmd_add_account(args: AddAccountArgs, repo: &impl AccountRepository
         .await
         .map_err(|e| crate::Error::Internal(e.to_string()))?;
 
-    output::success(&format!(
-        "Account '{}' added for provider '{}'",
-        args.id, args.provider
-    ));
+    output::success(&format!("Account '{}' added for provider '{}'", args.id, args.provider));
     Ok(())
 }
 
@@ -163,14 +160,8 @@ pub async fn cmd_remove_account(
         .map_err(|_| crate::Error::ProviderNotFound(args.id.clone()))?;
 
     // Confirmation prompt
-    if !prompt::confirm(&format!(
-        "Are you sure you want to remove account '{}'?",
-        args.id
-    ))? {
-        output::info(&format!(
-            "Cancelled. Account '{}' was not removed.",
-            args.id
-        ));
+    if !prompt::confirm(&format!("Are you sure you want to remove account '{}'?", args.id))? {
+        output::info(&format!("Cancelled. Account '{}' was not removed.", args.id));
         return Ok(());
     }
 
@@ -196,10 +187,7 @@ pub async fn cmd_set_priority(args: SetPriorityArgs, repo: &impl AccountReposito
         .await
         .map_err(|e| crate::Error::Internal(e.to_string()))?;
 
-    output::success(&format!(
-        "Account '{}' priority set to {}",
-        args.id, args.priority
-    ));
+    output::success(&format!("Account '{}' priority set to {}", args.id, args.priority));
     Ok(())
 }
 
@@ -223,7 +211,7 @@ pub async fn cmd_validate_account(
         None => {
             output::warning("Account has no API key set");
             return Ok(());
-        }
+        },
     };
 
     // TODO: Make actual API call to validate the key
@@ -231,10 +219,7 @@ pub async fn cmd_validate_account(
     if api_key.len() < 8 {
         output::error("API key too short (min 8 chars)");
     } else {
-        output::success(&format!(
-            "API key format looks valid (length: {})",
-            api_key.len()
-        ));
+        output::success(&format!("API key format looks valid (length: {})", api_key.len()));
         output::dim("Note: Full validation will be done on first request");
     }
 

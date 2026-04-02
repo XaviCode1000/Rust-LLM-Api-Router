@@ -115,10 +115,7 @@ mod tests {
         let request = ChatRequest::new("gpt-4", vec![Message::user(&long_content)]);
         let result = TokenValidator::validate(&request);
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            DomainError::TokenLimitExceeded { .. }
-        ));
+        assert!(matches!(result.unwrap_err(), DomainError::TokenLimitExceeded { .. }));
     }
 
     #[test]
@@ -140,9 +137,6 @@ mod tests {
     fn test_extract_model_name() {
         assert_eq!(extract_model_name("gpt-4"), "gpt-4");
         assert_eq!(extract_model_name("openai:gpt-4"), "gpt-4");
-        assert_eq!(
-            extract_model_name("groq:llama-3.1-8b-instant"),
-            "llama-3.1-8b-instant"
-        );
+        assert_eq!(extract_model_name("groq:llama-3.1-8b-instant"), "llama-3.1-8b-instant");
     }
 }

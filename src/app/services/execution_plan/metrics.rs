@@ -101,20 +101,16 @@ impl ExecutionPlanMetrics {
             "Number of successful executions",
         )?;
 
-        let plan_outcome_failure_total = IntCounter::new(
-            "execution_plan_outcome_failure_total",
-            "Number of failed executions",
-        )?;
+        let plan_outcome_failure_total =
+            IntCounter::new("execution_plan_outcome_failure_total", "Number of failed executions")?;
 
         let plan_outcome_fallback_total = IntCounter::new(
             "execution_plan_outcome_fallback_total",
             "Number of executions that succeeded with fallback",
         )?;
 
-        let planning_errors_total = IntCounter::new(
-            "execution_planning_errors_total",
-            "Total number of planning errors",
-        )?;
+        let planning_errors_total =
+            IntCounter::new("execution_planning_errors_total", "Total number of planning errors")?;
 
         let planning_attempts_current = IntGauge::new(
             "execution_planning_attempts_current",
@@ -180,7 +176,7 @@ impl ExecutionPlanMetrics {
             "Failover" => self.plan_type_failover_total.inc(),
             "Load Balanced" => self.plan_type_load_balanced_total.inc(),
             "Cost Optimized" => self.plan_type_cost_optimized_total.inc(),
-            _ => {} // Ignore unknown plan types
+            _ => {}, // Ignore unknown plan types
         }
     }
 
@@ -195,7 +191,7 @@ impl ExecutionPlanMetrics {
             "success" => self.plan_outcome_success_total.inc(),
             "failure" => self.plan_outcome_failure_total.inc(),
             "fallback" => self.plan_outcome_fallback_total.inc(),
-            _ => {} // Ignore unknown outcomes
+            _ => {}, // Ignore unknown outcomes
         }
     }
 

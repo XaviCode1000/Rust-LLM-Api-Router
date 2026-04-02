@@ -51,11 +51,7 @@ impl AuthenticationStrategy for PkceAuthStrategy {
     /// For PKCE, this returns a message indicating the user should visit the auth URL.
     async fn initiate_auth(&self) -> DomainResult<String> {
         // Return the authorization URL hint
-        let auth_url = format!(
-            "{}?client_id={}",
-            self.auth_url.as_str(),
-            self.client_id.as_str()
-        );
+        let auth_url = format!("{}?client_id={}", self.auth_url.as_str(), self.client_id.as_str());
         Ok(format!("Please visit {} to authorize", auth_url))
     }
 

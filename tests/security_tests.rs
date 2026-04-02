@@ -507,9 +507,7 @@ async fn test_circuit_breaker_timeout() {
 
     // Should allow request (half-open)
     let result: Result<String, String> = manager
-        .execute_with_failover("openai", |_| async {
-            Ok(("recovered".to_string(), vec![]))
-        })
+        .execute_with_failover("openai", |_| async { Ok(("recovered".to_string(), vec![])) })
         .await;
 
     assert!(result.is_ok(), "Should allow after timeout");
@@ -570,10 +568,7 @@ fn test_debug_output_sanitization() {
     let debug_output = format!("{:?}", health);
 
     // Debug output should not contain sensitive patterns
-    assert!(
-        !debug_output.contains("sk-"),
-        "Debug should not leak API key patterns"
-    );
+    assert!(!debug_output.contains("sk-"), "Debug should not leak API key patterns");
 
     // Note: AccountHealth doesn't store API keys, but this test documents the pattern
 }

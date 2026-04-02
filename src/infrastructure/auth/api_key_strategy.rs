@@ -128,10 +128,7 @@ mod tests {
         let strategy = ApiKeyAuthStrategy::new("test-provider");
         let result = strategy.complete_auth("".to_string()).await;
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            DomainError::InvalidCredentials
-        ));
+        assert!(matches!(result.unwrap_err(), DomainError::InvalidCredentials));
     }
 
     #[tokio::test]

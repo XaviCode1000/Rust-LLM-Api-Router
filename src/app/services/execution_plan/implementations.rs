@@ -168,13 +168,10 @@ impl FailoverExecutionPlan {
             })
             .collect();
 
-        let inner = ExecutionPlanImpl::new(
-            ExecutionPlanType::Failover,
-            context.clone(),
-            planned_accounts,
-        )
-        .with_max_retries(context.planning_options.max_retries)
-        .with_timeout(context.planning_options.timeout_seconds);
+        let inner =
+            ExecutionPlanImpl::new(ExecutionPlanType::Failover, context.clone(), planned_accounts)
+                .with_max_retries(context.planning_options.max_retries)
+                .with_timeout(context.planning_options.timeout_seconds);
 
         Self { inner }
     }
@@ -568,11 +565,7 @@ impl<R: AccountRepository> ExecutionPlanBuilder<R> {
     ) -> Result<CostOptimizedExecutionPlan, DomainError> {
         let accounts = self.get_accounts_for_context(&context).await?;
 
-        Ok(CostOptimizedExecutionPlan::new(
-            context,
-            accounts,
-            self.pricing.clone(),
-        ))
+        Ok(CostOptimizedExecutionPlan::new(context, accounts, self.pricing.clone()))
     }
 
     /// Builds a CascadingExecutionPlan.

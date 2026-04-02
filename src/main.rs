@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
         Err(e) => {
             eprintln!("Error: {}", e);
             std::process::exit(1);
-        }
+        },
     };
 
     tracing::info!(

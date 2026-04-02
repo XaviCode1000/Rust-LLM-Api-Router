@@ -31,12 +31,7 @@ fn test_provider_config_builder() {
     let config = ProviderConfig::builder()
         .with_provider("openai", "OpenAI", "https://api.openai.com/v1", "/models")
         .with_provider("groq", "Groq", "https://api.groq.com/openai/v1", "/models")
-        .with_provider(
-            "anthropic",
-            "Anthropic",
-            "https://api.anthropic.com/v1",
-            "/models",
-        )
+        .with_provider("anthropic", "Anthropic", "https://api.anthropic.com/v1", "/models")
         .build();
 
     assert_eq!(config.len(), 3);
@@ -87,18 +82,8 @@ fn test_provider_config_builder_empty() {
 fn test_provider_config_builder_overwrite() {
     // Adding same provider twice should overwrite
     let config = ProviderConfig::builder()
-        .with_provider(
-            "openai",
-            "OpenAI v1",
-            "https://api.openai.com/v1",
-            "/models",
-        )
-        .with_provider(
-            "openai",
-            "OpenAI v2",
-            "https://api.openai.com/v2",
-            "/v2/models",
-        )
+        .with_provider("openai", "OpenAI v1", "https://api.openai.com/v1", "/models")
+        .with_provider("openai", "OpenAI v2", "https://api.openai.com/v2", "/v2/models")
         .build();
 
     assert_eq!(config.len(), 1);
@@ -134,12 +119,7 @@ async fn test_gateway_with_custom_config() {
     let http_client = Arc::new(HttpClient::new().unwrap());
 
     let custom_config = ProviderConfig::builder()
-        .with_provider(
-            "test-provider",
-            "Test Provider",
-            "https://test.api.com/v1",
-            "/models",
-        )
+        .with_provider("test-provider", "Test Provider", "https://test.api.com/v1", "/models")
         .build();
 
     let gateway = LlmGatewayImpl::with_config(http_client, repo, custom_config, 3600);
@@ -161,24 +141,9 @@ async fn test_gateway_with_multiple_custom_providers() {
     let http_client = Arc::new(HttpClient::new().unwrap());
 
     let custom_config = ProviderConfig::builder()
-        .with_provider(
-            "provider-a",
-            "Provider A",
-            "https://a.api.com/v1",
-            "/models",
-        )
-        .with_provider(
-            "provider-b",
-            "Provider B",
-            "https://b.api.com/v1",
-            "/models",
-        )
-        .with_provider(
-            "provider-c",
-            "Provider C",
-            "https://c.api.com/v1",
-            "/models",
-        )
+        .with_provider("provider-a", "Provider A", "https://a.api.com/v1", "/models")
+        .with_provider("provider-b", "Provider B", "https://b.api.com/v1", "/models")
+        .with_provider("provider-c", "Provider C", "https://c.api.com/v1", "/models")
         .build();
 
     let gateway = LlmGatewayImpl::with_config(

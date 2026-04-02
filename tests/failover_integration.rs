@@ -303,13 +303,7 @@ async fn test_multi_provider_isolation() {
         .expect_find_active_by_provider()
         .with(eq("anthropic"))
         .times(1)
-        .returning(|_| {
-            Ok(vec![Account::new(
-                "anthropic-1",
-                "anthropic",
-                "sk-anthropic-key",
-            )])
-        });
+        .returning(|_| Ok(vec![Account::new("anthropic-1", "anthropic", "sk-anthropic-key")]));
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 

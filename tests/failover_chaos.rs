@@ -110,11 +110,7 @@ async fn test_rapid_failover_between_accounts() {
     }
 
     // Most requests should succeed
-    assert!(
-        success_count >= 10,
-        "Expected at least 10 successes, got {}",
-        success_count
-    );
+    assert!(success_count >= 10, "Expected at least 10 successes, got {}", success_count);
 }
 
 /// Test: All accounts failing sequentially
@@ -201,9 +197,7 @@ async fn test_health_tracking() {
     // Record failures
     for _ in 0..5 {
         let _: Result<String, TestError> = manager
-            .execute_with_failover("openai", |_account| async {
-                Err(TestError::new("failure"))
-            })
+            .execute_with_failover("openai", |_account| async { Err(TestError::new("failure")) })
             .await;
     }
 
@@ -309,9 +303,7 @@ async fn test_health_tracking_with_failures() {
     // Record failures
     for _ in 0..5 {
         let _: Result<String, TestError> = manager
-            .execute_with_failover("openai", |_account| async {
-                Err(TestError::new("failure"))
-            })
+            .execute_with_failover("openai", |_account| async { Err(TestError::new("failure")) })
             .await;
     }
 

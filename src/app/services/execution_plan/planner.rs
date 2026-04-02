@@ -379,7 +379,7 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
                     metrics.record_planning_completed();
                 }
                 return Err(e);
-            }
+            },
         };
 
         let initial_count = accounts.len();
@@ -580,7 +580,7 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
                     accounts.swap(i, j);
                 }
                 accounts
-            }
+            },
             RotationStrategyType::HealthWeighted => {
                 // Sort by health score (highest first)
                 accounts.sort_by(|a, b| {
@@ -589,12 +589,12 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
                         .unwrap_or(std::cmp::Ordering::Equal)
                 });
                 accounts
-            }
+            },
             RotationStrategyType::Priority => {
                 // Sort by priority (lowest = highest priority)
                 accounts.sort_by(|a, b| a.0.priority.cmp(&b.0.priority));
                 accounts
-            }
+            },
             RotationStrategyType::LeastRecentlyUsed => {
                 // Sort by last_used_at (oldest first)
                 accounts.sort_by(|a, b| {
@@ -603,7 +603,7 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
                     a_time.cmp(&b_time)
                 });
                 accounts
-            }
+            },
         }
     }
 
@@ -650,16 +650,16 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
                 model_lower.starts_with("gpt-")
                     || model_lower.starts_with("o1")
                     || model_lower.starts_with("o3")
-            }
+            },
             "anthropic" => {
                 model_lower.starts_with("claude-")
                     || model_lower.starts_with("sonnet")
                     || model_lower.starts_with("haiku")
-            }
+            },
             "groq" => {
                 // Groq supports many models via inference APIs
                 true
-            }
+            },
             _ => true, // Allow unknown providers by default
         }
     }
@@ -975,12 +975,12 @@ fn is_model_compatible_internal(model: &str, provider: &Provider) -> bool {
             model_lower.starts_with("gpt-")
                 || model_lower.starts_with("o1")
                 || model_lower.starts_with("o3")
-        }
+        },
         "anthropic" => {
             model_lower.starts_with("claude-")
                 || model_lower.starts_with("sonnet")
                 || model_lower.starts_with("haiku")
-        }
+        },
         "groq" => true,
         _ => true,
     }

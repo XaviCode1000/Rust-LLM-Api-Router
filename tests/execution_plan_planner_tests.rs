@@ -96,13 +96,7 @@ async fn test_planner_with_cost_optimized_context() {
     mock_repo
         .expect_find_active_by_provider()
         .with(mockall::predicate::eq("groq"))
-        .returning(|_| {
-            Ok(vec![Account::new(
-                "groq-account-1",
-                "groq",
-                "sk-groq-key-1",
-            )])
-        });
+        .returning(|_| Ok(vec![Account::new("groq-account-1", "groq", "sk-groq-key-1")]));
 
     let planner = ExecutionPlanner::new(Arc::new(mock_repo), ExecutionPlannerConfig::default());
 
@@ -222,13 +216,7 @@ async fn test_planner_multiple_provider_preferences() {
     mock_repo
         .expect_find_active_by_provider()
         .with(mockall::predicate::eq("anthropic"))
-        .returning(|_| {
-            Ok(vec![Account::new(
-                "anthropic-1",
-                "anthropic",
-                "sk-anthropic-key",
-            )])
-        });
+        .returning(|_| Ok(vec![Account::new("anthropic-1", "anthropic", "sk-anthropic-key")]));
 
     let planner = ExecutionPlanner::new(Arc::new(mock_repo), ExecutionPlannerConfig::default());
 

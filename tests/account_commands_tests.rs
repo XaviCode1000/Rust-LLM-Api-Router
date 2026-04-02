@@ -65,12 +65,9 @@ async fn handle_account_command_with_dir(
             repo.save(account)
                 .await
                 .map_err(|e| rust_llm_api_router::Error::Internal(e.to_string()))?;
-            println!(
-                "✓ Account '{}' added for provider '{}'",
-                args.id, args.provider
-            );
+            println!("✓ Account '{}' added for provider '{}'", args.id, args.provider);
             Ok(())
-        }
+        },
         AccountCommands::List => {
             let accounts = repo
                 .find_all()
@@ -82,10 +79,7 @@ async fn handle_account_command_with_dir(
                 return Ok(());
             }
 
-            println!(
-                "{:<20} {:<20} {:<10} {:<8} API Key",
-                "ID", "Provider", "Priority", "Status"
-            );
+            println!("{:<20} {:<20} {:<10} {:<8} API Key", "ID", "Provider", "Priority", "Status");
             println!("{:-<90}", "");
 
             for account in accounts {
@@ -110,7 +104,7 @@ async fn handle_account_command_with_dir(
             }
 
             Ok(())
-        }
+        },
         AccountCommands::Remove(args) => {
             // First check if account exists
             repo.find_by_id(&args.id)
@@ -134,7 +128,7 @@ async fn handle_account_command_with_dir(
 
             println!("✓ Account '{}' removed successfully", args.id);
             Ok(())
-        }
+        },
         AccountCommands::SetPriority(args) => {
             let mut account = repo
                 .find_by_id(&args.id)
@@ -149,7 +143,7 @@ async fn handle_account_command_with_dir(
 
             println!("✓ Account '{}' priority set to {}", args.id, args.priority);
             Ok(())
-        }
+        },
         AccountCommands::Validate(args) => {
             let account = repo
                 .find_by_id(&args.id)
@@ -165,22 +159,22 @@ async fn handle_account_command_with_dir(
                 None => {
                     println!("⚠ Account has no API key set");
                     Ok(())
-                }
+                },
                 Some(key) if key.is_empty() => {
                     println!("⚠ Account has no API key set");
                     Ok(())
-                }
+                },
                 Some(key) if key.len() < 8 => {
                     println!("✗ API key too short (min 8 chars)");
                     Ok(())
-                }
+                },
                 Some(key) => {
                     println!("✓ API key format looks valid (length: {})", key.len());
                     println!("Note: Full validation will be done on first request");
                     Ok(())
-                }
+                },
             }
-        }
+        },
     }
 }
 
@@ -342,11 +336,8 @@ async fn test_remove_account_from_multiple() {
 
     // Add multiple accounts
     for i in 1..=3 {
-        let args = create_add_account_args(
-            &format!("multi-acc-{}", i),
-            "openai",
-            Some("sk-test12345678"),
-        );
+        let args =
+            create_add_account_args(&format!("multi-acc-{}", i), "openai", Some("sk-test12345678"));
         let cmd = AccountCommands::Add(args);
         handle_account_command_with_dir(cmd, &config_dir)
             .await
@@ -542,11 +533,8 @@ async fn test_add_account_very_long_id() {
 async fn test_add_account_unknown_provider() {
     let (_temp_dir, config_dir) = setup_test_environment();
 
-    let args = create_add_account_args(
-        "test-acc-unknown",
-        "unknown-provider",
-        Some("sk-test12345678"),
-    );
+    let args =
+        create_add_account_args("test-acc-unknown", "unknown-provider", Some("sk-test12345678"));
     let cmd = AccountCommands::Add(args);
     let result = handle_account_command_with_dir(cmd, &config_dir).await;
 

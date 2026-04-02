@@ -238,7 +238,7 @@ impl AccountHealth {
         match (self.quota_remaining, self.quota_limit) {
             (Some(remaining), Some(limit)) if limit > 0 => {
                 Some(((limit - remaining) as f64 / limit as f64) * 100.0)
-            }
+            },
             _ => None,
         }
     }
@@ -254,20 +254,20 @@ impl AccountHealth {
             match name_lower.as_str() {
                 "x-ratelimit-remaining" => {
                     self.quota_remaining = value_str.parse().ok();
-                }
+                },
                 "x-ratelimit-reset" => {
                     // This is typically a Unix timestamp
-                }
+                },
                 "x-ratelimit-limit" => {
                     self.quota_limit = value_str.parse().ok();
-                }
+                },
                 "retry-after" => {
                     // Could be seconds to wait or HTTP date
                     if let Ok(_seconds) = value_str.parse::<u64>() {
                         // If it's a number, it's seconds until retry
                     }
-                }
-                _ => {}
+                },
+                _ => {},
             }
         }
     }
