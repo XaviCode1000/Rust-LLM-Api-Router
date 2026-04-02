@@ -19,6 +19,9 @@ use rust_llm_api_router::infrastructure::persistence::JsonAccountRepository;
 use std::sync::Arc;
 use tempfile::TempDir;
 
+mod common;
+use common::errors::TestError;
+
 // ============================================================================
 // MOCK REPOSITORY
 // ============================================================================
@@ -66,8 +69,8 @@ async fn test_api_key_not_in_error_messages() {
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
     // Trigger an error
-    let result: Result<String, String> = manager
-        .execute_with_failover("openai", |_| async { Err("API error".to_string()) })
+    let result: Result<String, TestError> = manager
+        .execute_with_failover("openai", |_| async { Err(TestError::new("API error")) })
         .await;
 
     // Format error for inspection
@@ -125,8 +128,8 @@ async fn test_account_ids_sanitized() {
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
-    let result: Result<String, String> = manager
-        .execute_with_failover("openai", |_| async { Err("error".to_string()) })
+    let result: Result<String, TestError> = manager
+        .execute_with_failover("openai", |_| async { Err(TestError::new("error")) })
         .await;
 
     // Account ID may appear in logs but should be handled carefully
@@ -253,14 +256,14 @@ async fn test_concurrent_health_map_no_race() {
     let mut handles = vec![];
     for i in 0..100 {
         let manager = manager.clone();
-        let handle: tokio::task::JoinHandle<Result<String, String>> = tokio::spawn(async move {
+        let handle: tokio::task::JoinHandle<Result<String, TestError>> = tokio::spawn(async move {
             manager
                 .execute_with_failover("openai", |_| async move {
                     tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
                     if i % 2 == 0 {
                         Ok(("success".to_string(), vec![]))
                     } else {
-                        Err("failure".to_string())
+                        Err(TestError::new("failure"))
                     }
                 })
                 .await
@@ -324,7 +327,7 @@ async fn test_mutex_poisoning_recovery() {
     ];
 
     // Normal access should work
-    let result1 = strategy.select_for_user(&accounts, "user-1");
+    let result1 = strategy.select_for_user(&accounts, "user-1").await;
     assert!(result1.is_some());
 
     // Multiple concurrent accesses
@@ -332,16 +335,16 @@ async fn test_mutex_poisoning_recovery() {
     for i in 0..50 {
         let strategy = strategy.clone();
         let accounts = accounts.clone();
-        let handle: tokio::task::JoinHandle<Option<&'static Account>> =
-            tokio::task::spawn_blocking(move || {
-                // Leak accounts to 'static for spawn_blocking (test-only pattern)
-                let accounts_ref: &'static [Account] = Box::leak(accounts.into_boxed_slice());
-                strategy.select_for_user(accounts_ref, &format!("user-{}", i))
-            });
+        let handle: tokio::task::JoinHandle<Option<String>> = tokio::spawn(async move {
+            strategy
+                .select_for_user(&accounts, &format!("user-{}", i))
+                .await
+                .map(|a| a.id.clone())
+        });
         handles.push(handle);
     }
 
-    let results: Vec<Result<Option<&Account>, _>> = futures::future::join_all(handles).await;
+    let results: Vec<Result<Option<String>, _>> = futures::future::join_all(handles).await;
 
     // All should succeed (no poisoning)
     assert!(results.iter().all(|r| r.as_ref().unwrap().is_some()));
@@ -367,13 +370,13 @@ async fn test_memory_bounded_health_tracking() {
 
     // Execute many requests to test memory bounds
     for _ in 0..10000 {
-        let _: Result<String, String> = manager
+        let _: Result<String, TestError> = manager
             .execute_with_failover("openai", |_| async { Ok(("success".to_string(), vec![])) })
             .await;
     }
 
     // Check memory is bounded
-    let health_scores = manager.get_all_health();
+    let health_scores = manager.get_all_health().await;
     assert_eq!(health_scores.len(), 1);
 
     let account_health = &health_scores[0];
@@ -459,13 +462,13 @@ async fn test_circuit_breaker_prevents_dos() {
 
     // Trigger circuit breaker
     for _ in 0..5 {
-        let _: Result<String, String> = manager
-            .execute_with_failover("openai", |_| async { Err("failure".to_string()) })
+        let _: Result<String, TestError> = manager
+            .execute_with_failover("openai", |_| async { Err(TestError::new("failure")) })
             .await;
     }
 
     // Circuit should be open, blocking requests
-    let health_scores = manager.get_all_health();
+    let health_scores = manager.get_all_health().await;
     let account_health = &health_scores[0];
 
     assert!(
@@ -493,20 +496,20 @@ async fn test_circuit_breaker_timeout() {
 
     // Open circuit breaker
     for _ in 0..5 {
-        let _: Result<String, String> = manager
-            .execute_with_failover("openai", |_| async { Err("failure".to_string()) })
+        let _: Result<String, TestError> = manager
+            .execute_with_failover("openai", |_| async { Err(TestError::new("failure")) })
             .await;
     }
 
     // Verify circuit is open
-    let health_scores = manager.get_all_health();
+    let health_scores = manager.get_all_health().await;
     assert!(health_scores[0].circuit_breaker_open());
 
     // Wait for recovery timeout
     tokio::time::sleep(tokio::time::Duration::from_secs(31)).await;
 
     // Should allow request (half-open)
-    let result: Result<String, String> = manager
+    let result: Result<String, TestError> = manager
         .execute_with_failover("openai", |_| async { Ok(("recovered".to_string(), vec![])) })
         .await;
 

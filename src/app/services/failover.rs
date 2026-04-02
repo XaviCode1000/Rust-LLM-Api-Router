@@ -5,6 +5,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use tokio::sync::Mutex;
+
 use crate::domain::traits::AccountRepository;
 use crate::domain::{Account, AccountHealth};
 
@@ -21,7 +23,7 @@ pub struct FailoverManager {
     selector: AccountSelector,
 
     /// Health tracking per account
-    health_map: std::sync::Mutex<std::collections::HashMap<String, AccountHealth>>,
+    health_map: Mutex<std::collections::HashMap<String, AccountHealth>>,
 
     /// Maximum retry attempts
     max_retries: u32,
@@ -59,7 +61,7 @@ impl FailoverManager {
         Self {
             account_repo,
             selector,
-            health_map: std::sync::Mutex::new(std::collections::HashMap::new()),
+            health_map: Mutex::new(std::collections::HashMap::new()),
             max_retries,
             backoff_config: BackoffConfig::default(),
         }
@@ -75,7 +77,7 @@ impl FailoverManager {
         Self {
             account_repo,
             selector,
-            health_map: std::sync::Mutex::new(std::collections::HashMap::new()),
+            health_map: Mutex::new(std::collections::HashMap::new()),
             max_retries,
             backoff_config,
         }
@@ -177,7 +179,7 @@ impl FailoverManager {
     where
         F: Fn(&Account) -> Fut,
         Fut: std::future::Future<Output = Result<(T, Vec<(String, String)>), E>>,
-        E: std::fmt::Debug + Clone,
+        E: std::fmt::Debug + Clone + From<crate::domain::errors::DomainError>,
     {
         // Get active accounts for provider
         let accounts = self
@@ -187,7 +189,7 @@ impl FailoverManager {
             .map_err(|_| self.create_no_accounts_error(provider_id))?;
 
         if accounts.is_empty() {
-            return Err(self.create_no_accounts_error(provider_id));
+            return Err(self.create_no_accounts_error(provider_id).into());
         }
 
         // Try each account with failover
@@ -208,7 +210,7 @@ impl FailoverManager {
                 tried_accounts.push(account.id.clone());
 
                 // Check health/circuit breaker
-                if !self.can_use_account(&account.id) {
+                if !self.can_use_account(&account.id).await {
                     continue;
                 }
 
@@ -217,15 +219,16 @@ impl FailoverManager {
                 match execute(account).await {
                     Ok((response, headers)) => {
                         // Parse rate limit info from headers and update health
-                        self.update_rate_limits(&account.id, &headers);
+                        self.update_rate_limits(&account.id, &headers).await;
 
                         // Record success with latency
-                        self.record_success(&account.id, start.elapsed().as_millis() as u64);
+                        self.record_success(&account.id, start.elapsed().as_millis() as u64)
+                            .await;
                         return Ok(response);
                     },
                     Err(e) => {
                         // Record failure
-                        self.record_failure(&account.id);
+                        self.record_failure(&account.id).await;
                         last_error = Some(e);
 
                         // Apply backoff delay before next retry (only if we have more accounts to try)
@@ -243,12 +246,12 @@ impl FailoverManager {
         }
 
         // All attempts failed
-        Err(last_error.unwrap_or_else(|| self.create_no_accounts_error(provider_id)))
+        Err(last_error.unwrap_or_else(|| self.create_no_accounts_error(provider_id).into()))
     }
 
     /// Checks if an account can be used (circuit breaker check).
-    fn can_use_account(&self, account_id: &str) -> bool {
-        let mut health_map = self.health_map.lock().unwrap();
+    async fn can_use_account(&self, account_id: &str) -> bool {
+        let mut health_map = self.health_map.lock().await;
         let health = health_map
             .entry(account_id.to_string())
             .or_insert_with(|| AccountHealth::new(account_id));
@@ -257,8 +260,8 @@ impl FailoverManager {
     }
 
     /// Records a successful request.
-    fn record_success(&self, account_id: &str, latency_ms: u64) {
-        let mut health_map = self.health_map.lock().unwrap();
+    async fn record_success(&self, account_id: &str, latency_ms: u64) {
+        let mut health_map = self.health_map.lock().await;
         let health = health_map
             .entry(account_id.to_string())
             .or_insert_with(|| AccountHealth::new(account_id));
@@ -266,8 +269,8 @@ impl FailoverManager {
     }
 
     /// Records a failed request.
-    fn record_failure(&self, account_id: &str) {
-        let mut health_map = self.health_map.lock().unwrap();
+    async fn record_failure(&self, account_id: &str) {
+        let mut health_map = self.health_map.lock().await;
         let health = health_map
             .entry(account_id.to_string())
             .or_insert_with(|| AccountHealth::new(account_id));
@@ -275,14 +278,14 @@ impl FailoverManager {
     }
 
     /// Updates rate limit information from response headers.
-    fn update_rate_limits(&self, account_id: &str, headers: &[(String, String)]) {
+    async fn update_rate_limits(&self, account_id: &str, headers: &[(String, String)]) {
         if headers.is_empty() {
             return;
         }
 
         let rate_limit_info = RateLimitInfo::from_headers(headers);
 
-        let mut health_map = self.health_map.lock().unwrap();
+        let mut health_map = self.health_map.lock().await;
         let health = health_map
             .entry(account_id.to_string())
             .or_insert_with(|| AccountHealth::new(account_id));
@@ -296,20 +299,22 @@ impl FailoverManager {
     }
 
     /// Creates a "no accounts available" error.
-    fn create_no_accounts_error<T>(&self, provider_id: &str) -> T {
-        // This is a workaround - in real code, we'd have a proper error type
-        panic!("No available accounts for provider: {}", provider_id)
+    fn create_no_accounts_error(&self, provider_id: &str) -> crate::domain::errors::DomainError {
+        crate::domain::errors::DomainError::Internal(format!(
+            "No available accounts for provider: {}",
+            provider_id
+        ))
     }
 
     /// Returns health for an account.
-    pub fn get_health(&self, account_id: &str) -> Option<AccountHealth> {
-        let health_map = self.health_map.lock().unwrap();
+    pub async fn get_health(&self, account_id: &str) -> Option<AccountHealth> {
+        let health_map = self.health_map.lock().await;
         health_map.get(account_id).cloned()
     }
 
     /// Returns health scores for all accounts.
-    pub fn get_all_health(&self) -> Vec<AccountHealth> {
-        let health_map = self.health_map.lock().unwrap();
+    pub async fn get_all_health(&self) -> Vec<AccountHealth> {
+        let health_map = self.health_map.lock().await;
         health_map.values().cloned().collect()
     }
 }

@@ -74,6 +74,7 @@ fn extract_model_name(model: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::Message;
 
     #[test]
     fn test_count_tokens_simple() {

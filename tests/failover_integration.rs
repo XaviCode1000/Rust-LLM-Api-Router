@@ -14,6 +14,9 @@ use rust_llm_api_router::domain::{Account, DomainError};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+mod common;
+use common::errors::TestError;
+
 // ============================================================================
 // MOCK REPOSITORY
 // ============================================================================
@@ -67,7 +70,7 @@ async fn test_complete_failover_flow() {
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
     // Execute request - should succeed on first account
-    let result: Result<String, String> = manager
+    let result: Result<String, TestError> = manager
         .execute_with_failover("openai", |account| {
             let account_id = account.id.clone();
             async move { Ok((format!("success-{}", account_id), vec![])) }
@@ -105,13 +108,13 @@ async fn test_failover_cascades_through_accounts() {
     let attempted_accounts = Arc::new(Mutex::new(Vec::new()));
     let attempted_clone = attempted_accounts.clone();
 
-    let _: Result<String, String> = manager
+    let _: Result<String, TestError> = manager
         .execute_with_failover("openai", |account| {
             let attempted = attempted_clone.clone();
             let account_id = account.id.clone();
             async move {
                 attempted.lock().await.push(account_id);
-                Err("always-fail".to_string())
+                Err(TestError::new("always-fail"))
             }
         })
         .await;
@@ -146,12 +149,12 @@ async fn test_circuit_breaker_integration() {
 
     // Fail account-1 five times to open circuit breaker
     for _ in 0..5 {
-        let _: Result<String, String> = manager
+        let _: Result<String, TestError> = manager
             .execute_with_failover("openai", |account| {
                 let account_id = account.id.clone();
                 async move {
                     if account_id == "account-1" {
-                        Err("failure".to_string())
+                        Err(TestError::new("failure"))
                     } else {
                         Ok(("success".to_string(), vec![]))
                     }
@@ -161,7 +164,7 @@ async fn test_circuit_breaker_integration() {
     }
 
     // Now account-1 should be skipped due to circuit breaker
-    let result: Result<String, String> = manager
+    let result: Result<String, TestError> = manager
         .execute_with_failover("openai", |account| {
             let account_id = account.id.clone();
             async move { Ok((format!("used-{}", account_id), vec![])) }
@@ -199,7 +202,7 @@ async fn test_concurrent_requests_no_race_condition() {
     let mut handles = vec![];
     for i in 0..100 {
         let manager = manager.clone();
-        let handle: tokio::task::JoinHandle<Result<String, String>> = tokio::spawn(async move {
+        let handle: tokio::task::JoinHandle<Result<String, TestError>> = tokio::spawn(async move {
             manager
                 .execute_with_failover("openai", |account| {
                     let account_id = account.id.clone();
@@ -244,7 +247,7 @@ async fn test_health_tracking_concurrent() {
     let mut handles = vec![];
     for i in 0..50 {
         let manager = manager.clone();
-        let handle: tokio::task::JoinHandle<Result<String, String>> = tokio::spawn(async move {
+        let handle: tokio::task::JoinHandle<Result<String, TestError>> = tokio::spawn(async move {
             if i % 2 == 0 {
                 manager
                     .execute_with_failover("openai", |_| async {
@@ -253,7 +256,7 @@ async fn test_health_tracking_concurrent() {
                     .await
             } else {
                 manager
-                    .execute_with_failover("openai", |_| async { Err("failure".to_string()) })
+                    .execute_with_failover("openai", |_| async { Err(TestError::new("failure")) })
                     .await
             }
         });
@@ -263,7 +266,7 @@ async fn test_health_tracking_concurrent() {
     futures::future::join_all(handles).await;
 
     // Check health metrics
-    let health_scores = manager.get_all_health();
+    let health_scores = manager.get_all_health().await;
     assert!(!health_scores.is_empty());
 
     let account_health = health_scores
@@ -308,14 +311,14 @@ async fn test_multi_provider_isolation() {
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
     // Execute requests for both providers
-    let openai_result: Result<String, String> = manager
+    let openai_result: Result<String, TestError> = manager
         .execute_with_failover("openai", |account| {
             let account_id = account.id.clone();
             async move { Ok((format!("openai-{}", account_id), vec![])) }
         })
         .await;
 
-    let anthropic_result: Result<String, String> = manager
+    let anthropic_result: Result<String, TestError> = manager
         .execute_with_failover("anthropic", |account| {
             let account_id = account.id.clone();
             async move { Ok((format!("anthropic-{}", account_id), vec![])) }
@@ -326,7 +329,7 @@ async fn test_multi_provider_isolation() {
     assert_eq!(anthropic_result.unwrap(), "anthropic-anthropic-1");
 
     // Health should be tracked separately
-    let health_scores = manager.get_all_health();
+    let health_scores = manager.get_all_health().await;
     assert_eq!(health_scores.len(), 2);
 }
 
@@ -354,7 +357,7 @@ async fn test_request_timeout() {
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
     // First account times out, second succeeds
-    let result: Result<String, String> = manager
+    let result: Result<String, TestError> = manager
         .execute_with_failover("openai", |account| {
             let account_id = account.id.clone();
             async move {
@@ -390,13 +393,13 @@ async fn test_memory_under_load() {
 
     // Execute many requests
     for _ in 0..1000 {
-        let _: Result<String, String> = manager
+        let _: Result<String, TestError> = manager
             .execute_with_failover("openai", |_| async { Ok(("success".to_string(), vec![])) })
             .await;
     }
 
     // Check health tracking doesn't grow unbounded
-    let health_scores = manager.get_all_health();
+    let health_scores = manager.get_all_health().await;
     assert_eq!(health_scores.len(), 1);
 
     // Latency tracking should be bounded
@@ -412,8 +415,8 @@ async fn test_memory_under_load() {
 // ============================================================================
 
 /// Test: Repository errors are handled gracefully
-#[test]
-fn test_repository_error_handling() {
+#[tokio::test]
+async fn test_repository_error_handling() {
     let mut mock_repo = MockAccountRepository::new();
 
     mock_repo
@@ -424,24 +427,17 @@ fn test_repository_error_handling() {
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
-    // Current implementation panics - this is a known issue
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        rt.block_on(async {
-            manager
-                .execute_with_failover::<_, _, String, String>("openai", |_| async {
-                    Ok(("success".to_string(), vec![]))
-                })
-                .await
-        })
-    }));
+    // Now returns Err(TestError) instead of panicking
+    let result: Result<String, TestError> = manager
+        .execute_with_failover("openai", |_| async { Ok(("success".to_string(), vec![])) })
+        .await;
 
-    assert!(result.is_err(), "Should handle repository error");
+    assert!(result.is_err(), "Should return error for repository failure");
 }
 
 /// Test: Empty account list handling
-#[test]
-fn test_empty_account_list() {
+#[tokio::test]
+async fn test_empty_account_list() {
     let mut mock_repo = MockAccountRepository::new();
 
     mock_repo
@@ -452,19 +448,12 @@ fn test_empty_account_list() {
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
-    // Current implementation panics - known issue
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        rt.block_on(async {
-            manager
-                .execute_with_failover::<_, _, String, String>("openai", |_| async {
-                    Ok(("success".to_string(), vec![]))
-                })
-                .await
-        })
-    }));
+    // Now returns Err(TestError) instead of panicking
+    let result: Result<String, TestError> = manager
+        .execute_with_failover("openai", |_| async { Ok(("success".to_string(), vec![])) })
+        .await;
 
-    assert!(result.is_err(), "Should handle empty account list");
+    assert!(result.is_err(), "Should return error for empty account list");
 }
 
 // ============================================================================
@@ -501,7 +490,7 @@ async fn test_all_strategies_with_failover() {
 
         let manager = FailoverManager::new(Arc::new(mock_repo), selector, 3);
 
-        let result: Result<String, String> = manager
+        let result: Result<String, TestError> = manager
             .execute_with_failover("openai", |account| {
                 let account_id = account.id.clone();
                 async move { Ok((format!("{}-{}", name, account_id), vec![])) }

@@ -415,18 +415,18 @@ impl RotationStrategy for LatencyStrategy {
 /// Sticks to the same account for the same user/session when possible.
 pub struct UserAffinityStrategy {
     /// Last selected account per user/session
-    last_selection: std::sync::Mutex<std::collections::HashMap<String, String>>,
+    last_selection: tokio::sync::Mutex<std::collections::HashMap<String, String>>,
 }
 
 impl UserAffinityStrategy {
     pub fn new() -> Self {
         Self {
-            last_selection: std::sync::Mutex::new(std::collections::HashMap::new()),
+            last_selection: tokio::sync::Mutex::new(std::collections::HashMap::new()),
         }
     }
 
     /// Selects an account for a specific user/session.
-    pub fn select_for_user<'a>(
+    pub async fn select_for_user<'a>(
         &self,
         accounts: &'a [Account],
         user_id: &str,
@@ -437,7 +437,7 @@ impl UserAffinityStrategy {
 
         // Try to get the last used account for this user
         let last = {
-            let selection = self.last_selection.lock().ok()?;
+            let selection = self.last_selection.lock().await;
             selection.get(user_id).cloned()
         };
 
@@ -449,13 +449,13 @@ impl UserAffinityStrategy {
         }
 
         // Fall back to first available account
-        accounts.first().map(|account| {
+        if let Some(account) = accounts.first() {
             // Update last selection
-            if let Ok(mut selection) = self.last_selection.lock() {
-                selection.insert(user_id.to_string(), account.id.clone());
-            }
-            account
-        })
+            let mut selection = self.last_selection.lock().await;
+            selection.insert(user_id.to_string(), account.id.clone());
+            return Some(account);
+        }
+        None
     }
 }
 

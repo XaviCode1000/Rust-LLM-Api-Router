@@ -6,6 +6,7 @@
 #![allow(dead_code)]
 
 pub mod containers;
+pub mod errors;
 
 use async_trait::async_trait;
 use mockall::predicate::eq;

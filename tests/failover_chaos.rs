@@ -10,8 +10,10 @@ use rust_llm_api_router::app::services::failover::FailoverManager;
 use rust_llm_api_router::domain::entities::Account;
 use rust_llm_api_router::domain::traits::AccountRepository;
 use rust_llm_api_router::domain::DomainError;
-use std::fmt;
 use std::sync::Arc;
+
+mod common;
+use common::errors::TestError;
 
 // ============================================================================
 // MOCK REPOSITORY
@@ -36,33 +38,6 @@ impl Clone for MockChaosAccountRepository {
         MockChaosAccountRepository::new()
     }
 }
-
-// ============================================================================
-// ERROR TYPE THAT IMPLEMENTS DEBUG
-// ============================================================================
-
-#[derive(Clone)]
-struct TestError(String);
-
-impl TestError {
-    fn new(msg: &str) -> Self {
-        TestError(msg.to_string())
-    }
-}
-
-impl fmt::Debug for TestError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TestError({})", self.0)
-    }
-}
-
-impl fmt::Display for TestError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::error::Error for TestError {}
 
 // ============================================================================
 // CHAOS TESTS
@@ -202,7 +177,7 @@ async fn test_health_tracking() {
     }
 
     // Check health
-    let health = manager.get_all_health();
+    let health = manager.get_all_health().await;
     assert!(!health.is_empty());
 
     let account_health = health
@@ -308,7 +283,7 @@ async fn test_health_tracking_with_failures() {
     }
 
     // Check health tracking
-    let health = manager.get_all_health();
+    let health = manager.get_all_health().await;
     assert!(!health.is_empty());
 
     let account_health = health.iter().find(|h| h.account_id == "account-1");

@@ -65,6 +65,22 @@ pub struct RoutingConfig {
     pub timeout_seconds: u64,
 }
 
+impl Default for RoutingConfig {
+    fn default() -> Self {
+        Self {
+            strategy: RoutingStrategy::Auto,
+            cascading_enabled: false,
+            cascading_min_quality: 0.75,
+            cascading_max_tiers: 3,
+            cascading_per_tier_timeout_ms: 5000,
+            budget_mode: false,
+            max_cost_per_million: None,
+            max_retries: 3,
+            timeout_seconds: 60,
+        }
+    }
+}
+
 impl RoutingConfig {
     /// Create routing config from CLI arguments and environment variables
     pub fn from_cli_and_env(

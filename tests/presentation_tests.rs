@@ -5,7 +5,7 @@
 use std::sync::Arc;
 use tempfile::TempDir;
 
-use rust_llm_api_router::config::Settings;
+use rust_llm_api_router::config::{RoutingConfig, Settings};
 use rust_llm_api_router::domain::{Account, AccountRepository};
 use rust_llm_api_router::infrastructure::gateway::llm_gateway::default_providers;
 use rust_llm_api_router::infrastructure::{HttpClient, JsonAccountRepository, Metrics};
@@ -21,7 +21,7 @@ fn test_app_state_creation() {
 
     let settings = Settings::default();
 
-    let state = AppState::new(settings).unwrap();
+    let state = AppState::new(settings, RoutingConfig::default()).unwrap();
 
     // Verify state created successfully
     assert_eq!(state.config.app_port, 8080);
