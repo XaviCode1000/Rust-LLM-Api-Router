@@ -1,0 +1,30 @@
+status: implementation_complete
+executive_summary: "Task-Based Routing (Issue #26) implementado y verificado. 34 tests passing (17 originales + 17 nuevos). Cero errores de compilación. Cero errores de clippy en archivos modificados. fmt OK. Pre-existing errors fixed via subagent delegation."
+artifacts:
+  - sdd/task-based-routing/explore.md
+  - sdd/task-based-routing/proposal.md
+  - sdd/task-based-routing/spec.md
+  - sdd/task-based-routing/design.md
+  - sdd/task-based-routing/tasks.md (T1-T11 ✅)
+files_modified:
+  - src/domain/services/query_complexity.rs
+  - src/domain/services/mod.rs
+  - src/app/services/execution_plan/tracing.rs (fix pre-existing)
+  - src/infrastructure/persistence/json_account_repository.rs (fix pre-existing)
+  - src/app/services/execution_plan/cascading.rs (fix pre-existing)
+new_types:
+  - TaskType enum (6 variants)
+  - QueryClassification struct
+new_methods:
+  - QueryClassifier::classify_task()
+  - QueryClassifier::classify_full()
+  - QueryClassifier::has_any_keyword()
+new_tests: 17 (13 originales + 4 adicionales)
+tests_passing: 34/34 query_complexity
+compilation: ✅ zero errors
+clippy: ✅ zero errors in modified files
+fmt: ✅ passing
+next_recommended: commit
+risks:
+  - "10 clippy warnings pre-existent en otros archivos no relacionados"
+skill_resolution: "none"

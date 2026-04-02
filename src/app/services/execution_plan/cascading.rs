@@ -324,6 +324,9 @@ impl CascadingExecutionPlan {
         while let Some(tier) = self.current_tier() {
             // Extract tier data needed after mutable operations
             let tier_order = tier.tier_order;
+            let tier_account_id = tier.account.account_id.clone();
+            let tier_account = tier.account.clone();
+            let tier_health_snapshot = tier.account.health_snapshot.clone();
             let tier_accounts: Vec<PlannedAccount> =
                 self.tiers.iter().map(|t| t.account.clone()).collect();
 
@@ -359,16 +362,16 @@ impl CascadingExecutionPlan {
                 // Create quality evaluation span for tracing
                 let quality_span = QualityEvaluationSpan::new(
                     &self.inner.context().request_id,
-                    &tier.account.account_id,
+                    &tier_account_id,
                     tier_order,
                 );
 
                 // Actually evaluate the response quality using block_on since execute() is sync
                 let quality_score =
                     futures::executor::block_on(self.quality_gate.evaluate_quality(
-                        &tier.account,
+                        &tier_account,
                         response_text,
-                        &tier.account.health,
+                        &tier_health_snapshot,
                     ));
 
                 quality_span.finish(

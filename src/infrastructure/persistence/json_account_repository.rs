@@ -194,15 +194,8 @@ impl JsonAccountRepository {
             .await
             .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
 
-        // T-21: Acquire shared (read) lock with timeout (T-24)
-        tokio::time::timeout(LOCK_TIMEOUT, file.lock_shared())
-            .await
-            .map_err(|_| {
-                DomainError::LockTimeout(format!(
-                    "Failed to acquire read lock within {:?}",
-                    LOCK_TIMEOUT
-                ))
-            })?
+        // T-21: Acquire shared (read) lock
+        file.lock_shared()
             .map_err(|e| DomainError::Io(e.to_string()))?;
 
         // Read from the locked file handle
@@ -238,15 +231,9 @@ impl JsonAccountRepository {
                 .await
                 .map_err(|e| DomainError::Io(e.to_string()))?;
 
-            // T-22: Acquire exclusive (write) lock with timeout (T-24)
-            tokio::time::timeout(LOCK_TIMEOUT, tmp_file.lock_exclusive())
-                .await
-                .map_err(|_| {
-                    DomainError::LockTimeout(format!(
-                        "Failed to acquire write lock within {:?}",
-                        LOCK_TIMEOUT
-                    ))
-                })?
+            // T-22: Acquire exclusive (write) lock
+            tmp_file
+                .lock_exclusive()
                 .map_err(|e| DomainError::Io(e.to_string()))?;
 
             // Write JSON to temp file

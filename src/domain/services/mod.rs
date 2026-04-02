@@ -6,5 +6,7 @@ pub mod token_validator;
 
 pub use auth_strategy::AuthenticationStrategy;
 pub use model_selector::{CostAwareSelector, ModelSelector, SelectionError, SelectionResult};
-pub use query_complexity::{ClassifierConfig, QueryClassifier, QueryComplexity};
+pub use query_complexity::{
+    ClassifierConfig, QueryClassification, QueryClassifier, QueryComplexity, TaskType,
+};
 pub use token_validator::TokenValidator;
