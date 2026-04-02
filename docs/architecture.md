@@ -196,7 +196,7 @@ pub struct LatencyStrategy;
 
 // User-Affinity - Misma cuenta por usuario
 pub struct UserAffinityStrategy {
-    last_selection: Mutex<HashMap<String, String>>,
+    last_selection: tokio::sync::Mutex<HashMap<String, String>>,
 }
 ```
 
@@ -207,7 +207,7 @@ pub struct FailoverManager {
     account_repo: Arc<JsonAccountRepository>,
     selector: AccountSelector,
     max_retries: u32,
-    health_map: Mutex<HashMap<String, AccountHealth>>,
+    health_map: tokio::sync::Mutex<HashMap<String, AccountHealth>>,
 }
 ```
 

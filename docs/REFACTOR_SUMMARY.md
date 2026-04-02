@@ -31,7 +31,7 @@ pub struct FailoverManager {
 pub struct FailoverManager {
     account_repo: Arc<dyn AccountRepository>,  // ✅ Trait object
     selector: AccountSelector,
-    health_map: std::sync::Mutex<HashMap<String, AccountHealth>>,
+    health_map: tokio::sync::Mutex<HashMap<String, AccountHealth>>,  // ✅ Async-safe
     max_retries: u32,
 }
 ```
