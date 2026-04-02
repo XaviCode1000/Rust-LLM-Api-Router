@@ -81,7 +81,7 @@ pub fn get_context_limit(model: &str) -> Option<u32> {
     if model.starts_with("gpt-4") {
         return Some(8_192);
     }
-    if model.starts_with("gpt-3.5-turbo-16k") || model.starts_with("gpt-3.5-turbo-0613") {
+    if model.starts_with("gpt-3.5-turbo-16k") {
         return Some(16_385);
     }
     if model.starts_with("gpt-3.5-turbo") {
