@@ -51,7 +51,7 @@ pub fn create_secure_storage() -> Box<dyn SecureStorage> {
     // Check if secure storage is disabled
     if std::env::var("SECURE_STORAGE").as_deref() == Ok("disabled") {
         tracing::warn!("Secure storage disabled — API keys stored in plaintext");
-        return Box::new(InsecureStorage);
+        return Box::new(InsecureStorage::new());
     }
 
     // Try keyring first
@@ -67,25 +67,49 @@ pub fn create_secure_storage() -> Box<dyn SecureStorage> {
         Ok(storage) => Box::new(storage),
         Err(e) => {
             tracing::error!("Failed to create encrypted storage: {}", e);
-            Box::new(InsecureStorage)
+            Box::new(InsecureStorage::new())
         },
     }
 }
 
-/// Insecure fallback storage (plaintext). Only used when nothing else works.
-pub struct InsecureStorage;
+/// Insecure fallback storage (in-memory). Only used when nothing else works.
+/// Stores keys in a HashMap for testing/dev purposes.
+pub struct InsecureStorage {
+    store: std::sync::Mutex<std::collections::HashMap<String, String>>,
+}
+
+impl InsecureStorage {
+    pub fn new() -> Self {
+        Self {
+            store: std::sync::Mutex::new(std::collections::HashMap::new()),
+        }
+    }
+}
+
+impl Default for InsecureStorage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl SecureStorage for InsecureStorage {
-    fn store(&self, _account_id: &str, _key: &str) -> Result<(), SecureStorageError> {
-        tracing::warn!("Storing API key in plaintext (insecure)");
+    fn store(&self, account_id: &str, key: &str) -> Result<(), SecureStorageError> {
+        tracing::warn!(
+            "Storing API key in memory (insecure — use keyring or encrypted file in production)"
+        );
+        let mut store = self.store.lock().unwrap();
+        store.insert(account_id.to_string(), key.to_string());
         Ok(())
     }
 
-    fn retrieve(&self, _account_id: &str) -> Result<Option<SecretString>, SecureStorageError> {
-        Ok(None)
+    fn retrieve(&self, account_id: &str) -> Result<Option<SecretString>, SecureStorageError> {
+        let store = self.store.lock().unwrap();
+        Ok(store.get(account_id).map(|k| SecretString::new(k.clone())))
     }
 
-    fn delete(&self, _account_id: &str) -> Result<(), SecureStorageError> {
+    fn delete(&self, account_id: &str) -> Result<(), SecureStorageError> {
+        let mut store = self.store.lock().unwrap();
+        store.remove(account_id);
         Ok(())
     }
 

@@ -46,6 +46,10 @@ impl EncryptedFileStorage {
         let data = std::fs::read_to_string(&self.file_path)
             .map_err(|e| SecureStorageError::IoError(e.to_string()))?;
 
+        if data.trim().is_empty() {
+            return Ok(CredentialStore::default());
+        }
+
         serde_json::from_str(&data).map_err(|e| SecureStorageError::DecryptionFailed(e.to_string()))
     }
 

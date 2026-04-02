@@ -53,12 +53,18 @@ impl SecureStorage for KeyringStorage {
     }
 
     fn is_available(&self) -> bool {
-        // Try to create a test entry and clean it up
+        // Try to create, write, read, and delete a test entry
         match Entry::new(SERVICE_NAME, "__secure_storage_test__") {
             Ok(entry) => {
-                let _ = entry.set_password("test");
+                // Try actual write operation
+                if entry.set_password("test").is_err() {
+                    return false;
+                }
+                // Try read
+                let read_ok = entry.get_password().is_ok();
+                // Clean up
                 let _ = entry.delete_password();
-                true
+                read_ok
             },
             Err(_) => false,
         }
