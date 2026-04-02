@@ -76,6 +76,12 @@ urlencoding = "2.1"
 url = { version = "2.4", features = ["serde"] }
 zeroize_derive = "1.4"
 
+# Encryption for fallback credential storage
+aes-gcm = "0.10"
+argon2 = "0.5"
+rand = "0.8"
+hostname = "0.4"
+
 [dev-dependencies]
 mockall = "0.13"
 tokio-test = "0.4"
