@@ -1,7 +1,7 @@
 use tiktoken_rs::cl100k_base;
 
 use super::model_context_limits::get_context_limit;
-use crate::domain::entities::{ChatRequest, Message};
+use crate::domain::entities::ChatRequest;
 use crate::domain::errors::DomainError;
 
 /// Validates that a ChatRequest doesn't exceed the model's context window.
