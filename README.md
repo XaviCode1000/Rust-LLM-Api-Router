@@ -274,6 +274,8 @@ SECURE_STORAGE=auto                 # auto, keyring, encrypted, disabled
 
 | Tema | Dónde |
 |------|-------|
+| **Guía de Uso** | [docs/USAGE.md](docs/USAGE.md) |
+| **Configuración** | [docs/CONFIG.md](docs/CONFIG.md) |
 | **Arquitectura** | [docs/architecture.md](docs/architecture.md) |
 | **Guía de Desarrollo** | [DEVELOPMENT.md](DEVELOPMENT.md) |
 | **Estrategias de Routing** | [docs/routing.md](docs/routing.md) |
