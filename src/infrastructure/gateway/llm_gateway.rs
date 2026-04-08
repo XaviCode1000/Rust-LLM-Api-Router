@@ -163,6 +163,12 @@ pub fn default_providers() -> HashMap<String, ProviderConfig> {
             "https://generativelanguage.googleapis.com/v1",
             "/models",
         ),
+        // Free-tier providers (from awesome-free-llm-apis)
+        ("zhipu", "Zhipu AI", "https://open.bigmodel.cn/api/paas/v4", "/models"),
+        ("github", "GitHub Models", "https://models.inference.ai.azure.com", "/models"),
+        ("kluster", "Kluster AI", "https://api.kluster.ai/v1", "/models"),
+        ("llm7", "LLM7.io", "https://api.llm7.io/v1", "/models"),
+        ("siliconflow", "SiliconFlow", "https://api.siliconflow.cn/v1", "/models"),
     ];
 
     for &(id, name, base_url, models_endpoint) in entries {

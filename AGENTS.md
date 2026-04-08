@@ -6,10 +6,10 @@
 
 ## Project Overview
 
-**LLM API Router**: High-performance LLM proxy built with Clean Architecture in Rust. Routes requests across 29 providers with automatic failover, health monitoring, and intelligent routing.
+**LLM API Router**: High-performance LLM proxy built with Clean Architecture in Rust. Routes requests across 34 providers with automatic failover, health monitoring, and intelligent routing.
 
 **Key Features**:
-- Multi-provider support (OpenAI, Anthropic, Groq, 26 more)
+- Multi-provider support (OpenAI, Anthropic, Groq, 31 more)
 - Cost-Aware Routing (Issue #23) — static model selection by query complexity
 - Cascading Routing (Issue #24) — dynamic quality-based escalation
 - Live Contract Tests — real API schema validation
@@ -349,12 +349,13 @@ pub struct JsonAccountRepository {
 
 ### Provider Support
 
-**29 Providers** across categories:
+**34 Providers** across categories:
 
 - **Major AI**: OpenAI, Anthropic, Mistral, Cohere, Google AI Studio
 - **OpenAI-Compatible**: Groq, OpenRouter, Cerebras, Cloudflare, DeepSeek, Together, Fireworks, xAI, Perplexity
 - **Local**: Ollama, LM Studio, vLLM
 - **Enterprise**: Azure OpenAI, AWS Bedrock, Google Vertex AI
+- **Free Tier**: Zhipu AI, GitHub Models, Kluster AI, LLM7.io, SiliconFlow
 
 ---
 

@@ -18,7 +18,7 @@
   </a>
 </p>
 
-**Un solo endpoint para 29 proveedores de IA.** Ahorrá costos, evitá caídas, y mantené el control de tus APIs — todo con una interfaz compatible con OpenAI.
+**Un solo endpoint para 34 proveedores de IA.** Ahorrá costos, evitá caídas, y mantené el control de tus APIs — todo con una interfaz compatible con OpenAI.
 
 ---
 
@@ -85,7 +85,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 
 | Función | Qué Hace |
 |---------|----------|
-| **29 Proveedores** | OpenAI, Anthropic, Groq, Mistral, Ollama, y 24 más |
+| **34 Proveedores** | OpenAI, Anthropic, Groq, Mistral, Ollama, y 29 más (incluyendo 5 con free tier permanente) |
 | **Multi-Cuenta** | Múltiples API keys por proveedor con rotación automática |
 | **Failover Automático** | Si un proveedor cae, rota a otro sin que lo notes |
 | **Streaming (SSE)** | Respuestas token por token en tiempo real |
@@ -130,9 +130,12 @@ El router puede **pensar antes de enviar** tu request:
 | Cerebras | ✅ |
 | Cloudflare Workers AI | ✅ |
 
-### Otros 22 Proveedores
+### Otros 27 Proveedores
 
-Ollama, LM Studio, vLLM (locales), Azure OpenAI, AWS Bedrock, Google Vertex AI (enterprise), DeepSeek, Together, Fireworks AI, xAI/Grok, Perplexity, y más.
+**Locales:** Ollama, LM Studio, vLLM
+**Enterprise:** Azure OpenAI, AWS Bedrock, Google Vertex AI
+**Plataformas:** DeepSeek, Together, Fireworks AI, xAI/Grok, Perplexity, Replicate, Anyscale, DeepInfra, Novita AI, SambaNova, HuggingFace, AI21 Labs, Aleph Alpha, NVIDIA NIM, Cohere, Google AI Studio
+**Free Tier Permanente:** Zhipu AI (GLM-4 Flash), GitHub Models (GPT-4o gratis), Kluster AI, LLM7.io, SiliconFlow
 
 > 📋 **Lista completa con URLs:** [docs/architecture.md](docs/architecture.md)
 
@@ -297,7 +300,7 @@ SECURE_STORAGE=auto                 # auto, keyring, encrypted, disabled
 ### ✅ Completado
 
 - Streaming SSE
-- 29 proveedores soportados
+- 34 proveedores soportados (incluyendo 5 free tier)
 - Cost-Aware Routing (#23)
 - Cascading Routing (#24)
 - Task-Based Routing (#26)
@@ -309,7 +312,7 @@ SECURE_STORAGE=auto                 # auto, keyring, encrypted, disabled
 ### 🔄 Próximo
 
 - Kubernetes manifests
-- Testing completo de los 29 proveedores
+- Testing completo de los 34 proveedores
 - Guías por proveedor
 
 ---
