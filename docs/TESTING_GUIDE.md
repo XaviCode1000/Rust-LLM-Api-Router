@@ -1,106 +1,135 @@
 # Testing Guide - Rust-LLM-Api-Router
 
-## 🎯 Overview
+## Overview
 
-Este proyecto alcanza **80.35% de cobertura de código** con **492 tests passing**, siguiendo las mejores prácticas de Rust 2025-26.
+This project achieves **80.35% code coverage** with **492 tests passing**, following Rust 2025-26 best practices.
 
-## 📦 Stack Óptimo 2025-26
+## Testing Stack
 
-### Herramientas Instaladas
+### Installed Tools
 
 ```bash
-# Instalar una vez
-cargo install cargo-nextest      # Test runner (4x faster)
-cargo install cargo-llvm-cov     # Cobertura nativa LLVM (10x faster)
-cargo install sccache            # Cache de compilación (6x faster)
-cargo install cargo-watch        # Auto-recompilar en cambios
-cargo install cargo-binstall     # Binary installs (más rápido)
+# Install once
+cargo install cargo-nextest      # Test runner (4x faster than cargo test)
+cargo install cargo-llvm-cov     # LLVM-native coverage (10x faster than tarpaulin)
+cargo install sccache            # Build cache (6x faster)
+cargo install cargo-watch        # Auto-recompile on changes
 cargo install cargo-audit        # Security audit
 cargo install cargo-deny         # License/dependency check
 ```
 
-### Verificación
+### Dev Dependencies
 
-```bash
-cargo nextest --version
-cargo llvm-cov --version
-sccache --version
-cargo watch --version
+```toml
+[dev-dependencies]
+mockall = "0.13"           # Trait mocking
+tokio-test = "0.4"         # Async testing
+tempfile = "3.10"          # Temp directories
+proptest = "1.4"           # Property-based testing
+insta = "1.46"             # Snapshot testing
+wiremock = "0.6.5"         # HTTP mocking
+fs4 = "0.8"                # Advisory file locking with tokio support
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
-### Correr Tests
+### Run Tests
 
 ```bash
-# Todos los tests (4x más rápido que cargo test)
+# All tests (4x faster than cargo test)
 cargo nextest run --test-threads 2
 
-# Tests específicos
+# Specific test file
 cargo nextest run --test chat_handler
 cargo nextest run --test provider_commands
 
-# Ver solo tests fallidos
+# Live contract tests (requires API keys)
+LIVE_TEST=1 cargo test --test live_contract_tests -- --ignored
+
+# Only failing tests
 cargo nextest run --no-fail-fast
 ```
 
-### Generar Cobertura
+### Generate Coverage
 
 ```bash
-# Generar reporte HTML
+# HTML report
 cargo llvm-cov --html --output-dir coverage-llvm
 
-# Abrir reporte en navegador
+# Open in browser
 cargo llvm-cov --html --open
 
-# Ver resumen en terminal
+# Terminal summary
 cargo llvm-cov --summary-only
+
+# By-file coverage
+cargo llvm-cov --summary-only | grep "src/"
 ```
 
 ### Watch Mode
 
 ```bash
-# Auto-rerun tests en cambios
+# Auto-rerun tests on changes
 ./scripts/dev.sh
 
-# O manualmente
+# Or manually
 cargo watch -x "nextest run --test-threads 2"
 ```
 
-## 📊 Testing Strategy
+## Test Organization
 
 ### Test Categories
 
-| Tipo | Ubicación | Propósito | Herramientas |
-|------|-----------|-----------|--------------|
-| **Unit Tests** | `src/**/*.rs` | Lógica de dominio pura | `#[test]`, `proptest` |
-| **Integration Tests** | `tests/*.rs` | Componentes + HTTP | `wiremock`, `mockall` |
-| **Security Tests** | `tests/security_tests.rs` | Vulnerabilidades | `proptest`, custom |
-| **Snapshot Tests** | `tests/error_snapshots.rs` | Golden tests | `insta` |
-| **Chaos Tests** | `tests/failover_chaos.rs` | Failover scenarios | `turmoil` |
+| Category | Location | Tools | Purpose |
+|----------|----------|-------|---------|
+| **Unit Tests** | `src/**/*.rs` | `#[test]`, `proptest` | Domain logic, pure functions |
+| **Integration Tests** | `tests/*.rs` | `wiremock`, `mockall` | Component + HTTP testing |
+| **Snapshot Tests** | `tests/error_snapshots.rs` | `insta` | Golden tests for error formats |
+| **Live Contract Tests** | `tests/live_contract_tests.rs` | Real APIs | Provider drift detection |
+
+### Test Files by Functional Area
+
+Based on the current codebase organization (47 test modules, 519 test functions):
+
+| Area | Test Coverage | Key Test Files |
+|------|---------------|----------------|
+| **Domain Entities** | 100% | Account, Provider, AccountHealth tests |
+| **Domain Errors** | 100% | Error type formatting, edge cases |
+| **Domain Services** | 86-87% | ModelSelector, QueryClassifier tests |
+| **Execution Plan** | 80-90% | Cascading, Planner, Types tests |
+| **Quality Evaluator** | 85% | HeuristicQualityEvaluator tests |
+| **Failover Manager** | 86.79% | Failover logic, circuit breaker tests |
+| **Account Rotation** | 87.31% | Strategy pattern tests |
+| **Gateway** | 94.26% | LlmGatewayImpl, ProviderConfig tests |
+| **Chat Handler** | 85.80% | HTTP handler integration tests |
+| **Health Handler** | 100% | Health endpoint tests |
+| **CLI Commands** | 84-85% | Provider, Account, Auth command tests |
+| **Persistence** | 80.72% | JSON repository, atomic write tests |
 
 ### Test Structure
+
+All tests follow the Arrange-Act-Assert pattern:
 
 ```rust
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
-    fn test_feature_name() {
+    fn test_feature_name_scenario_expected() {
         // Arrange
         let input = ...;
-        
+
         // Act
         let result = function_under_test(input);
-        
+
         // Assert
         assert!(result.is_ok());
     }
 }
 ```
 
-## 🧪 Writing Tests
+## Test Patterns
 
 ### Unit Tests (Domain Layer)
 
@@ -110,22 +139,18 @@ mod tests {
 #[test]
 fn test_health_score_with_no_requests() {
     let health = AccountHealth::new("test-account");
-    
-    // Default score for new accounts
-    assert_eq!(health.health_score(), 25.0);
+    assert_eq!(health.health_score(), 25.0); // Default score
 }
 
 #[test]
 fn test_circuit_breaker_opens_after_5_failures() {
     let mut health = AccountHealth::new("test-account");
-    
-    // 4 failures - should still be closed
-    for i in 0..4 {
+
+    for _ in 0..4 {
         health.record_failure();
         assert!(!health.circuit_breaker_open);
     }
-    
-    // 5th failure - should open
+
     health.record_failure();
     assert!(health.circuit_breaker_open);
 }
@@ -142,7 +167,7 @@ use wiremock::matchers::{method, path, header};
 #[tokio::test]
 async fn test_chat_handler_success() {
     let mock_server = MockServer::start().await;
-    
+
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
@@ -152,11 +177,10 @@ async fn test_chat_handler_success() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    
-    // Make request and verify response
+
     let response = make_chat_request(&mock_server.uri()).await;
     assert_eq!(response.status(), StatusCode::OK);
-    
+
     mock_server.verify().await;
 }
 ```
@@ -170,13 +194,11 @@ async fn test_chat_handler_success() {
 fn test_error_format_no_api_key_leak() {
     let api_key = "sk-super-secret-key-12345";
     let error = Error::Internal(format!("Failed with key: {}", api_key));
-    
-    // Snapshot verifies error format
+
     insta::assert_snapshot!(format!("{:?}", error), @r###"
     Internal("Failed with key: [REDACTED]")
     "###);
-    
-    // Verify API key is not leaked
+
     let error_string = format!("{:?}", error);
     assert!(!error_string.contains(api_key));
 }
@@ -193,8 +215,7 @@ proptest! {
     #[test]
     fn prop_health_score_in_range(total_requests: u64, successful: u64) {
         let mut health = AccountHealth::new("test");
-        
-        // Record some requests
+
         for _ in 0..total_requests.min(1000) {
             if _ < successful.min(total_requests) {
                 health.record_success(100);
@@ -202,41 +223,83 @@ proptest! {
                 health.record_failure();
             }
         }
-        
-        // Score should always be 0-100
+
         let score = health.health_score();
         prop_assert!(score >= 0.0 && score <= 100.0);
     }
 }
 ```
 
-## 📈 Coverage Goals
+### Live Contract Tests (Real APIs)
+
+```bash
+# Enable live tests (requires API keys)
+LIVE_TEST=1 GROQ_API_KEY=your-key cargo test --test live_contract_tests -- --ignored test_groq_contract
+LIVE_TEST=1 OPENAI_API_KEY=your-key cargo test --test live_contract_tests -- --ignored test_openai_contract
+LIVE_TEST=1 ANTHROPIC_API_KEY=your-key cargo test --test live_contract_tests -- --ignored test_anthropic_contract
+```
+
+Live contract tests:
+- Validate provider API schemas against expected contracts
+- Detect provider drift before it breaks production
+- Gated behind `LIVE_TEST=1` + provider API key environment variables
+- Use insta snapshots with redactions for stable comparisons
+- Run on main branch only (not on every CI run)
+
+## Coverage Goals
 
 ### Target Coverage by Layer
 
 | Layer | Target | Current | Status |
 |-------|--------|---------|--------|
-| **Domain** | >90% | 100% | ✅ |
-| **Error Handling** | >90% | 100% | ✅ |
-| **Application Services** | >80% | 86-87% | ✅ |
-| **Infrastructure** | >80% | 80-94% | ✅ |
-| **Presentation** | >80% | 85% | ✅ |
-| **CLI** | >80% | 84-85% | ✅ |
+| **Domain** | >90% | 100% | Achieved |
+| **Error Handling** | >90% | 100% | Achieved |
+| **Application Services** | >80% | 86-87% | Achieved |
+| **Infrastructure** | >80% | 80-94% | Achieved |
+| **Presentation** | >80% | 85% | Achieved |
+| **CLI** | >80% | 84-85% | Achieved |
+| **Overall** | >80% | 80.35% | Achieved |
+
+### Coverage Achievement
+
+- **Starting point**: 32.02% coverage, 104 tests
+- **Final achievement**: 80.35% coverage, 492 tests
+- **Progress**: +48.33% coverage, +388 tests
 
 ### Monitoring Coverage
 
 ```bash
-# Check coverage by file
-cargo llvm-cov --summary-only | grep "src/"
+# Check overall summary
+cargo llvm-cov --summary-only
 
-# Check specific file coverage
-cargo llvm-cov --open --package rust-llm-api-router -- chat_handler
+# Check specific module coverage
+cargo llvm-cov --summary-only | grep "execution_plan"
+cargo llvm-cov --summary-only | grep "quality"
 
-# Generate coverage for CI
+# Generate XML for CI
 cargo llvm-cov --xml --output-path coverage.xml
 ```
 
-## 🔧 Troubleshooting
+## Performance Targets
+
+| Metric | Traditional | Optimized | Improvement |
+|--------|-------------|-----------|-------------|
+| **Test Execution** | ~31s | ~8s | 4x faster |
+| **Coverage Generation** | ~5min | ~30s | 10x faster |
+| **Build (cached)** | ~60s | ~10s (with sccache) | 6x faster |
+
+### Test Distribution
+
+```
+Unit Tests:           ~200 tests (40%)
+Integration Tests:    ~200 tests (40%)
+Security Tests:        ~50 tests (10%)
+Snapshot Tests:        ~20 tests (5%)
+Property-based:        ~12 tests (3%)
+Live Contract Tests:    ~3 tests (<1%, gated)
+```
+
+## Troubleshooting
 
 ### Tests Failing to Compile
 
@@ -244,14 +307,10 @@ cargo llvm-cov --xml --output-path coverage.xml
 
 **Solution**:
 ```rust
-// Include provider_config in AppState
 let config = ProviderConfig::default();
-let gateway = Arc::new(LlmGateway::with_config(config.clone()));
-
 let state = AppState {
-    failover_manager: Arc::new(manager),
-    llm_gateway: gateway,
     provider_config: Arc::new(HashMap::new()),
+    // ... other fields
 };
 ```
 
@@ -281,46 +340,55 @@ cargo llvm-cov --clean --html --output-dir coverage-llvm
 export CARGO_LLVM_COV_TIMEOUT=300
 ```
 
-## 🎯 Best Practices
+## Best Practices
 
-### DO ✅
+### Do
 
 - Use `cargo nextest` for running tests (4x faster)
 - Use `cargo llvm-cov` for coverage (10x faster)
-- Write tests in `Arrange-Act-Assert` pattern
+- Write tests in Arrange-Act-Assert pattern
 - Use descriptive test names: `test_feature_scenario_expected()`
 - Mock external dependencies (HTTP, DB, FS)
 - Test error paths, not just happy paths
 - Use `#[ignore]` for slow tests (>1s)
+- Keep domain layer pure (no external dependencies except serde)
 
-### DON'T ❌
+### Don't
 
-- Don't use `cargo test` (slower than nextest)
-- Don't use `cargo tarpaulin` (slower than llvm-cov)
-- Don't test implementation details
-- Don't write tests that depend on external services
-- Don't ignore failing tests
-- Don't commit coverage directories (`coverage/`, `coverage-llvm/`)
+- Use `cargo test` (slower than nextest)
+- Use `cargo tarpaulin` (slower than llvm-cov)
+- Test implementation details
+- Write tests that depend on external services (except live contract tests)
+- Ignore failing tests
+- Commit coverage directories (`coverage/`, `coverage-llvm/`)
+- Use `unwrap()` or `expect()` in production code
+- Hold locks across `.await` points
 
-## 📚 Resources
+## Achievements
 
-- [cargo-nextest documentation](https://nexte.st/)
-- [cargo-llvm-cov documentation](https://github.com/taiki-e/cargo-llvm-cov)
-- [wiremock documentation](https://docs.rs/wiremock)
-- [insta documentation](https://insta.rs/)
-- [proptest documentation](https://altsysrq.github.io/proptest-book/)
+- 80.35% Code Coverage (32% -> 80.35%, +48.33%)
+- 492 Tests Passing (104 -> 492, +388 tests)
+- 0 Tests Failing
+- 100% Domain Coverage
+- 100% Error Handling Coverage
+- 94.26% Gateway Coverage
+- Live contract tests for OpenAI, Anthropic, Groq
+- Atomic JSON persistence with fs4 locking
+- Property-based testing for edge cases
 
-## 🏆 Achievements
+## Resources
 
-- ✅ **80.35% Code Coverage** (32% → 80.35%, +48.33%)
-- ✅ **492 Tests Passing** (104 → 492, +388 tests)
-- ✅ **0 Tests Failing**
-- ✅ **100% Domain Coverage**
-- ✅ **100% Error Handling Coverage**
-- ✅ **94.26% Gateway Coverage**
+- [cargo-nextest](https://nexte.st/) -- Fast test runner
+- [cargo-llvm-cov](https://github.com/taiki-e/cargo-llvm-cov) -- Native coverage
+- [wiremock](https://docs.rs/wiremock) -- HTTP mocking
+- [insta](https://insta.rs/) -- Snapshot testing
+- [proptest](https://altsysrq.github.io/proptest-book/) -- Property-based testing
+- [Testing Journey](TESTING_JOURNEY.md) -- Historical coverage progress
+- [Architecture](architecture.md) -- System architecture
 
 ---
 
-**Last Updated:** 2026-03-14  
-**Rust Version:** 1.93.0  
-**Testing Stack:** 2025-26 Optimal
+**Last Updated:** April 2026
+**Rust Version:** 1.93.0
+**Test Coverage:** 80.35%
+**Tests Passing:** 492/492

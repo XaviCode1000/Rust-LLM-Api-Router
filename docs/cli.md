@@ -1,6 +1,6 @@
 # CLI Reference
 
-The CLI features modern interactive output with colored feedback, professional tables, and interactive prompts.
+The CLI provides a polished user experience with colored output, professional tables, interactive prompts, and TTY detection.
 
 ## Global Options
 
@@ -18,6 +18,16 @@ Options:
       --max-retries <RETRIES>            Maximum retries per request [default: 3]
       --timeout <SECONDS>                Request timeout in seconds [default: 60]
   -h, --help                             Print help
+```
+
+## CLI Commands
+
+```
+Commands:
+  provider      Provider management (add, list, enable, disable, remove, validate)
+  account       Account management (add, list, set-priority, remove, validate)
+  auth          Authentication (login, logout)
+  completions   Shell completions (bash, zsh, fish) -- requires --features completions
 ```
 
 ## Modern CLI Features (Issue #19)
@@ -229,12 +239,29 @@ llm-router --routing-strategy failover --max-retries 5 --timeout 120
 llm-router --port 8080 --routing-strategy cascading --quality-threshold 0.8
 ```
 
+### Environment Variables
+
+Routing configuration can also be set via environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ROUTING_STRATEGY` | Overall routing strategy | `auto` |
+| `CASCADING_ENABLED` | Enable cascading routing | `false` |
+| `CASCADING_MIN_QUALITY` | Minimum quality score | `0.75` |
+| `CASCADING_MAX_TIERS` | Maximum tiers to try | `3` |
+| `CASCADING_PER_TIER_TIMEOUT_MS` | Timeout per tier | `5000` |
+| `BUDGET_MODE` | Enable budget mode | `false` |
+| `MAX_RETRIES` | Maximum retries per request | `3` |
+| `REQUEST_TIMEOUT_SECONDS` | Request timeout in seconds | `60` |
+
+**Priority hierarchy:** CLI flags > Environment variables > Default values
+
 ## Auth Commands
 
 ### Login
 
 ```bash
-# Login with API key (requires --provider)
+# Login with API key
 llm-router auth login --provider <provider_id>
 llm-router auth login -p <provider_id>
 
@@ -270,9 +297,9 @@ Generate shell completions for your terminal (requires `completions` feature fla
 cargo build --release --features completions
 
 # Generate completions for your shell
-llm-router completions --shell bash > ~/.local/share/bash-completion/completions/llm-router
-llm-router completions --shell zsh > ~/.zfunc/_llm-router
-llm-router completions --shell fish > ~/.config/fish/completions/llm-router.fish
+llm-router completions bash > ~/.local/share/bash-completion/completions/llm-router
+llm-router completions zsh > ~/.zfunc/_llm-router
+llm-router completions fish > ~/.config/fish/completions/llm-router.fish
 ```
 
 **Supported shells:** `bash`, `zsh`, `fish`
@@ -294,7 +321,7 @@ llm-router provider add --id openai --name "OpenAI" --base-url "https://api.open
 llm-router account add --id groq-working --provider groq --api-key "<your-groq-api-key>" --priority 0
 
 # Add OpenAI account (requires valid key from platform.openai.com)
-llm-router account add --id openai-working --provider openai --api-key "<your-api-key>r-valid-key-here" --priority 0
+llm-router account add --id openai-working --provider openai --api-key "<your-api-key>" --priority 0
 ```
 
 ## Testing the Setup
@@ -332,13 +359,44 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 ## Troubleshooting
 
 ### "No active accounts found for provider"
-- Solution: Add accounts for the provider using `llm-router account add`
+- **Solution**: Add accounts for the provider using `llm-router account add`
 
 ### "Provider returned 401 Unauthorized"
-- Solution: Verify your API key is valid and has sufficient permissions
+- **Solution**: Verify your API key is valid and has sufficient permissions
 
 ### "Model decommissioned" (Groq specific)
-- Solution: Use supported models like `llama-3.3-70b-versatile` or `llama-3.1-8b-instant`
+- **Solution**: Use supported models like `llama-3.3-70b-versatile` or `llama-3.1-8b-instant`
 
 ### Port already in use
-- Solution: Kill existing process or use different port: `llm-router --port 8081`
+- **Solution**: Kill existing process or use different port: `llm-router --port 8081`
+
+## CLI Module Structure
+
+The CLI module consists of 13 files organized into commands and helpers:
+
+**Commands** (`src/presentation/cli/commands/`):
+| File | Purpose |
+|------|---------|
+| `provider.rs` | Provider subcommand handler |
+| `account.rs` | Account subcommand handler |
+| `auth.rs` | Auth subcommand handler |
+| `login.rs` | Login implementation |
+| `logout.rs` | Logout implementation |
+| `completions.rs` | Shell completion generation |
+
+**Helpers** (`src/presentation/cli/`):
+| File | Purpose |
+|------|---------|
+| `mod.rs` | Cli struct, CliCommands enum, dispatcher |
+| `input.rs` | Input helpers |
+| `output.rs` | Output formatting |
+| `prompt.rs` | Interactive prompts |
+| `spinner.rs` | Progress spinners |
+| `table.rs` | Table formatting |
+| `tty.rs` | TTY detection |
+
+## See Also
+
+- [API Reference](api.md) -- API endpoints and usage
+- [Routing Strategies](routing.md) -- Detailed routing configuration
+- [Architecture](architecture.md) -- System architecture overview

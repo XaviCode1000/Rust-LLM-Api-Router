@@ -18,421 +18,143 @@
   </a>
 </p>
 
-A high-performance LLM proxy/router built with Clean Architecture in Rust. Route requests across multiple providers and accounts with automatic failover, health monitoring, and intelligent account selection.
+**Un solo endpoint para 29 proveedores de IA.** Ahorrá costos, evitá caídas, y mantené el control de tus APIs — todo con una interfaz compatible con OpenAI.
 
-## Features
+---
 
-- **Multi-Provider Support**: Connect to 29 LLM providers (OpenAI, Anthropic, Groq, Mistral, and 26 more including local and enterprise options)
-- **Multi-Account Routing**: Register multiple API keys per provider with automatic rotation
-- **Automatic Failover**: Circuit breaker pattern with intelligent retry logic
-- **Streaming (SSE)**: Real-time token-by-token streaming responses
-- **OpenAI-Compatible API**: Drop-in replacement for OpenAI clients
-- **Health Monitoring**: Real-time health checks and metrics
-- **Modern Interactive CLI**: Colored output, professional tables, interactive prompts, spinners (#19)
-- **Integrated CLI**: Manage providers and accounts from the terminal
-- **Shell Completions**: Auto-completion for bash, zsh, and fish (build with `--features completions`)
-- **Execution Planning**: Proactive planning with multiple strategies (Standard, Failover, Load Balanced, Cost Optimized, Cascading)
-- **Task-Based Routing**: Intelligent routing based on query type (General, Chat, Code, Reasoning, Summarization, Translation) (#26)
-- **Cost-Aware Routing**: Static model selection based on query complexity (#23)
-- **Cascading Routing**: Dynamic escalation when quality thresholds not met (#24)
-- **Routing Configuration**: CLI flags and environment variables for routing strategies (#29)
-- **Quality Evaluation**: Heuristic-based response quality checks with structured tracing
-- **Token Validation**: Pre-flight context window check prevents wasteful API calls
-- **Live Contract Tests**: Real API schema validation detects provider drift before production breaks
-- **Atomic Persistence**: File locking + atomic writes prevent data corruption under concurrent access
-- **OAuth 2.1 / PKCE**: Secure authentication flow support
-- **Secure API Key Storage**: System keyring (macOS Keychain, Windows Credential Manager, Linux Secret Service) or encrypted file fallback (#22)
-- **Docker & Containerization**: Multi-stage Dockerfile, docker-compose.yml, GitHub Actions for GHCR (#15)
+## ¿Qué Hace?
 
-## Quick Start
+LLM API Router es un **proxy inteligente** que se sienta entre tus aplicaciones y los proveedores de IA (OpenAI, Anthropic, Groq, etc.) y hace tres cosas:
 
-### Option 1: Build from Source
+1. **Balancea costos** — Usa el modelo más barato que pueda manejar tu consulta
+2. **Previene caídas** — Si un proveedor falla, rota automáticamente a otro
+3. **Consolida APIs** — Todos los proveedores hablan el mismo idioma (OpenAI-compatible)
+
+> **¿Para quién es?** Equipos que usan múltiples proveedores de IA, quieren reducir costos de API, necesitan alta disponibilidad, o ambos.
+
+---
+
+## Empezar en 5 Minutos
+
+### 1. Instalá
 
 ```bash
-cargo build --release
-```
-
-### Option 2: Docker
-
-```bash
-# Pull from GHCR
+# Docker (recomendado)
 docker pull ghcr.io/xavicode1000/rust-llm-api-router:latest
-
-# Run
 docker run -d -p 8080:8080 ghcr.io/xavicode1000/rust-llm-api-router:latest
 
-# Or with docker-compose
-docker compose up -d
+# O compilá desde fuente
+cargo build --release
+./target/release/llm-router --port 8080
 ```
 
-### Register Providers
+### 2. Registrá un Proveedor
 
 ```bash
-# Register a provider
 ./target/release/llm-router provider add \
   --id groq \
   --name "Groq" \
   --base-url "https://api.groq.com/openai/v1"
-
-# List providers
-./target/release/llm-router provider list
 ```
 
-### 3. Register Accounts with API Keys
+### 3. Agregá tu API Key
 
 ```bash
-# Register account with API key
 ./target/release/llm-router account add \
-  --id groq-1 \
+  --id mi-groq \
   --provider groq \
-  --api-key "your-api-key-here" \
-  --priority 0
-
-# List accounts
-./target/release/llm-router account list
+  --api-key "tu-api-key"
 ```
 
-### 4. Start Server
-
-```bash
-./target/release/llm-router --port 8080
-```
-
-### 5. Test the API
+### 4. Usalo
 
 ```bash
 curl -X POST http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <your-test-api-key>" \
   -d '{
     "model": "groq:llama-3.3-70b-versatile",
-    "messages": [{"role": "user", "content": "Hello!"}]
+    "messages": [{"role": "user", "content": "Hola!"}]
   }'
 ```
 
-> **Note**: Models must be specified with the provider prefix (e.g., `groq:model-name`, `openai:gpt-3.5-turbo`)
+**Listo.** Tu app ahora habla con Groq a través del router.
 
-### Streaming (SSE)
+---
 
+## Funcionalidades Principales
+
+| Función | Qué Hace |
+|---------|----------|
+| **29 Proveedores** | OpenAI, Anthropic, Groq, Mistral, Ollama, y 24 más |
+| **Multi-Cuenta** | Múltiples API keys por proveedor con rotación automática |
+| **Failover Automático** | Si un proveedor cae, rota a otro sin que lo notes |
+| **Streaming (SSE)** | Respuestas token por token en tiempo real |
+| **Ahorro de Costos** | Elige el modelo más barato capaz de manejar tu consulta |
+| **CLI Interactiva** | Gestioná todo desde la terminal con colores y tablas |
+| **API Compatible OpenAI** | Drop-in replacement — tu app no necesita cambios |
+
+---
+
+## Estrategias de Enrutamiento Inteligente
+
+El router puede **pensar antes de enviar** tu request:
+
+| Estrategia | Cuándo Usarla |
+|------------|---------------|
+| **Cost-Aware** | Querés el modelo más barato posible para cada tipo de consulta |
+| **Cascading** | Empezá barato, escalá si la calidad no alcanza |
+| **Task-Based** | Diferentes modelos para código, chat, razonamiento, etc. |
+| **Failover** | Alta disponibilidad — si uno falla, otro responde |
+
+**Ejemplo rápido:**
 ```bash
-curl -N -X POST http://localhost:8080/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <your-test-api-key>" \
-  -d '{
-    "model": "groq:llama-3.3-70b-versatile",
-    "messages": [{"role": "user", "content": "Hello!"}],
-    "stream": true,
-    "max_tokens": 50
-  }'
+# Activar enrutamiento cascading (empieza barato, escala si hace falta)
+./target/release/llm-router --routing-strategy cascading --quality-threshold 0.85
 ```
 
-## Architecture
+> 📖 **Guía completa de enrutamiento:** [docs/routing.md](docs/routing.md)
 
-This project follows **Clean Architecture** and **Domain-Driven Design (DDD)** principles:
+---
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                 Presentation Layer                           │
-│  (HTTP Handlers, Routes, CLI, Middleware)                  │
-├─────────────────────────────────────────────────────────────┤
-│                 Application Layer                            │
-│  (Use Cases, Services, Rotation Strategies, Execution Plans)│
-├─────────────────────────────────────────────────────────────┤
-│                   Domain Layer                               │
-│  (Entities, Traits/Ports, Domain Errors, Auth Strategies)  │
-├─────────────────────────────────────────────────────────────┤
-│              Infrastructure Layer                            │
-│  (HTTP Client, JSON Persistence, Provider Adapters, Auth)   │
-└─────────────────────────────────────────────────────────────┘
-```
+## Proveedores Soportados
 
-For detailed architecture documentation, see [docs/architecture.md](docs/architecture.md).
+### Principales (Testeados ✅)
 
-For intelligent routing strategies (Cost-Aware and Cascading), see [docs/routing.md](docs/routing.md).
+| Proveedor | Estado |
+|-----------|--------|
+| OpenAI | ✅ |
+| Anthropic | ✅ |
+| Groq | ✅ |
+| Mistral AI | ✅ |
+| OpenRouter | ✅ |
+| Cerebras | ✅ |
+| Cloudflare Workers AI | ✅ |
 
-## API Reference
+### Otros 22 Proveedores
 
-### POST /v1/chat/completions
+Ollama, LM Studio, vLLM (locales), Azure OpenAI, AWS Bedrock, Google Vertex AI (enterprise), DeepSeek, Together, Fireworks AI, xAI/Grok, Perplexity, y más.
 
-OpenAI-compatible chat completions endpoint.
+> 📋 **Lista completa con URLs:** [docs/architecture.md](docs/architecture.md)
 
-**Request:**
+---
+
+## Modelos Verificados
+
+### Groq
+- `llama-3.3-70b-versatile` ✅
+- `llama-3.1-8b-instant` ✅
+- `groq/compound` ✅
+- `groq/compound-mini` ✅
+
+> ⚠️ Modelos viejos de Groq como `llama3-8b-8192` fueron descontinuados.
+
+---
+
+## Uso con Tu App
+
+### OpenCode
 
 ```json
-{
-  "model": "groq:llama-3.3-70b-versatile",
-  "messages": [
-    {"role": "user", "content": "Hello!"}
-  ],
-  "temperature": 0.7,
-  "max_tokens": 1024
-}
-```
-
-**Response:**
-
-```json
-{
-  "id": "chatcmpl-xxx",
-  "object": "chat.completion",
-  "created": 1773335238,
-  "model": "groq:llama-3.3-70b-versatile",
-  "choices": [{
-    "index": 0,
-    "message": {
-      "role": "assistant",
-      "content": "Hello! How can I help you?"
-    },
-    "finish_reason": "stop"
-  }],
-  "usage": {
-    "prompt_tokens": 10,
-    "completion_tokens": 8,
-    "total_tokens": 18
-  }
-}
-```
-
-### GET /health
-
-Basic health check endpoint.
-
-```bash
-curl http://localhost:8080/health
-# {"status":"healthy","timestamp":1773335508,"version":"0.1.0"}
-```
-
-### GET /health/detail
-
-Detailed system health status.
-
-```bash
-curl http://localhost:8080/health/detail
-```
-
-### GET /v1/models
-
-List available models from all providers.
-
-```bash
-curl http://localhost:8080/v1/models
-```
-
-### GET /accounts
-
-List registered accounts (masked API keys).
-
-```bash
-curl http://localhost:8080/accounts
-```
-
-### GET /metrics
-
-Prometheus metrics endpoint.
-
-```bash
-curl http://localhost:8080/metrics
-```
-
-## CLI Reference
-
-The CLI features modern interactive output with colored feedback, professional tables, and interactive prompts.
-
-### Providers
-
-```bash
-# Add provider
-llm-router provider add --id <id> --name <name> --base-url <url> [--disabled]
-
-# List providers (shows enabled status + account configuration)
-llm-router provider list
-# Output:
-# ID          Name         Base URL                      Status      Account
-# -------------------------------------------------------------------------
-# groq        Groq         https://api.groq.com/...      ✓ Enabled   ✓ Configured
-# openrouter  OpenRouter   https://openrouter.ai/...     ✓ Enabled   ✗ Not set
-
-# List available models for a provider (requires authenticated account)
-llm-router provider models --provider <provider_id>
-# Example:
-# llm-router provider models --provider groq
-
-# Enable provider
-llm-router provider enable --id <id>
-
-# Disable provider
-llm-router provider disable --id <id>
-
-# Remove provider
-llm-router provider remove --id <id>
-
-# Validate provider
-llm-router provider validate --id <id>
-```
-
-### Accounts
-
-```bash
-# Add account
-llm-router account add \
-  --id <id> \
-  --provider <provider_id> \
-  --api-key <key> \
-  [--priority <n>] \
-  [--interactive]
-
-# List accounts
-llm-router account list
-
-# Set priority
-llm-router account set-priority --id <id> --priority <n>
-
-# Remove account
-llm-router account remove --id <id>
-
-# Validate account
-llm-router account validate --id <id>
-```
-
-### Authentication (OAuth 2.1 + PKCE)
-
-The router supports secure authentication via OAuth 2.1 with PKCE (Proof Key for Code Exchange) for enhanced security, and Device Flow for headless environments.
-
-#### Login Commands
-
-```bash
-# Login with API key (requires --provider argument)
-llm-router auth login --provider groq
-llm-router auth login -p openai
-
-# Login with OAuth 2.1 PKCE (opens browser for authentication)
-llm-router login --provider <provider_id>
-
-# Login with Device Flow (for headless environments)
-llm-router login --provider <provider_id> --device-flow
-
-# Login with specific auth URL (for custom Identity Providers)
-llm-router login --provider <provider_id> \
-  --auth-url "https://auth.provider.com/authorize" \
-  --token-url "https://auth.provider.com/token"
-
-# Interactive login (prompts for credentials)
-llm-router login --interactive
-```
-
-> **Note**: The `auth login` command requires the `--provider` argument. Use `llm-router provider list` to see available providers.
-
-#### Logout Commands
-
-```bash
-# Logout from a specific provider
-llm-router logout --provider <provider_id>
-
-# Logout from all providers
-llm-router logout --all
-
-# Clear stored credentials
-llm-router logout --clear-credentials
-```
-
-#### Authentication Flow
-
-1. **PKCE Flow (Default)**:
-   - Generates cryptographic verifier/challenge
-   - Opens browser for user authorization
-   - Handles callback with authorization code
-   - Exchanges code for access/refresh tokens
-   - Tokens stored securely in system keyring
-
-2. **Device Flow (Headless)**:
-   - Activates automatically in headless environments
-   - Displays verification URL and user code
-   - Polls for authorization completion
-   - Supports timeout handling
-
-#### Environment Variables
-
-```bash
-# Custom Identity Provider
-export OAUTH_CLIENT_ID="your-client-id"
-export OAUTH_CLIENT_SECRET="your-client-secret"
-
-# Use device flow explicitly
-export NO_BROWSER=true
-
-# Custom CA certificate (corporate proxies)
-export CLI_CUSTOM_CA_CERT=/path/to/ca.pem
-```
-
-## Supported Providers
-
-### Major AI Providers (Commercial)
-
-| Provider | Base URL | Status |
-|----------|----------|--------|
-| OpenAI | https://api.openai.com/v1 | ✅ Tested |
-| Anthropic | https://api.anthropic.com/v1 | ✅ Tested |
-| Mistral AI | https://api.mistral.ai/v1 | ✅ Tested |
-| Cohere | https://api.cohere.ai/v1 | ✅ Tested |
-| Google AI Studio | https://generativelanguage.googleapis.com/v1 | 🔄 Supported |
-
-### OpenAI-Compatible Platforms
-
-| Provider | Base URL | Status |
-|----------|----------|--------|
-| Groq | https://api.groq.com/openai/v1 | ✅ Tested |
-| OpenRouter | https://openrouter.ai/api/v1 | ✅ Tested |
-| Cerebras | https://api.cerebras.ai/v1 | ✅ Tested |
-| Cloudflare Workers AI | https://gateway.ai.cloudflare.com/v1 | ✅ Tested |
-| DeepSeek | https://api.deepseek.com/v1 | 🔄 Supported |
-| Together | https://api.together.xyz/v1 | 🔄 Supported |
-| Fireworks AI | https://api.fireworks.ai/inference/v1 | 🔄 Supported |
-| xAI (Grok) | https://api.x.ai/v1 | 🔄 Supported |
-| Perplexity AI | https://api.perplexity.ai/v1 | 🔄 Supported |
-| Replicate | https://api.replicate.com/v1 | 🔄 Supported |
-| Anyscale | https://api.endpoints.anyscale.com/v1 | 🔄 Supported |
-| DeepInfra | https://api.deepinfra.com/v1 | 🔄 Supported |
-| Novita AI | https://api.novita.ai/v1 | 🔄 Supported |
-| SambaNova | https://api.sambanova.ai/v1 | 🔄 Supported |
-| NVIDIA NIM | https://integrate.api.nvidia.com/v1 | 🔄 Supported |
-
-### Local/On-Premise Servers
-
-| Provider | Base URL | Status |
-|----------|----------|--------|
-| Ollama | http://localhost:11434/v1 | 🔄 Supported |
-| LM Studio | http://localhost:1234/v1 | 🔄 Supported |
-| vLLM | http://localhost:8000/v1 | 🔄 Supported |
-
-### Enterprise Cloud Services
-
-| Provider | Base URL | Status |
-|----------|----------|--------|
-| Azure OpenAI | https://{resource}.openai.azure.com/v1 | 🔄 Supported |
-| AWS Bedrock | https://bedrock-runtime.{region}.amazonaws.com | 🔄 Supported |
-| Google Vertex AI | https://{region}-aiplatform.googleapis.com/v1 | 🔄 Supported |
-
-### Other Providers
-
-| Provider | Base URL | Status |
-|----------|----------|--------|
-| Hugging Face | https://api-inference.huggingface.co | 🔄 Supported |
-| AI21 Labs | https://api.ai21.com/v1 | 🔄 Supported |
-| Aleph Alpha | https://api.aleph-alpha.com/v1 | 🔄 Supported |
-
-✅ = Tested | 🔄 = Supported (pending test)
-
-> **Note**: For Azure, Bedrock, and Vertex AI, replace `{resource}` or `{region}` with your specific resource/region. Enterprise providers may require additional configuration (IAM roles, managed identities, etc.).
-
-### OpenCode Integration
-
-You can use llm-router directly from OpenCode as an OpenAI-compatible proxy:
-
-```bash
-# 1. Start the server
-./target/release/llm-router --port 8080
-
-# 2. Configure OpenCode (.opencode/opencode.json)
 {
   "model": "groq:llama-3.3-70b-versatile",
   "provider": {
@@ -446,348 +168,152 @@ You can use llm-router directly from OpenCode as an OpenAI-compatible proxy:
 }
 ```
 
-See [`.opencode/tools/OPENCODE_INTEGRATION.md`](.opencode/tools/OPENCODE_INTEGRATION.md) for full documentation.
+### Cualquier Cliente OpenAI
 
-## Verified Working Models
+Solo cambiá la `baseURL` a `http://localhost:8080/v1` y listo.
 
-### Groq
+---
 
-- `llama-3.3-70b-versatile`
-- `llama-3.1-8b-instant`
-- `groq/compound`
-- `groq/compound-mini`
+## Comandos CLI Esenciales
 
-## Rotation Strategies
-
-The system supports 4 account rotation strategies:
-
-1. **Round-Robin**: Sequential rotation across accounts
-2. **Weighted**: Based on priority (lower number = higher priority)
-3. **Latency**: Selects account with lowest latency (WIP)
-4. **User-Affinity**: Same account per user (WIP)
-
-## Execution Planning
-
-The **Execution Plan** module transforms the system from reactive failover to proactive planning:
-
-- **Proactive Planning**: Select optimal account before first request
-- **Multiple Strategies**: Standard, Failover, Load Balanced, Cost Optimized
-- **Intelligent Rotation**: RoundRobin, HealthWeighted, Priority, LRU
-- **Integrated Metrics**: Prometheus metrics for monitoring
-- **Distributed Tracing**: OpenTelemetry for debugging
-
-See [src/app/services/execution_plan/README.md](src/app/services/execution_plan/README.md) for detailed documentation.
-
-### Execution Strategy Types
-
-| Type | Description |
-|------|-------------|
-| `Standard` | Single account execution |
-| `Failover` | Secondary accounts on failure |
-| `LoadBalanced` | Round-robin distribution |
-| `CostOptimized` | Lowest cost selection |
-| `Cascading` | Quality-based escalation across model tiers |
-
-## Intelligent Routing
-
-The router provides intelligent routing strategies for cost optimization:
-
-- **Cost-Aware Routing** (Issue #23): Static model selection by query complexity
-- **Cascading Routing** (Issue #24): Dynamic quality-based escalation
-- **Task-Based Routing** (Issue #26): Route by task type (General, Chat, Code, Reasoning, Summarization, Translation)
-- **Routing Configuration** (Issue #29): CLI flags and environment variables for all strategies
-
-### Quick Configuration
+### Proveedores
 
 ```bash
-# Via environment variables
-export ROUTING_STRATEGY=auto           # auto, cost-optimized, cascading, failover, load-balanced
-export CASCADING_ENABLED=true
-export CASCADING_MIN_QUALITY=0.75
-export BUDGET_MODE=true
-
-# Via CLI flags
-llm-router --routing-strategy cascading --cascading --quality-threshold 0.85
+./target/release/llm-router provider list          # Ver proveedores
+./target/release/llm-router provider add ...       # Agregar
+./target/release/llm-router provider enable ...    # Habilitar
+./target/release/llm-router provider models ...    # Ver modelos disponibles
 ```
 
-See [docs/routing.md](docs/routing.md) for detailed routing documentation.
-
-## Failover
-
-- **Circuit Breaker**: Opens after 5 consecutive failures
-- **Auto-Close**: Retries after 30 seconds
-- **Health Scoring**: 0-100 score based on success/latency
-
-## Configuration
-
-### Environment Variables
+### Cuentas
 
 ```bash
-# Server configuration
-PORT=8080                                    # Server port (default: 8080)
-HOST=0.0.0.0                                 # Host (default: 0.0.0.0)
-LOG_LEVEL=info                               # Log level (trace, debug, info, warn, error)
-
-# Planning configuration
-PLANNING_TIMEOUT_MS=5000                     # Planning timeout (default: 5000ms)
-MAX_ACCOUNTS_PER_PAN=3                       # Max accounts per plan (default: 3)
-
-# Routing configuration (Issue #29)
-ROUTING_STRATEGY=auto                        # auto, cost-optimized, cascading, failover, load-balanced
-CASCADING_ENABLED=false                     # Enable cascading routing
-CASCADING_MIN_QUALITY=0.75                   # Minimum quality score (0.0-1.0)
-CASCADING_MAX_TIERS=3                       # Maximum tiers to try
-CASCADING_PER_TIER_TIMEOUT_MS=5000         # Timeout per tier
-BUDGET_MODE=false                           # Enable budget mode
-MAX_RETRIES=3                               # Maximum retries per request
-REQUEST_TIMEOUT_SECONDS=60                  # Request timeout
-
-# Secure storage (Issue #22)
-SECURE_STORAGE=auto                          # auto, keyring, encrypted, disabled
-
-# Live contract tests (set to 1 to enable)
-LIVE_TEST=1
+./target/release/llm-router account list           # Ver cuentas
+./target/release/llm-router account add ...        # Agregar API key
+./target/release/llm-router account validate ...   # Verificar que funcione
 ```
 
-### Configuration Files
+### Autenticación Segura
 
-Configuration is stored in the XDG config directory:
+```bash
+./target/release/llm-router auth login --provider groq     # OAuth (abre navegador)
+./target/release/llm-router auth login --provider groq --device-flow  # Headless
+./target/release/llm-router logout --all                   # Cerrar sesión
+```
+
+> 📖 **Referencia completa de CLI:** [docs/cli.md](docs/cli.md)
+
+---
+
+## Endpoints de API
+
+| Endpoint | Qué Hace |
+|----------|----------|
+| `POST /v1/chat/completions` | Enviar consulta (compatible OpenAI) |
+| `GET /v1/models` | Listar modelos disponibles |
+| `GET /health` | Health check básico |
+| `GET /health/detail` | Estado detallado del sistema |
+| `GET /accounts` | Ver cuentas registradas |
+| `GET /metrics` | Métricas Prometheus |
+
+> 📖 **Referencia completa de API:** [docs/api.md](docs/api.md)
+
+---
+
+## Configuración
+
+### Variables de Entorno
+
+```bash
+PORT=8080                           # Puerto del servidor
+HOST=0.0.0.0                        # Host
+LOG_LEVEL=info                      # trace, debug, info, warn, error
+ROUTING_STRATEGY=auto               # auto, cost-optimized, cascading, failover
+CASCADING_MIN_QUALITY=0.75         # Umbral de calidad mínimo
+SECURE_STORAGE=auto                 # auto, keyring, encrypted, disabled
+```
+
+### Archivos de Configuración
 
 ```
 ~/.config/rust-llm-api-router/
-├── providers.json    # Registered providers
-└── accounts.json    # Accounts with API keys
+├── providers.json    # Proveedores registrados
+└── accounts.json     # Cuentas con API keys
 ```
 
-## Development
+---
 
-### Build
+## Seguridad
 
-```bash
-cargo build
-```
+- **API Keys:** Guardadas en el llavero del sistema (macOS Keychain, Windows Credential Manager, Linux Secret Service)
+- **OAuth 2.1 / PKCE:** Autenticación segura con navegador
+- **Device Flow:** Para entornos sin navegador (servidores, CI/CD)
+- **Cifrado:** AES-256-GCM con Argon2id como fallback
 
-### Tests & Coverage
+> 📖 **Detalles de seguridad:** [docs/security.md](docs/security.md)
 
-**Achievement: 80.35% Code Coverage with 492 tests passing.**
+---
 
-```bash
-# Run all tests (4x faster with nextest)
-cargo nextest run --test-threads 2
+## Calidad del Proyecto
 
-# Generate coverage report (10x faster than tarpaulin)
-cargo llvm-cov --html --output-dir coverage-llvm
+| Métrica | Valor |
+|---------|-------|
+| **Tests** | 492 pasando |
+| **Cobertura** | 80.35% |
+| **Proveedores** | 29 soportados |
+| **Licencia** | MIT |
 
-# View coverage summary
-cargo llvm-cov --summary-only
-```
+---
 
-#### Testing Journey
+## Para Desarrolladores
 
-- **Initial**: 32.02% coverage (104 tests)
-- **Current**: 80.35% coverage (492 tests)
-- **Progress**: +48.33% coverage, +388 tests added
+¿Querés contribuir, entender la arquitectura, o ver cómo funciona por dentro?
 
-See [docs/TESTING_JOURNEY.md](docs/TESTING_JOURNEY.md) for more details.
+| Tema | Dónde |
+|------|-------|
+| **Arquitectura** | [docs/architecture.md](docs/architecture.md) |
+| **Guía de Desarrollo** | [DEVELOPMENT.md](DEVELOPMENT.md) |
+| **Estrategias de Routing** | [docs/routing.md](docs/routing.md) |
+| **Testing** | [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) |
+| **Deployment** | [docs/deployment.md](docs/deployment.md) |
+| **Seguridad** | [docs/security.md](docs/security.md) |
+| **CLI Reference** | [docs/cli.md](docs/cli.md) |
+| **API Reference** | [docs/api.md](docs/api.md) |
 
-#### Live Contract Tests
+---
 
-Run real API contract tests against provider APIs (requires API keys):
+## Contribuir
 
-```bash
-# Enable live tests
-LIVE_TEST=1 cargo test --test live_contract_tests -- --ignored
+1. Fork el repo
+2. Creá una rama (`git checkout -b feature/mi-feature`)
+3. Commiteá (`git commit -m 'feat: agregué X'`)
+4. Pusheá (`git push origin feature/mi-feature`)
+5. Abrí un PR
 
-# Individual provider tests
-LIVE_TEST=1 OPENAI_API_KEY=your-key cargo test --test live_contract_tests -- --ignored test_openai_contract
-LIVE_TEST=1 ANTHROPIC_API_KEY=your-key cargo test --test live_contract_tests -- --ignored test_anthropic_contract
-LIVE_TEST=1 GROQ_API_KEY=your-key cargo test --test live_contract_tests -- --ignored test_groq_contract
-```
-
-> **Note**: Live tests are marked `#[ignore]` and gated behind `LIVE_TEST=1` + provider API key env vars. They run on CI only on `push` to `main`.
-
-#### Optimal Development Stack 2025-26
-
-The project uses the optimal Rust development stack:
-
-- **cargo-nextest**: Test runner (4x faster)
-- **cargo-llvm-cov**: Native LLVM coverage (10x faster)
-- **sccache**: Build cache (6x faster)
-- **cargo-watch**: Auto-rebuild on changes
-- **wiremock**: HTTP mocking for integration tests (complemented by live contract tests)
-- **mockall**: Trait mocking
-- **fs4**: Advisory file locking with tokio support
-- **insta**: Snapshot testing for drift detection
-
-See [DEVELOPMENT.md](DEVELOPMENT.md) for the complete guide.
-
-### Lint
-
-```bash
-cargo clippy
-cargo fmt
-```
-
-### Security
-
-### Secure API Key Storage (Issue #22)
-
-The router stores API keys securely using:
-
-- **System Keyring** (default): macOS Keychain, Windows Credential Manager, Linux Secret Service
-- **Encrypted File Fallback**: AES-256-GCM with Argon2id key derivation
-- **Automatic Migration**: Plaintext keys in `accounts.json` are migrated automatically
-
-```bash
-# Configuration via environment variable
-export SECURE_STORAGE=auto        # Default: use keyring if available
-export SECURE_STORAGE=encrypted   # Force encrypted file storage
-export SECURE_STORAGE=disabled    # Dev/testing only (not recommended)
-
-# CLI commands
-llm-router account secure-status  # Check storage status
-llm-router account migrate         # Migrate to secure storage
-```
-
-See [docs/security.md](docs/security.md) for full security documentation.
-
-### OAuth 2.1 / PKCE
-
-```bash
-# Login with OAuth 2.1 PKCE (opens browser)
-llm-router auth login --provider groq
-
-# Login with Device Flow (headless)
-llm-router auth login --provider groq --device-flow
-
-# Logout
-llm-router auth logout --provider groq
-```
-
-### Security Audit
-
-```bash
-cargo audit
-cargo deny check
-```
-
-## Contributing
-
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+---
 
 ## Roadmap
 
-### Testing Achievements ✅
+### ✅ Completado
 
-- [x] **80.35% Code Coverage** (32% → 80.35%, +48.33%)
-- [x] **492 Tests Passing** (104 → 492, +388 tests)
-- [x] **Domain Layer**: 100% coverage
-- [x] **Error Handling**: 100% coverage
-- [x] **Health Handler**: 100% coverage
-- [x] **Gateway**: 94.26% coverage
-- [x] **Failover**: 86.79% coverage
-- [x] **CLI Commands**: 84-85% coverage
-- [x] **Chat Handler**: 85.80% coverage
-- [x] **Repository**: 80.72% coverage
+- Streaming SSE
+- 29 proveedores soportados
+- Cost-Aware Routing (#23)
+- Cascading Routing (#24)
+- Task-Based Routing (#26)
+- CLI moderna con colores y tablas (#19)
+- Almacenamiento seguro de API keys (#22)
+- Docker y GHCR (#15)
+- 80%+ cobertura de tests
 
-### Completed ✅
+### 🔄 Próximo
 
-- [x] **Streaming (SSE)** for /v1/chat/completions
-- [x] **Endpoint /v1/models** with real model list
-- [x] **Anthropic Adapters** (different format)
-- [x] **Supported Providers**: 29 LLM providers (OpenAI, Anthropic, Groq, Mistral, and 25 more including local and enterprise options)
-- [x] **80.35% Code Coverage** with 492 tests
-- [x] **Execution Planning Module** with proactive failover
-- [x] **Auth Login with --provider argument** (configurable provider)
-- [x] **Provider List with account status** (shows configured/not set)
-- [x] **Provider Models command** (list available models)
-- [x] **Cost-Aware Routing** (#23) - Static model selection by query complexity
-- [x] **Cascading Routing** (#24) - Dynamic quality-based escalation
-- [x] **Live Contract Tests** for provider API drift detection
-- [x] **Atomic JSON Persistence** with file locking
-- [x] **Task-Based Routing** (#26) - Route by task type (General, Chat, Code, Reasoning, Summarization, Translation)
-- [x] **Modern Interactive CLI** (#19) - Colored output, tables, prompts, spinners
-- [x] **Routing Configuration CLI/Env** (#29) - CLI flags and environment variables for routing
-- [x] **Docker & Containerization** (#15) - Dockerfile, docker-compose, GitHub Actions
-- [x] **Secure API Key Storage** (#22) - System keyring + encrypted file fallback
+- Kubernetes manifests
+- Testing completo de los 29 proveedores
+- Guías por proveedor
 
-### Pending 🔄
+---
 
-- [ ] Kubernetes manifests (beyond basic docker-compose)
-- [ ] Comprehensive testing of all 29 providers (especially enterprise and specialized platforms)
-- [ ] Provider-specific authentication and configuration guides
+## Licencia
 
-## Project Structure
-
-```
-src/
-├── domain/           # Domain layer (entities, traits, errors)
-│   ├── entities/     # Core business entities
-│   ├── traits/       # Ports/interfaces
-│   ├── errors/      # Domain errors
-│   └── services/    # Domain services
-│       ├── model_selector.rs    # CostAwareSelector (Issue #23)
-│       └── query_complexity.rs  # QueryClassifier + TaskType (Issues #23, #26)
-├── app/             # Application layer (use cases, services)
-│   ├── services/    # Application services
-│   │   ├── account_rotation.rs
-│   │   ├── execution_plan/
-│   │   │   ├── cascading.rs     # CascadingExecutionPlan (Issue #24)
-│   │   │   ├── types.rs         # ExecutionPlanType enum
-│   │   │   └── planner.rs       # ExecutionPlanner
-│   │   ├── quality/
-│   │   │   └── evaluator.rs     # HeuristicQualityEvaluator (Issue #24)
-│   │   ├── failover.rs
-│   │   └── auth/
-│   ├── router/     # Internal routing
-│   └── health.rs   # Health service
-├── infrastructure/ # Infrastructure layer (implementations)
-│   ├── http_client.rs
-│   ├── logging.rs
-│   ├── metrics.rs
-│   ├── persistence/   # JSON file storage
-│   ├── provider/     # Provider adapters
-│   ├── gateway/      # LLM gateway
-│   ├── secure_storage/         # Secure API Key Storage (Issue #22)
-│   │   ├── mod.rs
-│   │   ├── keyring_adapter.rs
-│   │   └── encrypted_store.rs
-│   └── auth/         # Authentication strategies
-├── presentation/   # Presentation layer
-│   ├── handlers/   # HTTP handlers
-│   ├── routes.rs   # Route definitions
-│   ├── state.rs    # Application state
-│   └── cli/        # CLI commands
-│       ├── mod.rs       # CLI dispatcher
-│       ├── commands/    # CLI command implementations
-│       │   ├── provider.rs    # Provider CRUD
-│       │   ├── account.rs     # Account CRUD
-│       │   ├── auth.rs        # Login/logout
-│       │   ├── login.rs      # OAuth login
-│       │   └── logout.rs     # OAuth logout
-│       └── ui/          # Modern CLI UI (Issue #19)
-│           ├── output.rs      # Colored output
-│           ├── spinner.rs     # Progress spinners
-│           ├── table.rs       # Professional tables
-│           ├── prompt.rs      # Interactive prompts
-│           └── tty.rs        # TTY detection
-├── config/         # Configuration
-│   ├── mod.rs
-│   └── routing.rs   # Routing Configuration (Issue #29)
-├── lib.rs          # Library root
-└── main.rs         # Binary entry point
-```
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Acknowledgments
-
-Built with Clean Architecture and DDD patterns in Rust.
+MIT — ver [LICENSE](LICENSE) para detalles.
