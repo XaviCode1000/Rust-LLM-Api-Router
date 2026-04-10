@@ -569,7 +569,6 @@ impl<R: AccountRepository> ExecutionPlanBuilder<R> {
     }
 
     /// Builds a CascadingExecutionPlan.
-    #[must_use]
     pub async fn build_cascading(
         &self,
         context: ExecutionContext,

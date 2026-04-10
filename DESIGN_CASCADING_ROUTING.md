@@ -1,5 +1,7 @@
 # Technical Design: Cascading Routing
 
+> ⚠️ **IMPLEMENTATION STATUS: EXPERIMENTAL** — The `CascadingExecutionPlan::execute()` method is a **stub** that uses simulated costs (`cost_estimate = 1000`) and never calls the real LLM gateway. It should not be enabled in production. See [#32](https://github.com/XaviCode1000/Rust-LLM-Api-Router/issues/32) for the remediation plan.
+
 ## Overview
 
 This document describes the design for implementing cascading routing in the Rust LLM API Router. Cascading routing tries cheaper providers first and escalates to more expensive ones based on response quality evaluation.

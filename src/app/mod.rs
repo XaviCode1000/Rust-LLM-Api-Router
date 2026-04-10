@@ -61,6 +61,5 @@
 //! 3. **No infrastructure logic**: Delegates to infrastructure via traits
 //! 4. **Testable**: Can be tested with mock implementations of domain traits
 
-pub mod health;
 pub mod router;
 pub mod services;

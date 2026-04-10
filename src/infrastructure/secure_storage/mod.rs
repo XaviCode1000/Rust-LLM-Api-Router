@@ -74,6 +74,13 @@ pub fn create_secure_storage() -> Box<dyn SecureStorage> {
 
 /// Insecure fallback storage (in-memory). Only used when nothing else works.
 /// Stores keys in a HashMap for testing/dev purposes.
+///
+/// # Why `std::sync::Mutex` and not `tokio::sync::Mutex`?
+///
+/// The `SecureStorage` trait has synchronous methods (not async). There are
+/// no `.await` points inside lock scopes, so `std::sync::Mutex` is correct
+/// per async-no-lock-await rule. Using `tokio::sync::Mutex` here would
+/// require `.block_on()` in sync methods, which is an anti-pattern.
 pub struct InsecureStorage {
     store: std::sync::Mutex<std::collections::HashMap<String, String>>,
 }
@@ -97,18 +104,27 @@ impl SecureStorage for InsecureStorage {
         tracing::warn!(
             "Storing API key in memory (insecure — use keyring or encrypted file in production)"
         );
-        let mut store = self.store.lock().unwrap();
+        let mut store = self
+            .store
+            .lock()
+            .map_err(|e| SecureStorageError::StorageUnavailable(format!("Lock poisoned: {e}")))?;
         store.insert(account_id.to_string(), key.to_string());
         Ok(())
     }
 
     fn retrieve(&self, account_id: &str) -> Result<Option<SecretString>, SecureStorageError> {
-        let store = self.store.lock().unwrap();
+        let store = self
+            .store
+            .lock()
+            .map_err(|e| SecureStorageError::StorageUnavailable(format!("Lock poisoned: {e}")))?;
         Ok(store.get(account_id).map(|k| SecretString::new(k.clone())))
     }
 
     fn delete(&self, account_id: &str) -> Result<(), SecureStorageError> {
-        let mut store = self.store.lock().unwrap();
+        let mut store = self
+            .store
+            .lock()
+            .map_err(|e| SecureStorageError::StorageUnavailable(format!("Lock poisoned: {e}")))?;
         store.remove(account_id);
         Ok(())
     }

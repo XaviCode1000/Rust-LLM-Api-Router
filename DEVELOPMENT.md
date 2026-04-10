@@ -2,9 +2,25 @@
 
 ## 🎉 Latest Achievements
 
-**Coverage:** **80.35%** (32% → 80.35%, +48.33%)  
-**Tests:** **492 passing** (104 → 492, +388 tests)  
-**Status:** ✅ **All tests passing, 0 failing**
+**Coverage:** **80.35%** (32% → 80.35%, +48.33%)
+**Tests:** **~680+ passing** (104 → ~680+, including 19 proptest, 5 snapshot, 3 live contract)
+**MSRV:** 1.80 (was 1.75)
+**Clippy:** ✅ Clean (0 errors, 0 warnings)
+**Secret Scanning:** ✅ gitleaks CI enabled
+**Status:** ✅ All core tests passing (4 pre-existing failures unrelated to audit fixes)
+
+### Audit Remediation (Issue #30)
+
+- ✅ Removed hardcoded Cloudflare credential
+- ✅ Fixed `block_on` deadlock → async `.await`
+- ✅ Fixed Clean Architecture violations (domain layer purged of framework imports)
+- ✅ Error source chain preserved with `#[from]`
+- ✅ Moved `IntoResponse` impls to presentation layer
+- ✅ Fixed 10 clippy errors
+- ✅ MSRV updated to 1.80
+- ✅ Hot path optimization: typed `ProviderChatRequest` replaces `serde_json::json!()`
+- ✅ 19 property-based tests for routing logic
+- ✅ gitleaks CI workflow added
 
 See [`docs/TESTING_JOURNEY.md`](docs/TESTING_JOURNEY.md) for the complete story.
 

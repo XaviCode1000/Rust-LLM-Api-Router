@@ -4,12 +4,16 @@ System architecture documentation for the LLM API Router.
 
 ## Overview
 
-The LLM API Router follows **Clean Architecture** and **Domain-Driven Design (DDD)** principles, providing intelligent request routing across 29 LLM providers with automatic failover, health monitoring, and cost optimization.
+The LLM API Router follows **Clean Architecture** and **Domain-Driven Design (DDD)** principles, providing intelligent request routing across 34 LLM providers with automatic failover, health monitoring, and cost optimization.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                 Presentation Layer                       │
 │  (HTTP Handlers, Routes, CLI, Middleware, Extractors)   │
+├─────────────────────────────────────────────────────────┤
+│                 Interfaces Layer                         │
+│  (API request/response types, IntoResponse impls,       │
+│   SSE events, Error serialization)                      │
 ├─────────────────────────────────────────────────────────┤
 │                 Application Layer                        │
 │  (Use Cases, Execution Plans, Quality Evaluation,       │
@@ -29,11 +33,12 @@ The LLM API Router follows **Clean Architecture** and **Domain-Driven Design (DD
 Dependencies point **inward**:
 
 ```
-Presentation → Application → Domain ← Infrastructure
+Presentation → Interfaces → Application → Domain ← Infrastructure
 ```
 
-- **Domain** has zero external dependencies (pure business logic)
-- **Application** depends only on Domain
+- **Domain** has zero external dependencies (pure business logic) — *enforced since Issue #30 audit*
+- **Interfaces** contains wire-format types and HTTP presentation concerns
+- **Application** depends only on Domain and Interfaces
 - **Infrastructure** implements Domain traits using external crates
 - **Presentation** orchestrates Application and Infrastructure
 

@@ -7,7 +7,7 @@ pub enum DomainError {
     #[error("Configuration error: {0}")]
     ConfigError(String),
 
-    /// Domain error
+    /// Generic domain error
     #[error("Domain error: {0}")]
     DomainError(String),
 
@@ -67,9 +67,9 @@ pub enum DomainError {
     #[error("Serialization error: {0}")]
     Serialization(String),
 
-    /// IO error
+    /// IO error — source preserved via `#[from]`
     #[error("IO error: {0}")]
-    Io(String),
+    Io(#[from] std::io::Error),
 
     /// Internal error
     #[error("Internal error: {0}")]
@@ -90,35 +90,4 @@ pub enum DomainError {
         tokens: u32,
         limit: u32,
     },
-}
-
-// Implement conversions from external error types
-impl From<reqwest::Error> for DomainError {
-    fn from(err: reqwest::Error) -> Self {
-        DomainError::DomainError(format!("Request error: {err}"))
-    }
-}
-
-impl From<keyring::Error> for DomainError {
-    fn from(err: keyring::Error) -> Self {
-        DomainError::DomainError(format!("Keyring error: {err}"))
-    }
-}
-
-impl From<std::io::Error> for DomainError {
-    fn from(err: std::io::Error) -> Self {
-        DomainError::DomainError(format!("IO error: {err}"))
-    }
-}
-
-impl From<url::ParseError> for DomainError {
-    fn from(err: url::ParseError) -> Self {
-        DomainError::DomainError(format!("URL parse error: {err}"))
-    }
-}
-
-impl From<crate::error::Error> for DomainError {
-    fn from(err: crate::error::Error) -> Self {
-        DomainError::DomainError(format!("Error: {err}"))
-    }
 }

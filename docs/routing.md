@@ -218,6 +218,8 @@ let config = ClassifierConfig {
 
 ## Cascading Routing (Issue #24)
 
+> ⚠️ **EXPERIMENTAL / INCOMPLETE** — The `CascadingExecutionPlan::execute()` method currently uses **simulated costs** (`cost_estimate = 1000`) and does **not** invoke the real LLM gateway. It is a stub implementation suitable for unit testing but **should not be enabled in production**. The quality evaluation logic exists (`HeuristicQualityEvaluator`) but is only tested with synthetic responses. Tracking: [#32](https://github.com/XaviCode1000/Rust-LLM-Api-Router/issues/32) (QA Audit — Threat Vector 2).
+
 ### Purpose
 
 Starts with the cheapest tier, evaluates response quality, and escalates to more capable models **only when quality thresholds are not met**.

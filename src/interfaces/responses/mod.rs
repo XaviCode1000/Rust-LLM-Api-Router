@@ -3,7 +3,6 @@ use axum::{
     response::{IntoResponse, Json},
 };
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 // Custom error response format
 #[derive(Debug, Serialize, Deserialize)]
@@ -158,8 +157,24 @@ impl From<SseEvent> for axum::response::sse::Event {
             e = e.id(id);
         }
         if let Some(retry) = event.retry {
-            e = e.retry(retry);
+            e = e.retry(std::time::Duration::from_millis(retry as u64));
         }
         e
+    }
+}
+
+// OpenAI-compatible error response (domain type adapted for presentation)
+use crate::domain::entities::openai_types::OpenAIErrorResponse;
+
+impl IntoResponse for OpenAIErrorResponse {
+    fn into_response(self) -> axum::response::Response {
+        let status = match self.error.r#type.as_str() {
+            "not_implemented" => StatusCode::NOT_IMPLEMENTED,
+            "no_accounts" | "provider_error" => StatusCode::BAD_GATEWAY,
+            "authentication_error" => StatusCode::UNAUTHORIZED,
+            "rate_limit" => StatusCode::TOO_MANY_REQUESTS,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+        (status, Json(self)).into_response()
     }
 }

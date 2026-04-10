@@ -393,7 +393,7 @@ async fn test_streaming_prevents_cascading_concept() {
     let tokens_used = (100, 50);
 
     // Act
-    let result = plan.execute(config, response, tokens_used);
+    let result = plan.execute(config, response, tokens_used).await;
 
     // Assert
     assert!(result.success, "Execution should succeed in streaming mode");
@@ -440,7 +440,7 @@ async fn test_cost_budget_zero_means_unlimited() {
     let tokens_used = (100, 50);
 
     // Act
-    let result = plan.execute(config, response, tokens_used);
+    let result = plan.execute(config, response, tokens_used).await;
 
     // Assert
     // With unlimited budget, execution should succeed and not be stopped by budget.
@@ -481,7 +481,7 @@ async fn test_cost_budget_enforcement() {
     let tokens_used = (10, 5);
 
     // Act
-    let result = plan.execute(config, response, tokens_used);
+    let result = plan.execute(config, response, tokens_used).await;
 
     // Assert
     // Should fail because budget exceeded after first tier? Actually the logic checks if total_cost + cost_estimate > max_cost.
@@ -525,7 +525,7 @@ async fn test_cascading_execution_quality_escalation() {
     let tokens_used = (100, 50);
 
     // Act
-    let result = plan.execute(config, response, tokens_used);
+    let result = plan.execute(config, response, tokens_used).await;
 
     // Assert
     assert!(result.success, "Execution should succeed");

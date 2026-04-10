@@ -22,6 +22,7 @@ use crate::domain::traits::AccountRepository;
 use crate::error::{Error, Result};
 use crate::infrastructure::gateway::llm_gateway::ProviderConfig;
 use crate::infrastructure::HttpClient;
+use crate::interfaces::provider_request::{ProviderChatMessage, ProviderChatRequest};
 
 /// Router configuration for LLM request routing
 #[derive(Debug, Clone)]
@@ -378,11 +379,12 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
         let base_url = if provider_id == "cloudflare" {
             // Cloudflare AI Gateway format: /v1/{account_id}/gateway/{gateway_name}/chat/completions
             // API key format: {account_id}_{api_key}, we use account_id part
-            let _account_id = api_key
-                .split('_')
-                .next()
-                .unwrap_or("ex5FpSyn1K5lkyZK6swxSyhpf8DO82BGy");
-            format!("{}/ex5FpSyn1K5lkyZK6swxSyhpf8DO82BGy/gateway/ai", provider_config.base_url)
+            let account_id = api_key.split('_').next().ok_or_else(|| {
+                Error::Internal(
+                    "Cloudflare API key must be in format '{account_id}_{api_key}'".to_string(),
+                )
+            })?;
+            format!("{}/{account_id}/gateway/ai", provider_config.base_url)
         } else {
             self.http_client
                 .mock_base_url()
@@ -392,17 +394,17 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
 
         let url = format!("{}/chat/completions", base_url);
 
-        // Build request body
-        let body = serde_json::json!({
-            "model": request.model,
-            "messages": request.messages.iter().map(|m| serde_json::json!({
-                "role": m.role,
-                "content": m.content
-            })).collect::<Vec<_>>(),
-            "temperature": request.temperature.unwrap_or(0.7),
-            "max_tokens": request.max_tokens.unwrap_or(1024),
-            "stream": request.stream.unwrap_or(false)
-        });
+        // Build request body using typed struct (zero-allocation borrowed refs)
+        let provider_messages: Vec<ProviderChatMessage> = request
+            .messages
+            .iter()
+            .map(|m| ProviderChatMessage::new(&m.role, &m.content))
+            .collect();
+
+        let body = ProviderChatRequest::builder(&request.model, &provider_messages)
+            .with_temperature(request.temperature.unwrap_or(0.7))
+            .with_max_tokens(request.max_tokens.unwrap_or(1024))
+            .with_stream(request.stream.unwrap_or(false));
 
         // Make HTTP request with the account's API key
         let response = self

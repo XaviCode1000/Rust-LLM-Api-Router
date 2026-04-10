@@ -110,7 +110,15 @@ impl HeuristicQualityEvaluator {
             config: QualityConfig::default(),
         }
     }
+}
 
+impl Default for HeuristicQualityEvaluator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl HeuristicQualityEvaluator {
     /// Creates a new HeuristicQualityEvaluator with custom configuration.
     pub fn with_config(config: QualityConfig) -> Self {
         Self { config }

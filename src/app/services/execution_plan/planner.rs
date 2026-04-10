@@ -92,24 +92,24 @@ impl ExecutionPlannerConfig {
     /// This converts the high-level routing configuration into planner-specific
     /// settings, mapping routing strategy to execution plan type and flags.
     pub fn from_routing_config(config: &RoutingConfig) -> Self {
-        let mut planner_config = Self::default();
-
-        // Map routing strategy to planner config flags
-        planner_config.cascading_enabled = config.cascading_enabled
-            || config.strategy == crate::config::RoutingStrategy::Cascading;
-        planner_config.cost_optimization_enabled =
-            config.strategy == crate::config::RoutingStrategy::CostOptimized || config.budget_mode;
-        planner_config.load_balancing_enabled =
-            config.strategy == crate::config::RoutingStrategy::LoadBalanced;
-        planner_config.failover_enabled =
-            config.strategy == crate::config::RoutingStrategy::Failover;
-        planner_config.budget_mode_enabled = config.budget_mode;
-
-        // Set max retries and timeout from routing config
-        planner_config.default_max_retries = config.max_retries as u32;
-        planner_config.default_timeout_seconds = config.timeout_seconds as u32;
-
-        planner_config
+        Self {
+            default_plan_type: ExecutionPlanType::Standard,
+            enable_auto_selection: true,
+            max_accounts_per_plan: 5,
+            min_health_score: 0.0,
+            cascading_enabled: config.cascading_enabled
+                || config.strategy == crate::config::RoutingStrategy::Cascading,
+            cost_optimization_enabled: config.strategy
+                == crate::config::RoutingStrategy::CostOptimized
+                || config.budget_mode,
+            load_balancing_enabled: config.strategy == crate::config::RoutingStrategy::LoadBalanced,
+            failover_enabled: config.strategy == crate::config::RoutingStrategy::Failover,
+            budget_mode_enabled: config.budget_mode,
+            default_max_retries: config.max_retries,
+            default_timeout_seconds: config.timeout_seconds.min(u32::MAX as u64) as u32,
+            circuit_breaker_threshold: 5,
+            circuit_breaker_timeout_seconds: 30,
+        }
     }
 
     /// Creates a config optimized for reliability.

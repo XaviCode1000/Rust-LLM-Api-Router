@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project achieves **80.35% code coverage** with **492 tests passing**, following Rust 2025-26 best practices.
+This project achieves **80.35% code coverage** with **~680+ tests**, following Rust 2025-26 best practices.
 
 ## Testing Stack
 
@@ -25,10 +25,18 @@ cargo install cargo-deny         # License/dependency check
 mockall = "0.13"           # Trait mocking
 tokio-test = "0.4"         # Async testing
 tempfile = "3.10"          # Temp directories
-proptest = "1.4"           # Property-based testing
-insta = "1.46"             # Snapshot testing
+proptest = "1.4"           # Property-based testing (19 property tests)
+insta = "1.46"             # Snapshot testing (5+ snapshots)
 wiremock = "0.6.5"         # HTTP mocking
 fs4 = "0.8"                # Advisory file locking with tokio support
+```
+
+### CI Security Scanning
+
+```yaml
+# .github/workflows/gitleaks.yml — runs on every push/PR
+# Scans for hardcoded secrets using gitleaks-action v2
+# Config: .gitleaks.toml
 ```
 
 ## Quick Start

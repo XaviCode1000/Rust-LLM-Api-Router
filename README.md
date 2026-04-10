@@ -261,9 +261,12 @@ SECURE_STORAGE=auto                 # auto, keyring, encrypted, disabled
 
 | Métrica | Valor |
 |---------|-------|
-| **Tests** | 492 pasando |
+| **Tests** | ~680+ pasando (incl. 19 proptest, 5 snapshot, 3 live contract) |
 | **Cobertura** | 80.35% |
-| **Proveedores** | 29 soportados |
+| **Proveedores** | 34 soportados |
+| **MSRV** | 1.80 |
+| **Clippy** | ✅ Clean (0 errores, 0 warnings) |
+| **Secret Scanning** | ✅ gitleaks CI en cada push/PR |
 | **Licencia** | MIT |
 
 ---

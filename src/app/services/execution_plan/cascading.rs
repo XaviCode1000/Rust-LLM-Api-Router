@@ -96,7 +96,7 @@ impl CascadingExecutionPlan {
         // Create account data with cost information for sorting
         let mut account_data: Vec<_> = accounts
             .into_iter()
-            .zip(model_ids.into_iter())
+            .zip(model_ids)
             .enumerate()
             .map(|(idx, ((account, provider, health), model_id))| {
                 let cost_per_request = pricing
@@ -269,45 +269,43 @@ impl CascadingExecutionPlan {
     ///    - If quality >= acceptable, stop and return result
     ///    - If quality < acceptable, escalate to next tier
     ///    - Continue until success or exhaustion
-    pub fn execute(
+    pub async fn execute(
         &mut self,
         config: ExecutionConfig,
         response_text: &str,
         tokens_used: (u64, u64),
     ) -> ExecutionResult {
         // Streaming guard: skip cascading in streaming mode
-        if config.stream {
-            if self.current_tier().is_some() {
-                // Execute only the first tier in streaming mode
-                let planned_accounts: Vec<PlannedAccount> = self
-                    .tiers
-                    .iter()
-                    .take(1)
-                    .map(|t| t.account.clone())
-                    .collect();
+        if config.stream && self.current_tier().is_some() {
+            // Execute only the first tier in streaming mode
+            let planned_accounts: Vec<PlannedAccount> = self
+                .tiers
+                .iter()
+                .take(1)
+                .map(|t| t.account.clone())
+                .collect();
 
-                // Create the inner execution plan with the first tier
-                let _inner = ExecutionPlanImpl::new(
-                    ExecutionPlanType::Cascading,
-                    self.inner.context().clone(),
-                    planned_accounts,
-                );
+            // Create the inner execution plan with the first tier
+            let _inner = ExecutionPlanImpl::new(
+                ExecutionPlanType::Cascading,
+                self.inner.context().clone(),
+                planned_accounts,
+            );
 
-                // Simulate execution (in real implementation, this would execute the actual request)
-                // For now, we just record the cost
-                let cost_estimate = 1000; // Simulated cost for demonstration
-                self.add_cost(cost_estimate);
+            // Simulate execution (in real implementation, this would execute the actual request)
+            // For now, we just record the cost
+            let cost_estimate = 1000; // Simulated cost for demonstration
+            self.add_cost(cost_estimate);
 
-                return ExecutionResult::success(
-                    0,
-                    response_text.to_string(),
-                    tokens_used,
-                    cost_estimate,
-                    self.total_cost_microdollars(),
-                    None, // No quality evaluation in streaming mode
-                    false,
-                );
-            }
+            return ExecutionResult::success(
+                0,
+                response_text.to_string(),
+                tokens_used,
+                cost_estimate,
+                self.total_cost_microdollars(),
+                None, // No quality evaluation in streaming mode
+                false,
+            );
         }
 
         // Non-streaming execution with cascading logic
@@ -359,13 +357,11 @@ impl CascadingExecutionPlan {
                     tier_order,
                 );
 
-                // Actually evaluate the response quality using block_on since execute() is sync
-                let quality_score =
-                    futures::executor::block_on(self.quality_gate.evaluate_quality(
-                        &tier_account,
-                        response_text,
-                        &tier_health_snapshot,
-                    ));
+                // Actually evaluate the response quality
+                let quality_score = self
+                    .quality_gate
+                    .evaluate_quality(&tier_account, response_text, &tier_health_snapshot)
+                    .await;
 
                 quality_span.finish(
                     quality_score.score,

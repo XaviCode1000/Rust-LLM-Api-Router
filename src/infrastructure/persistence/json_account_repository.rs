@@ -181,15 +181,11 @@ impl JsonAccountRepository {
     /// Ensures the directory and file exist.
     async fn ensure_file_exists(&self) -> DomainResult<()> {
         if let Some(parent) = self.file_path.parent() {
-            fs::create_dir_all(parent)
-                .await
-                .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
+            fs::create_dir_all(parent).await?;
         }
 
         if !self.file_path.exists() {
-            fs::write(&self.file_path, "[]")
-                .await
-                .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
+            fs::write(&self.file_path, "[]").await?;
         }
 
         Ok(())
@@ -229,22 +225,15 @@ impl JsonAccountRepository {
     async fn read_accounts(&self) -> DomainResult<Vec<AccountData>> {
         self.ensure_file_exists().await?;
 
-        let file = OpenOptions::new()
-            .read(true)
-            .open(&self.file_path)
-            .await
-            .map_err(|e| crate::domain::DomainError::Io(e.to_string()))?;
+        let file = OpenOptions::new().read(true).open(&self.file_path).await?;
 
         // T-21: Acquire shared (read) lock
-        file.lock_shared()
-            .map_err(|e| DomainError::Io(e.to_string()))?;
+        file.lock_shared()?;
 
         // Read from the locked file handle
         let mut contents = String::new();
         let mut file = file; // Take ownership
-        file.read_to_string(&mut contents)
-            .await
-            .map_err(|e| DomainError::Io(e.to_string()))?;
+        file.read_to_string(&mut contents).await?;
 
         let accounts: Vec<AccountData> = serde_json::from_str(&contents)
             .map_err(|e| DomainError::Serialization(e.to_string()))?;
@@ -293,33 +282,23 @@ impl JsonAccountRepository {
         let tmp_path = self.file_path.with_extension("tmp");
 
         {
-            let mut tmp_file = File::create(&tmp_path)
-                .await
-                .map_err(|e| DomainError::Io(e.to_string()))?;
+            let mut tmp_file = File::create(&tmp_path).await?;
 
             // T-22: Acquire exclusive (write) lock
-            tmp_file
-                .lock_exclusive()
-                .map_err(|e| DomainError::Io(e.to_string()))?;
+            tmp_file.lock_exclusive()?;
 
             // Write JSON to temp file
-            tmp_file
-                .write_all(json.as_bytes())
-                .await
-                .map_err(|e| DomainError::Io(e.to_string()))?;
+            tmp_file.write_all(json.as_bytes()).await?;
 
             // Ensure data is flushed to disk before rename
-            tmp_file
-                .sync_all()
-                .await
-                .map_err(|e| DomainError::Io(e.to_string()))?;
+            tmp_file.sync_all().await?;
         }
 
         // T-23: Atomic rename (POSIX atomic on same filesystem)
         fs::rename(&tmp_path, &self.file_path).await.map_err(|e| {
             // Clean up temp file on failure
             let _ = std::fs::remove_file(&tmp_path);
-            DomainError::Io(format!("Failed to atomically rename temp file: {}", e))
+            std::io::Error::other(format!("Failed to atomically rename temp file: {}", e))
         })?;
 
         Ok(())

@@ -1,0 +1,46 @@
+# Gitleaks configuration for Rust-LLM-Api-Router
+# Allow-lists common false positives while catching real secrets.
+
+title = "gitleaks config"
+
+[extend]
+# Use the default rules as a base
+useDefault = true
+
+[allowlist]
+description = "Global allowlist for known false positives"
+paths = [
+    '''\.gitleaks\.toml''',
+    '''Cargo\.lock''',
+    '''target/''',
+    '''\.gitnexus/''',
+]
+regexes = [
+    # GitHub Actions default tokens (not real secrets)
+    '''ghs_[A-Za-z0-9_]{36,}''',
+    # Test/dummy keys in documentation or tests
+    '''your[-_]?api[-_]?key''',
+    '''your[-_]?key''',
+    '''sk[-_]test[-_]''',
+    # Example URLs in comments/docs
+    '''example\.com''',
+    '''localhost''',
+    '''127\.0\.0\.1''',
+]
+
+# Override specific default rules that generate false positives
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(?:key|api|token|secret|password)[a-z0-9_ .\-,]{0,25}(?:=|>|:{1,3}=|\|\|:|<=|=>|:|\?=)[^'"\\n,;>]{8,128}'''
+tags = ["key", "API", "generic"]
+
+# Allow test fixtures with dummy keys
+[[rules.allowlist]]
+description = "Allow test/mock API keys"
+regexes = [
+    '''(?i)test[-_]key''',
+    '''(?i)mock[-_]key''',
+    '''(?i)dummy[-_]key''',
+    '''sk-litellm[-_]''',
+]

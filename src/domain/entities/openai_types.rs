@@ -3,8 +3,6 @@
 //! These types match the OpenAI Chat Completions API format.
 //! See: https://platform.openai.com/docs/api-reference/chat
 
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
 use serde::{Deserialize, Serialize};
 
 /// Chat completion request matching OpenAI API format.
@@ -234,20 +232,6 @@ pub struct OpenAIError {
     pub param: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
-}
-
-impl IntoResponse for OpenAIErrorResponse {
-    fn into_response(self) -> Response {
-        use axum::Json;
-        let status = match self.error.r#type.as_str() {
-            "not_implemented" => StatusCode::NOT_IMPLEMENTED,
-            "no_accounts" | "provider_error" => StatusCode::BAD_GATEWAY,
-            "authentication_error" => StatusCode::UNAUTHORIZED,
-            "rate_limit" => StatusCode::TOO_MANY_REQUESTS,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        };
-        (status, Json(self)).into_response()
-    }
 }
 
 /// Returns current Unix timestamp.

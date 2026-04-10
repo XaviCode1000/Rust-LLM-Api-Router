@@ -1,6 +1,6 @@
 use crate::domain::services::auth_strategy::AuthenticationStrategy;
 use crate::domain::traits::{AccountRepository, ProviderRepository};
-use crate::domain::{Account, DomainResult};
+use crate::domain::{Account, DomainError, DomainResult};
 use std::sync::Arc;
 
 /// Service for managing authentication flows and token operations.
@@ -60,7 +60,7 @@ impl AuthService {
                         provider.token_url.clone().unwrap_or_default(),
                         vec![], // In a real implementation, scopes would come from provider config
                         None,
-                    )?;
+                    ).map_err(|e| DomainError::Internal(e.to_string()))?;
                     return Ok(Box::new(strategy));
                 }
             }
@@ -86,7 +86,8 @@ impl AuthService {
                     token_url,
                     redirect_uri,
                     vec![], // In a real implementation, scopes would come from provider config
-                )?;
+                )
+                .map_err(|e| DomainError::Internal(e.to_string()))?;
                 return Ok(Box::new(strategy));
             }
         }
@@ -164,28 +165,34 @@ impl AuthService {
                         provider.token_url.clone().unwrap_or_default(),
                         vec![],
                         None,
-                    )?)
+                    ).map_err(|e| DomainError::Internal(e.to_string()))?)
                 } else {
                     // Fallback to PKCE if device auth URL not configured
-                    Box::new(crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
+                    Box::new(
+                        crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
+                            provider.client_id.clone().unwrap_or_default(),
+                            provider.client_secret.clone(),
+                            provider.auth_url.clone().unwrap_or_default(),
+                            provider.token_url.clone().unwrap_or_default(),
+                            provider.redirect_uri.clone().unwrap_or_default(),
+                            vec![],
+                        )
+                        .map_err(|e| DomainError::Internal(e.to_string()))?,
+                    )
+                }
+            } else {
+                // Use PKCE flow
+                Box::new(
+                    crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
                         provider.client_id.clone().unwrap_or_default(),
                         provider.client_secret.clone(),
                         provider.auth_url.clone().unwrap_or_default(),
                         provider.token_url.clone().unwrap_or_default(),
                         provider.redirect_uri.clone().unwrap_or_default(),
                         vec![],
-                    )?)
-                }
-            } else {
-                // Use PKCE flow
-                Box::new(crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
-                    provider.client_id.clone().unwrap_or_default(),
-                    provider.client_secret.clone(),
-                    provider.auth_url.clone().unwrap_or_default(),
-                    provider.token_url.clone().unwrap_or_default(),
-                    provider.redirect_uri.clone().unwrap_or_default(),
-                    vec![],
-                )?)
+                    )
+                    .map_err(|e| DomainError::Internal(e.to_string()))?,
+                )
             }
         } else {
             // Fallback to API Key strategy
@@ -233,28 +240,34 @@ impl AuthService {
                         provider.token_url.clone().unwrap_or_default(),
                         vec![],
                         None,
-                    )?)
+                    ).map_err(|e| DomainError::Internal(e.to_string()))?)
                 } else {
                     // Fallback to PKCE if device auth URL not configured
-                    Box::new(crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
+                    Box::new(
+                        crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
+                            provider.client_id.clone().unwrap_or_default(),
+                            provider.client_secret.clone(),
+                            provider.auth_url.clone().unwrap_or_default(),
+                            provider.token_url.clone().unwrap_or_default(),
+                            provider.redirect_uri.clone().unwrap_or_default(),
+                            vec![],
+                        )
+                        .map_err(|e| DomainError::Internal(e.to_string()))?,
+                    )
+                }
+            } else {
+                // Use PKCE flow
+                Box::new(
+                    crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
                         provider.client_id.clone().unwrap_or_default(),
                         provider.client_secret.clone(),
                         provider.auth_url.clone().unwrap_or_default(),
                         provider.token_url.clone().unwrap_or_default(),
                         provider.redirect_uri.clone().unwrap_or_default(),
                         vec![],
-                    )?)
-                }
-            } else {
-                // Use PKCE flow
-                Box::new(crate::infrastructure::auth::pkce_strategy::PkceAuthStrategy::new(
-                    provider.client_id.clone().unwrap_or_default(),
-                    provider.client_secret.clone(),
-                    provider.auth_url.clone().unwrap_or_default(),
-                    provider.token_url.clone().unwrap_or_default(),
-                    provider.redirect_uri.clone().unwrap_or_default(),
-                    vec![],
-                )?)
+                    )
+                    .map_err(|e| DomainError::Internal(e.to_string()))?,
+                )
             }
         } else {
             // Fallback to API Key strategy

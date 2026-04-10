@@ -68,7 +68,7 @@ impl TokenValidator {
 /// Extracts the model name from a potentially prefixed format.
 /// e.g., "openai:gpt-4" → "gpt-4", "groq:llama-3.1-8b-instant" → "llama-3.1-8b-instant"
 fn extract_model_name(model: &str) -> &str {
-    model.split(':').last().unwrap_or(model)
+    model.split(':').next_back().unwrap_or(model)
 }
 
 #[cfg(test)]

@@ -5,7 +5,7 @@ edition = "2021"
 description = "LLM Proxy API Router with Clean Architecture in Rust"
 license = "MIT"
 authors = ["LLM Router Team"]
-rust-version = "1.75"
+rust-version = "1.80"
 
 [features]
 default = []

@@ -1,3 +1,4 @@
+use std::io;
 //! Tests for domain error types
 //!
 //! Comprehensive tests for all error types in the domain layer.
@@ -100,7 +101,7 @@ fn test_domain_error_validation_error_display() {
 
 #[test]
 fn test_domain_error_io_display() {
-    let err = DomainError::Io("file not found".to_string());
+    let err = DomainError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, "file not found"));
     let msg = format!("{}", err);
     assert!(msg.contains("I/O error"));
     assert!(msg.contains("file not found"));
@@ -341,7 +342,7 @@ fn test_domain_error_debug_all_variants() {
         DomainError::AuthenticationError("test".to_string()),
         DomainError::RateLimited("test".to_string()),
         DomainError::ValidationError("test".to_string()),
-        DomainError::Io("test".to_string()),
+        DomainError::Io(std::io::Error::new(std::io::ErrorKind::Other, "test")),
         DomainError::Serialization("test".to_string()),
         DomainError::ExternalServiceError("test".to_string()),
         DomainError::NotImplemented("test".to_string()),
