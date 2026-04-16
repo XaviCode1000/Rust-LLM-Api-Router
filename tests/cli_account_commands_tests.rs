@@ -120,7 +120,8 @@ async fn test_cli_add_account_empty_api_key_warning() {
 
     let account = repo.find_by_id("test-acc-4").await.unwrap();
 
-    assert_eq!(account.api_key, Some("".to_string()));
+    // Empty keys are not stored in secure storage - by design
+    assert_eq!(account.api_key, None);
 }
 
 #[tokio::test]
@@ -221,6 +222,7 @@ async fn test_cli_remove_account_success() {
     // Remove account
     let args = RemoveAccountArgs {
         id: "acc-to-remove".to_string(),
+        force: true, // Skip confirmation in tests
     };
     let result = cmd_remove_account(args, &repo).await;
 
@@ -236,6 +238,7 @@ async fn test_cli_remove_account_not_found() {
 
     let args = RemoveAccountArgs {
         id: "non-existent-acc".to_string(),
+        force: true, // Skip confirmation in tests
     };
     let result = cmd_remove_account(args, &repo).await;
 
@@ -261,6 +264,7 @@ async fn test_cli_remove_account_from_multiple() {
     // Remove middle one
     let args = RemoveAccountArgs {
         id: "acc-2".to_string(),
+        force: true, // Skip confirmation in tests
     };
     cmd_remove_account(args, &repo).await.unwrap();
 
@@ -458,6 +462,7 @@ async fn test_handle_account_command_list() {
 async fn test_handle_account_command_remove() {
     let cmd = AccountCommands::Remove(RemoveAccountArgs {
         id: "to-remove".to_string(),
+        force: true, // Skip confirmation in tests
     });
 
     match cmd {
@@ -588,6 +593,7 @@ async fn test_cli_account_workflow_add_list_remove() {
     cmd_remove_account(
         RemoveAccountArgs {
             id: "workflow-acc".to_string(),
+            force: true, // Skip confirmation in tests
         },
         &repo,
     )

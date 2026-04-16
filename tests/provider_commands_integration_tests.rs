@@ -254,6 +254,7 @@ async fn test_cli_remove_provider_workflow() {
     // Remove provider
     let remove_args = RemoveProviderArgs {
         id: "to-remove".to_string(),
+        force: true,
     };
     let result = cmd_remove_provider(remove_args, &repo).await;
     assert!(result.is_ok());
@@ -269,6 +270,7 @@ async fn test_cli_remove_nonexistent_provider() {
 
     let args = RemoveProviderArgs {
         id: "nonexistent".to_string(),
+        force: true,
     };
 
     let result = cmd_remove_provider(args, &repo).await;
@@ -292,6 +294,7 @@ async fn test_cli_remove_and_readd_provider() {
     // Remove provider
     let remove_args = RemoveProviderArgs {
         id: "readd".to_string(),
+        force: true,
     };
     cmd_remove_provider(remove_args, &repo).await.unwrap();
 
@@ -536,6 +539,7 @@ async fn test_cli_provider_crud_complete_workflow() {
     // DELETE
     let remove_args = RemoveProviderArgs {
         id: "crud-test".to_string(),
+        force: true,
     };
     cmd_remove_provider(remove_args, &repo).await.unwrap();
 

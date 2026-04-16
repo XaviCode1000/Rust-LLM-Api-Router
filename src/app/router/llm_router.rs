@@ -8,8 +8,13 @@
 
 use std::sync::Arc;
 
-use tokio::sync::watch;
+use tokio::sync::RwLock;
 use uuid::Uuid;
+
+#[cfg(feature = "tui")]
+use chrono::Utc;
+#[cfg(feature = "tui")]
+use tokio::sync::watch;
 
 use crate::app::services::execution_plan::{
     ExecutionContext, ExecutionOutcome, ExecutionPlan, ExecutionPlanImpl, ExecutionPlanStatus,
@@ -62,8 +67,8 @@ pub struct LlmRouter<R: AccountRepository + ?Sized> {
     /// HTTP client for making requests
     http_client: Arc<HttpClient>,
 
-    /// Provider configurations
-    provider_configs: Arc<std::collections::HashMap<String, ProviderConfig>>,
+    /// Provider configurations (RwLock for hot-reload support)
+    provider_configs: Arc<RwLock<std::collections::HashMap<String, ProviderConfig>>>,
 
     /// Account repository for fetching account details (including API keys)
     account_repo: Arc<R>,
@@ -88,7 +93,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
     pub fn new(
         http_client: Arc<HttpClient>,
         account_repo: Arc<R>,
-        provider_configs: Arc<std::collections::HashMap<String, ProviderConfig>>,
+        provider_configs: Arc<RwLock<std::collections::HashMap<String, ProviderConfig>>>,
         planner_config: ExecutionPlannerConfig,
     ) -> Self {
         let planner = ExecutionPlanner::new(account_repo.clone(), planner_config);
@@ -109,7 +114,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
     pub fn with_config(
         http_client: Arc<HttpClient>,
         account_repo: Arc<R>,
-        provider_configs: Arc<std::collections::HashMap<String, ProviderConfig>>,
+        provider_configs: Arc<RwLock<std::collections::HashMap<String, ProviderConfig>>>,
         planner_config: ExecutionPlannerConfig,
         router_config: LlmRouterConfig,
     ) -> Self {
@@ -132,7 +137,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
     pub fn with_routing_config(
         http_client: Arc<HttpClient>,
         account_repo: Arc<R>,
-        provider_configs: Arc<std::collections::HashMap<String, ProviderConfig>>,
+        provider_configs: Arc<RwLock<std::collections::HashMap<String, ProviderConfig>>>,
         planner_config: ExecutionPlannerConfig,
         routing_config: RoutingConfig,
     ) -> Self {
@@ -156,7 +161,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
     pub fn new_with_tui(
         http_client: Arc<HttpClient>,
         account_repo: Arc<R>,
-        provider_configs: Arc<std::collections::HashMap<String, ProviderConfig>>,
+        provider_configs: Arc<RwLock<std::collections::HashMap<String, ProviderConfig>>>,
         planner_config: ExecutionPlannerConfig,
         tui_state_tx: Option<watch::Sender<TuiState>>,
     ) -> Self {
@@ -179,7 +184,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
     pub fn with_config_and_tui(
         http_client: Arc<HttpClient>,
         account_repo: Arc<R>,
-        provider_configs: Arc<std::collections::HashMap<String, ProviderConfig>>,
+        provider_configs: Arc<RwLock<std::collections::HashMap<String, ProviderConfig>>>,
         planner_config: ExecutionPlannerConfig,
         router_config: LlmRouterConfig,
         tui_state_tx: Option<watch::Sender<TuiState>>,
@@ -194,6 +199,147 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             config: router_config,
             routing_config: None,
             tui_state_tx,
+        }
+    }
+
+    /// Reload provider configs with new account list (hot-reload support).
+    /// Uses short-lived write lock - no I/O while locked.
+    pub async fn reload_accounts(&self, accounts: Vec<crate::domain::entities::Account>) {
+        let new_configs = self.build_provider_configs(accounts);
+
+        let mut guard = self.provider_configs.write().await;
+        *guard = new_configs;
+        // Lock released here - short-lived, no I/O
+
+        // Extract provider list while we have a write lock
+        #[allow(unused_variables)]
+        let provider_list: Vec<String> = guard.keys().cloned().collect();
+        drop(guard);
+
+        // Sync to TUI state if available
+        #[cfg(feature = "tui")]
+        {
+            if let Some(ref tx) = self.tui_state_tx {
+                tx.send_modify(|state| {
+                    // Update provider list in TUI state - clone, modify, replace
+                    let mut provider_status = (*state.provider_status).clone();
+                    for provider_id in provider_list {
+                        provider_status.entry(provider_id).or_default();
+                    }
+                    state.provider_status = Arc::new(provider_status);
+                });
+            }
+        }
+    }
+
+    /// Build provider configs from account list.
+    fn build_provider_configs(
+        &self,
+        accounts: Vec<crate::domain::entities::Account>,
+    ) -> std::collections::HashMap<String, ProviderConfig> {
+        let mut configs = std::collections::HashMap::new();
+
+        // Group accounts by provider_id
+        let mut provider_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for account in &accounts {
+            if account.is_active {
+                provider_ids.insert(account.provider_id.clone());
+            }
+        }
+
+        // Create provider configs from default providers (will be overridden by account-based ones)
+        for provider_id in provider_ids {
+            // Use default base URL - actual routing uses account's provider_id
+            configs.insert(
+                provider_id.clone(),
+                ProviderConfig::new(
+                    &provider_id,
+                    &provider_id,
+                    format!("https://{}", provider_id).as_str(),
+                    "/v1/chat/completions",
+                ),
+            );
+        }
+
+        configs
+    }
+
+    /// Inject telemetry update after provider response.
+    /// Updates provider metrics and global stats in TuiState.
+    #[cfg(feature = "tui")]
+    pub fn update_telemetry(
+        &self,
+        provider_id: String,
+        latency_ms: u64,
+        success: bool,
+        cb_open: bool,
+    ) {
+        if let Some(ref tx) = self.tui_state_tx {
+            let _ = tx.send_modify(|state| {
+                // Update provider metrics - clone, modify, replace
+                let mut provider_status = (*state.provider_status).clone();
+                let metrics = provider_status
+                    .entry(provider_id.clone())
+                    .or_insert_with(|| crate::presentation::tui::ProviderMetrics {
+                        provider_id: provider_id.clone(),
+                        latency_ms: None,
+                        circuit_breaker_open: false,
+                        requests_success: 0,
+                        requests_failed: 0,
+                    });
+
+                metrics.latency_ms = Some(latency_ms);
+                metrics.circuit_breaker_open = cb_open;
+                if success {
+                    metrics.requests_success += 1;
+                } else {
+                    metrics.requests_failed += 1;
+                }
+                state.provider_status = Arc::new(provider_status);
+
+                // Update global stats - clone, modify, replace
+                let mut global = (*state.global_stats).clone();
+                global.requests_total += 1;
+                if success {
+                    global.requests_success += 1;
+                } else {
+                    global.requests_failed += 1;
+                }
+
+                // Update moving average latency (with guard against division by zero)
+                let total = global.requests_total as f64;
+                if total > 0.0 {
+                    global.avg_latency_ms =
+                        (global.avg_latency_ms * (total - 1.0) + latency_ms as f64) / total;
+                } else {
+                    global.avg_latency_ms = latency_ms as f64;
+                }
+                state.global_stats = Arc::new(global);
+
+                // Add to log buffer - clone, modify, replace
+                let mut buffer = (*state.log_buffer).clone();
+                buffer.push_back(crate::presentation::tui::LogEntry {
+                    timestamp: Utc::now(),
+                    level: if success {
+                        crate::presentation::tui::LogLevel::Info
+                    } else {
+                        crate::presentation::tui::LogLevel::Error
+                    },
+                    message: if success {
+                        format!("Request to {} succeeded in {}ms", provider_id, latency_ms)
+                    } else {
+                        format!("Request to {} failed after {}ms", provider_id, latency_ms)
+                    },
+                    provider_id: Some(provider_id),
+                });
+
+                // Trim log buffer if needed
+                let max_entries = state.max_log_entries;
+                while buffer.len() > max_entries {
+                    buffer.pop_front();
+                }
+                state.log_buffer = Arc::new(buffer);
+            });
         }
     }
 
@@ -348,15 +494,26 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
                 );
             }
 
+            // Capture start time for latency tracking
+            #[cfg(feature = "tui")]
+            let request_start = std::time::Instant::now();
+
             // Try to execute with this account
-            match self
+            let result = self
                 .forward_to_provider(
                     &planned_account.account_id,
                     request,
                     &planned_account.provider_id,
                 )
-                .await
-            {
+                .await;
+
+            // Calculate latency for telemetry (always available, used in tui telemetry)
+            #[cfg(feature = "tui")]
+            let latency_ms = request_start.elapsed().as_millis() as u64;
+            #[cfg(not(feature = "tui"))]
+            let _latency_ms: u64 = 0;
+
+            match result {
                 Ok(response) => {
                     // Success!
                     let outcome = if is_primary {
@@ -366,6 +523,17 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
                     };
 
                     plan.set_outcome(outcome);
+
+                    // Inject telemetry for success
+                    #[cfg(feature = "tui")]
+                    {
+                        self.update_telemetry(
+                            planned_account.provider_id.clone(),
+                            latency_ms,
+                            true,
+                            false,
+                        );
+                    }
 
                     if self.config.verbose_logging {
                         tracing::info!(
@@ -379,6 +547,18 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
                 },
                 Err(e) => {
                     // Account failed, try next if failover is enabled
+
+                    // Inject telemetry for failure (use latency calculated before the match)
+                    #[cfg(feature = "tui")]
+                    {
+                        self.update_telemetry(
+                            planned_account.provider_id.clone(),
+                            latency_ms,
+                            false,
+                            false,
+                        );
+                    }
+
                     if self.config.verbose_logging {
                         tracing::warn!(
                             "Account {} failed: {}. {}",
@@ -431,8 +611,9 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
         // Use the provider from the account, NOT inferred from model name
         let provider_id = provider_id_from_account;
 
-        // Get provider config
-        let provider_config = self.provider_configs.get(provider_id).ok_or_else(|| {
+        // Get provider config (RwLock read) - bind guard first to avoid temporary lifetime issue
+        let configs_guard = self.provider_configs.read().await;
+        let provider_config = configs_guard.get(provider_id).ok_or_else(|| {
             Error::ProviderNotFound(format!("Provider '{}' not found", provider_id))
         })?;
 

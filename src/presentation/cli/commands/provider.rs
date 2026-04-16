@@ -51,6 +51,10 @@ pub struct RemoveProviderArgs {
     /// Provider ID to remove
     #[arg(short, long)]
     pub id: String,
+
+    /// Skip confirmation prompt (for non-interactive use)
+    #[arg(long, short = 'y')]
+    pub force: bool,
 }
 
 /// Enable provider arguments
@@ -312,8 +316,8 @@ pub async fn cmd_remove_provider(
         .await
         .map_err(|_| crate::Error::ProviderNotFound(args.id.clone()))?;
 
-    // Confirmation prompt
-    if !prompt::confirm(&format!(
+    // Confirmation prompt (skip if --force is used)
+    if !args.force && !prompt::confirm(&format!(
         "Are you sure you want to remove provider '{}'? This will also remove all associated accounts.",
         args.id
     ))? {

@@ -25,6 +25,15 @@ use std::net::SocketAddr;
 use std::panic;
 use std::sync::Arc;
 
+#[cfg(feature = "tui")]
+use rust_llm_api_router::presentation::tui::{
+    create_action_channel, create_tui_channel, TuiAction,
+};
+#[cfg(feature = "tui")]
+use std::thread;
+#[cfg(feature = "tui")]
+use tokio::sync::mpsc;
+
 use rust_llm_api_router::config::Settings;
 use rust_llm_api_router::error::Result;
 use rust_llm_api_router::infrastructure::init_logging;
@@ -50,6 +59,128 @@ fn main() {
         eprintln!("Error: {}", e);
         std::process::exit(1);
     }
+}
+
+/// Process TuiAction commands from the TUI
+#[cfg(feature = "tui")]
+async fn tui_action_processor(
+    mut rx: mpsc::Receiver<TuiAction>,
+    account_repo: Arc<dyn rust_llm_api_router::domain::traits::AccountRepository>,
+    router: Arc<
+        rust_llm_api_router::app::router::llm_router::LlmRouter<
+            dyn rust_llm_api_router::domain::traits::AccountRepository + 'static,
+        >,
+    >,
+    state_tx: tokio::sync::watch::Sender<rust_llm_api_router::presentation::tui::TuiState>,
+) {
+    while let Some(action) = rx.recv().await {
+        match action {
+            TuiAction::AddAccount {
+                provider_id,
+                api_key,
+            } => {
+                // Persist to repository
+                let account = rust_llm_api_router::domain::entities::Account::new(
+                    provider_id.clone(),
+                    provider_id.clone(),
+                    api_key,
+                );
+                if let Err(e) = account_repo.save(account).await {
+                    // Log error to TUI
+                    let _ = state_tx.send_modify(|s| {
+                        let mut buffer = (*s.log_buffer).clone();
+                        buffer.push_back(rust_llm_api_router::presentation::tui::LogEntry {
+                            timestamp: chrono::Utc::now(),
+                            level: rust_llm_api_router::presentation::tui::LogLevel::Error,
+                            message: format!("Failed to add account {}: {}", provider_id, e),
+                            provider_id: None,
+                        });
+                        s.log_buffer = Arc::new(buffer);
+                    });
+                    continue;
+                }
+
+                // Reload router
+                let accounts = account_repo.find_all().await.unwrap_or_default();
+                router.reload_accounts(accounts).await;
+
+                // Send confirmation log
+                let _ = state_tx.send_modify(|s| {
+                    let mut buffer = (*s.log_buffer).clone();
+                    buffer.push_back(rust_llm_api_router::presentation::tui::LogEntry {
+                        timestamp: chrono::Utc::now(),
+                        level: rust_llm_api_router::presentation::tui::LogLevel::Info,
+                        message: format!("Account {} added successfully", provider_id),
+                        provider_id: None,
+                    });
+                    s.log_buffer = Arc::new(buffer);
+                });
+            },
+            TuiAction::RemoveAccount(account_id) => {
+                // Delete from repository
+                if let Err(e) = account_repo.delete(&account_id).await {
+                    // Log error to TUI
+                    let _ = state_tx.send_modify(|s| {
+                        let mut buffer = (*s.log_buffer).clone();
+                        buffer.push_back(rust_llm_api_router::presentation::tui::LogEntry {
+                            timestamp: chrono::Utc::now(),
+                            level: rust_llm_api_router::presentation::tui::LogLevel::Error,
+                            message: format!("Failed to remove account {}: {}", account_id, e),
+                            provider_id: None,
+                        });
+                        s.log_buffer = Arc::new(buffer);
+                    });
+                    continue;
+                }
+
+                // Reload router
+                let accounts = account_repo.find_all().await.unwrap_or_default();
+                router.reload_accounts(accounts).await;
+
+                // Send confirmation log
+                let _ = state_tx.send_modify(|s| {
+                    let mut buffer = (*s.log_buffer).clone();
+                    buffer.push_back(rust_llm_api_router::presentation::tui::LogEntry {
+                        timestamp: chrono::Utc::now(),
+                        level: rust_llm_api_router::presentation::tui::LogLevel::Info,
+                        message: format!("Account {} removed successfully", account_id),
+                        provider_id: None,
+                    });
+                    s.log_buffer = Arc::new(buffer);
+                });
+            },
+            TuiAction::ToggleProvider(provider_id) => {
+                // Toggle provider enabled state
+                // For now, just log the action
+                let _ = state_tx.send_modify(|s| {
+                    let mut buffer = (*s.log_buffer).clone();
+                    buffer.push_back(rust_llm_api_router::presentation::tui::LogEntry {
+                        timestamp: chrono::Utc::now(),
+                        level: rust_llm_api_router::presentation::tui::LogLevel::Info,
+                        message: format!("Provider {} toggled", provider_id),
+                        provider_id: Some(provider_id),
+                    });
+                    s.log_buffer = Arc::new(buffer);
+                });
+            },
+            TuiAction::Quit => {
+                // Quit signal - break the loop
+                break;
+            },
+        }
+    }
+}
+
+/// Handle SIGINT/SIGTERM for graceful shutdown
+#[cfg(feature = "tui")]
+async fn signal_handler(action_tx: mpsc::Sender<TuiAction>) {
+    if let Err(e) = tokio::signal::ctrl_c().await {
+        eprintln!("Error setting up signal handler: {}", e);
+        return;
+    }
+
+    // Send quit signal to TUI
+    let _ = action_tx.send(TuiAction::Quit).await;
 }
 
 async fn run_server() -> Result<()> {
@@ -101,7 +232,7 @@ async fn run_server() -> Result<()> {
     );
 
     // Create application state with routing config
-    let state = AppState::new(settings, routing_config)?;
+    let state = AppState::new(settings, routing_config.clone())?;
     let state = Arc::new(state);
 
     // Get port before moving state
@@ -109,17 +240,84 @@ async fn run_server() -> Result<()> {
 
     // Build router
     let app = routes();
-    let app = app.with_state(state);
+    let app = app.with_state(state.clone());
 
-    // Start server
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .map_err(|e| rust_llm_api_router::Error::Internal(e.to_string()))?;
+    #[cfg(feature = "tui")]
+    {
+        // Create TUI channels
+        let (tui_state_tx, tui_state_rx) = create_tui_channel();
+        let (action_tx, action_rx) = create_action_channel();
 
-    tracing::info!("Server listening on {}", addr);
+        // Create TUI-enabled router with telemetry channel
+        let tui_router = Arc::new(
+            rust_llm_api_router::app::router::llm_router::LlmRouter::with_config_and_tui(
+                state.http_client.clone(),
+                state.account_repo.clone(),
+                state.provider_config.clone(),
+                rust_llm_api_router::app::services::execution_plan::ExecutionPlannerConfig::from_routing_config(&routing_config),
+                rust_llm_api_router::app::router::llm_router::LlmRouterConfig::default(),
+                Some(tui_state_tx.clone()),
+            )
+        );
 
-    axum::serve(listener, app).await?;
+        // Spawn TuiAction processor
+        let processor_handle = tokio::spawn(tui_action_processor(
+            action_rx,
+            state.account_repo.clone(),
+            tui_router.clone(),
+            tui_state_tx.clone(),
+        ));
+
+        // Spawn signal handler
+        let signal_handle = tokio::spawn(signal_handler(action_tx.clone()));
+
+        // Clone action_tx for TUI thread
+        let tui_action_tx = action_tx.clone();
+        // Spawn TUI thread
+        let tui_handle = thread::spawn(move || {
+            let result = rust_llm_api_router::presentation::tui::run(tui_state_rx, tui_action_tx);
+            // Convert error to string to make it Send
+            result.map_err(|e| e.to_string())
+        });
+
+        // Start server
+        let addr = SocketAddr::from(([0, 0, 0, 0], port));
+        let listener = tokio::net::TcpListener::bind(addr)
+            .await
+            .map_err(|e| rust_llm_api_router::Error::Internal(e.to_string()))?;
+
+        tracing::info!("Server listening on {}", addr);
+        tracing::info!("TUI enabled - press Ctrl+C to exit");
+
+        // Run server with graceful shutdown
+        let server_future = axum::serve(listener, app);
+
+        // Wait for server to complete (will complete on error or when listener drops)
+        let _ = server_future.await;
+
+        // Signal TUI to quit
+        let _ = action_tx.send(TuiAction::Quit).await;
+
+        // Wait for TUI thread to clean up
+        let _ = tui_handle.join();
+
+        // Clean up processor and signal handler
+        processor_handle.abort();
+        signal_handle.abort();
+    }
+
+    #[cfg(not(feature = "tui"))]
+    {
+        // Start server without TUI
+        let addr = SocketAddr::from(([0, 0, 0, 0], port));
+        let listener = tokio::net::TcpListener::bind(addr)
+            .await
+            .map_err(|e| rust_llm_api_router::Error::Internal(e.to_string()))?;
+
+        tracing::info!("Server listening on {}", addr);
+
+        axum::serve(listener, app).await?;
+    }
 
     Ok(())
 }

@@ -50,6 +50,7 @@ async fn test_cli_remove_provider_from_single_provider_list() {
     // Remove the only provider (this was failing before)
     let args = RemoveProviderArgs {
         id: "only-provider".to_string(),
+        force: true,
     };
     let result = cmd_remove_provider(args, &repo).await;
 
@@ -84,6 +85,7 @@ async fn test_cli_remove_provider_last_one_with_error_handling() {
     // Remove and verify no errors with empty list
     let args = RemoveProviderArgs {
         id: "last-one".to_string(),
+        force: true,
     };
     cmd_remove_provider(args, &repo).await.unwrap();
 
@@ -91,6 +93,7 @@ async fn test_cli_remove_provider_last_one_with_error_handling() {
     let result = cmd_remove_provider(
         RemoveProviderArgs {
             id: "last-one".to_string(),
+            force: true,
         },
         &repo,
     )
@@ -151,6 +154,7 @@ async fn test_cli_remove_provider_from_multiple() {
     // Remove middle one
     let args = RemoveProviderArgs {
         id: "prov-2".to_string(),
+        force: true,
     };
     cmd_remove_provider(args, &repo).await.unwrap();
 
@@ -213,6 +217,7 @@ async fn test_cli_remove_provider_first_of_many() {
     // Remove first one
     let args = RemoveProviderArgs {
         id: "first".to_string(),
+        force: true, // Skip confirmation in tests
     };
     cmd_remove_provider(args, &repo).await.unwrap();
 
@@ -272,6 +277,7 @@ async fn test_cli_remove_provider_last_of_many() {
     // Remove last one
     let args = RemoveProviderArgs {
         id: "third".to_string(),
+        force: true,
     };
     cmd_remove_provider(args, &repo).await.unwrap();
 
@@ -331,6 +337,7 @@ async fn test_cli_remove_provider_middle_of_many() {
     // Remove middle one
     let args = RemoveProviderArgs {
         id: "second".to_string(),
+        force: true,
     };
     cmd_remove_provider(args, &repo).await.unwrap();
 
@@ -362,6 +369,7 @@ async fn test_cli_remove_provider_persists_across_instances() {
     // Remove provider
     let args = RemoveProviderArgs {
         id: "to-remove".to_string(),
+        force: true,
     };
     cmd_remove_provider(args, &repo).await.unwrap();
 
@@ -397,6 +405,7 @@ async fn test_cli_remove_provider_with_special_characters_in_id() {
     // Remove it
     let args = RemoveProviderArgs {
         id: "test-provider-123".to_string(),
+        force: true,
     };
     let result = cmd_remove_provider(args, &repo).await;
 
@@ -428,6 +437,7 @@ async fn test_cli_remove_provider_case_sensitive() {
     // Try to remove with different case (should fail)
     let args = RemoveProviderArgs {
         id: "myprovider".to_string(),
+        force: true,
     };
     let result = cmd_remove_provider(args, &repo).await;
 
@@ -470,6 +480,7 @@ async fn test_cli_workflow_add_remove_multiple_sequential() {
     for i in 0..5 {
         let args = RemoveProviderArgs {
             id: format!("provider-{}", i),
+            force: true,
         };
         cmd_remove_provider(args, &repo).await.unwrap();
     }
@@ -515,6 +526,7 @@ async fn test_cli_workflow_add_disable_remove() {
     cmd_remove_provider(
         RemoveProviderArgs {
             id: "workflow-provider".to_string(),
+            force: true,
         },
         &repo,
     )
@@ -564,6 +576,7 @@ async fn test_cli_workflow_add_enable_remove() {
     cmd_remove_provider(
         RemoveProviderArgs {
             id: "disabled-provider".to_string(),
+            force: true,
         },
         &repo,
     )

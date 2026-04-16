@@ -392,6 +392,7 @@ async fn test_remove_provider_success() {
     // Remove provider
     let args_remove = RemoveProviderArgs {
         id: "remove-provider".to_string(),
+        force: true,
     };
     let cmd = ProviderCommands::Remove(args_remove);
     let result = handle_provider_command_with_dir(cmd, &config_dir).await;
@@ -405,6 +406,7 @@ async fn test_remove_provider_not_found() {
 
     let args_remove = RemoveProviderArgs {
         id: "nonexistent-provider".to_string(),
+        force: true,
     };
     let cmd = ProviderCommands::Remove(args_remove);
     let result = handle_provider_command_with_dir(cmd, &config_dir).await;
@@ -434,6 +436,7 @@ async fn test_remove_provider_from_multiple() {
     // Remove middle one
     let args_remove = RemoveProviderArgs {
         id: "multi-provider-2".to_string(),
+        force: true,
     };
     let cmd = ProviderCommands::Remove(args_remove);
     let result = handle_provider_command_with_dir(cmd, &config_dir).await;

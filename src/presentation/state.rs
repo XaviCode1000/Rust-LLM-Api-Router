@@ -3,6 +3,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use tokio::sync::RwLock;
+
 use crate::app::router::llm_router::LlmRouter;
 use crate::app::services::execution_plan::ExecutionPlannerConfig;
 use crate::config::{RoutingConfig, Settings};
@@ -17,7 +19,7 @@ pub struct AppState {
     pub metrics: Arc<Metrics>,
     pub account_repo: Arc<dyn AccountRepository>,
     pub llm_gateway: Arc<LlmGatewayImpl>,
-    pub provider_config: Arc<HashMap<String, ProviderConfig>>,
+    pub provider_config: Arc<RwLock<HashMap<String, ProviderConfig>>>,
     /// LLM Router with ExecutionPlanner for intelligent request routing
     pub llm_router: Arc<LlmRouter<dyn AccountRepository>>,
 }
@@ -32,12 +34,12 @@ impl AppState {
         );
 
         // Create LLM Gateway with default providers and 1 hour cache TTL
-        let provider_config =
-            Arc::new(crate::infrastructure::gateway::llm_gateway::default_providers());
+        let default_providers = crate::infrastructure::gateway::llm_gateway::default_providers();
+        let provider_config = Arc::new(RwLock::new(default_providers.clone()));
         let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
             http_client.clone(),
             account_repo.clone(),
-            (*provider_config).clone(),
+            default_providers,
             3600, // 1 hour cache TTL
         ));
 
@@ -72,11 +74,11 @@ impl AppState {
         provider_config: HashMap<String, ProviderConfig>,
     ) -> Result<Self, crate::Error> {
         let metrics = Arc::new(Metrics::new()?);
-        let provider_config_arc = Arc::new(provider_config.clone());
+        let provider_config_arc = Arc::new(RwLock::new(provider_config.clone()));
         let llm_gateway = Arc::new(LlmGatewayImpl::with_config(
             http_client.clone(),
             account_repo.clone(),
-            provider_config.clone(),
+            provider_config,
             3600, // 1 hour cache TTL
         ));
 

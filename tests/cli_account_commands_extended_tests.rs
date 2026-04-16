@@ -98,9 +98,10 @@ async fn test_cmd_add_account_empty_api_key() {
     let result = cmd_add_account(args, &repo).await;
     assert!(result.is_ok());
 
-    // Account should be created with empty key
+    // Account should be created - empty keys are not stored in secure storage
+    // so find_by_id returns None for empty keys (by design)
     let account = repo.find_by_id("test-empty-key").await.unwrap();
-    assert_eq!(account.api_key, Some("".to_string()));
+    assert_eq!(account.api_key, None); // Empty key not stored in secure storage
 }
 
 #[tokio::test]
@@ -154,6 +155,7 @@ async fn test_cmd_remove_account_success() {
     // Remove account
     let args = RemoveAccountArgs {
         id: "test-remove".to_string(),
+        force: true, // Skip confirmation in tests
     };
     let result = cmd_remove_account(args, &repo).await;
     assert!(result.is_ok());
@@ -176,6 +178,7 @@ async fn test_cmd_remove_account_persists_to_file() {
     // Remove account
     let args = RemoveAccountArgs {
         id: "test-persist".to_string(),
+        force: true, // Skip confirmation in tests
     };
     cmd_remove_account(args, &repo).await.unwrap();
 
@@ -194,6 +197,7 @@ async fn test_cmd_remove_account_not_found() {
 
     let args = RemoveAccountArgs {
         id: "non-existent".to_string(),
+        force: true, // Skip confirmation in tests
     };
     let result = cmd_remove_account(args, &repo).await;
 
@@ -220,6 +224,7 @@ async fn test_cmd_remove_account_multiple() {
     // Remove middle one
     let args = RemoveAccountArgs {
         id: "acc-2".to_string(),
+        force: true, // Skip confirmation in tests
     };
     cmd_remove_account(args, &repo).await.unwrap();
 
@@ -480,6 +485,7 @@ async fn test_cli_full_workflow() {
     // 7. Remove account
     let remove_args = RemoveAccountArgs {
         id: "workflow-acc".to_string(),
+        force: true, // Skip confirmation in tests
     };
     cmd_remove_account(remove_args, &repo).await.unwrap();
 

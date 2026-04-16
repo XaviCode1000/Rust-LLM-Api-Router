@@ -90,9 +90,10 @@ async fn stream_chat_request(
     // Make streaming request to provider using LlmRouter
     // For streaming, we still use the direct provider call since LlmRouter
     // doesn't have streaming support yet - this is a fallback to existing behavior
+    let provider_config_guard = state.provider_config.read().await;
     match make_streaming_provider_request(
         &state.http_client,
-        &state.provider_config,
+        &provider_config_guard,
         &account,
         &chat_request,
     )

@@ -197,6 +197,7 @@ async fn test_cli_remove_provider_success() {
     // Remove
     let args = RemoveProviderArgs {
         id: "to-remove".to_string(),
+        force: true,
     };
     let result = cmd_remove_provider(args, &repo).await;
 
@@ -212,6 +213,7 @@ async fn test_cli_remove_provider_not_found() {
 
     let args = RemoveProviderArgs {
         id: "non-existent".to_string(),
+        force: true,
     };
     let result = cmd_remove_provider(args, &repo).await;
 
@@ -236,6 +238,7 @@ async fn test_cli_remove_provider_from_multiple() {
     // Remove middle one
     let args = RemoveProviderArgs {
         id: "prov-2".to_string(),
+        force: true,
     };
     cmd_remove_provider(args, &repo).await.unwrap();
 
@@ -462,6 +465,7 @@ fn test_provider_commands_list_variant() {
 fn test_provider_commands_remove_variant() {
     let cmd = ProviderCommands::Remove(RemoveProviderArgs {
         id: "to-remove".to_string(),
+        force: true,
     });
 
     match cmd {
@@ -585,6 +589,7 @@ async fn test_cli_multiple_providers_workflow() {
     cmd_remove_provider(
         RemoveProviderArgs {
             id: "prov-a".to_string(),
+            force: true,
         },
         &repo,
     )

@@ -309,6 +309,7 @@ async fn test_remove_account_success() {
     // Remove account
     let args_remove = RemoveAccountArgs {
         id: "remove-acc-1".to_string(),
+        force: true, // Skip confirmation in tests
     };
     let cmd = AccountCommands::Remove(args_remove);
     let result = handle_account_command_with_dir(cmd, &config_dir).await;
@@ -322,6 +323,7 @@ async fn test_remove_account_not_found() {
 
     let args_remove = RemoveAccountArgs {
         id: "nonexistent-acc".to_string(),
+        force: true, // Skip confirmation in tests
     };
     let cmd = AccountCommands::Remove(args_remove);
     let result = handle_account_command_with_dir(cmd, &config_dir).await;
@@ -347,6 +349,7 @@ async fn test_remove_account_from_multiple() {
     // Remove middle one
     let args_remove = RemoveAccountArgs {
         id: "multi-acc-2".to_string(),
+        force: true, // Skip confirmation in tests
     };
     let cmd = AccountCommands::Remove(args_remove);
     let result = handle_account_command_with_dir(cmd, &config_dir).await;

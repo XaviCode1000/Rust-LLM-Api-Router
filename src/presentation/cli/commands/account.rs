@@ -49,6 +49,10 @@ pub struct RemoveAccountArgs {
     /// Account ID to remove
     #[arg(short, long)]
     pub id: String,
+
+    /// Skip confirmation prompt (for non-interactive use)
+    #[arg(long, short = 'y')]
+    pub force: bool,
 }
 
 /// Set priority arguments
@@ -159,8 +163,10 @@ pub async fn cmd_remove_account(
         .await
         .map_err(|_| crate::Error::ProviderNotFound(args.id.clone()))?;
 
-    // Confirmation prompt
-    if !prompt::confirm(&format!("Are you sure you want to remove account '{}'?", args.id))? {
+    // Confirmation prompt (skip if --force is used)
+    if !args.force
+        && !prompt::confirm(&format!("Are you sure you want to remove account '{}'?", args.id))?
+    {
         output::info(&format!("Cancelled. Account '{}' was not removed.", args.id));
         return Ok(());
     }
