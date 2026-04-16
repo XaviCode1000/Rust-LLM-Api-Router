@@ -22,6 +22,7 @@ use clap::Parser;
 use rust_llm_api_router::config::RoutingConfig;
 use rust_llm_api_router::presentation::cli::Cli;
 use std::net::SocketAddr;
+use std::panic;
 use std::sync::Arc;
 
 use rust_llm_api_router::config::Settings;
@@ -29,8 +30,29 @@ use rust_llm_api_router::error::Result;
 use rust_llm_api_router::infrastructure::init_logging;
 use rust_llm_api_router::presentation::{routes, AppState};
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() {
+    // P0: Terminal restoration on panic
+    panic::set_hook(Box::new(|info| {
+        // Restore terminal - use crossterm to leave raw mode and alternate screen
+        #[cfg(feature = "tui")]
+        {
+            use crossterm::{terminal::LeaveAlternateScreen, ExecutableCommand};
+            let _ = std::io::stdout().execute(LeaveAlternateScreen);
+            // Raw mode is automatically restored on drop, but force it
+            let _ = crossterm::terminal::disable_raw_mode();
+        }
+        eprintln!("PANIC: {}", info);
+    }));
+
+    // Server mode entry point
+    let runtime = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+    if let Err(e) = runtime.block_on(async { run_server().await }) {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
+}
+
+async fn run_server() -> Result<()> {
     let cli = Cli::parse();
 
     // Initialize logging
