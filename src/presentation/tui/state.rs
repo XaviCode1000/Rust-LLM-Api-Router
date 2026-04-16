@@ -8,6 +8,41 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
+/// Input mode for the TUI - controls keyboard handling behavior
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+pub enum InputMode {
+    /// Normal navigation mode - arrow keys, tabs, etc.
+    #[default]
+    Normal,
+    /// Editing mode - typing in form fields
+    Editing,
+    /// Processing mode - waiting for async validation (shows spinner)
+    Processing,
+}
+
+/// Form data being edited (cleared after submission for security)
+#[derive(Clone, Debug, Default)]
+pub struct FormState {
+    /// Provider ID being configured
+    pub provider_id: String,
+    /// API key buffer - only exists in memory, never persisted
+    pub api_key_buffer: String,
+    /// Cursor position in the form field
+    pub cursor_position: usize,
+    /// Validation error message if any
+    pub validation_error: Option<String>,
+}
+
+impl FormState {
+    /// Clear sensitive data - called after submission or cancel
+    pub fn clear(&mut self) {
+        self.api_key_buffer.clear();
+        self.provider_id.clear();
+        self.cursor_position = 0;
+        self.validation_error = None;
+    }
+}
+
 /// Metrics per provider
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct ProviderMetrics {
@@ -62,26 +97,35 @@ pub struct TuiState {
     /// Latency history for sparkline (50 items)
     pub latency_history: Arc<VecDeque<u64>>,
     pub max_log_entries: usize,
+    /// Current input mode for keyboard handling
+    pub input_mode: InputMode,
+    /// Form data being edited (sensitive - cleared after submission)
+    pub form_state: FormState,
+    /// Processing timeout - reverts to Normal after expiry
+    pub processing_timeout: Option<std::time::Instant>,
 }
 
 // Custom serialization to unwrap Arc for JSON
+// Note: form_state and processing_timeout are NOT serialized (security - sensitive data)
 impl Serialize for TuiState {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         use serde::ser::SerializeStruct;
-        let mut state = serializer.serialize_struct("TuiState", 5)?;
+        let mut state = serializer.serialize_struct("TuiState", 6)?;
         state.serialize_field("provider_status", &*self.provider_status)?;
         state.serialize_field("global_stats", &*self.global_stats)?;
         state.serialize_field("log_buffer", &*self.log_buffer)?;
         state.serialize_field("latency_history", &*self.latency_history)?;
         state.serialize_field("max_log_entries", &self.max_log_entries)?;
+        state.serialize_field("input_mode", &self.input_mode)?;
         state.end()
     }
 }
 
 // Custom deserialization to re-wrap in Arc
+// Note: form_state and processing_timeout initialized to defaults (not serialized)
 impl<'de> Deserialize<'de> for TuiState {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -94,6 +138,7 @@ impl<'de> Deserialize<'de> for TuiState {
             log_buffer: VecDeque<LogEntry>,
             latency_history: VecDeque<u64>,
             max_log_entries: usize,
+            input_mode: Option<InputMode>,
         }
 
         let raw = TuiStateRaw::deserialize(deserializer)?;
@@ -103,6 +148,9 @@ impl<'de> Deserialize<'de> for TuiState {
             log_buffer: Arc::new(raw.log_buffer),
             latency_history: Arc::new(raw.latency_history),
             max_log_entries: raw.max_log_entries,
+            input_mode: raw.input_mode.unwrap_or_default(),
+            form_state: FormState::default(),
+            processing_timeout: None,
         })
     }
 }
@@ -122,6 +170,9 @@ impl TuiState {
             log_buffer: Arc::new(VecDeque::with_capacity(max)),
             latency_history: Arc::new(VecDeque::with_capacity(50)),
             max_log_entries: max,
+            input_mode: InputMode::default(),
+            form_state: FormState::default(),
+            processing_timeout: None,
         }
     }
 
@@ -140,6 +191,9 @@ impl TuiState {
             log_buffer: Arc::new(new_buffer),
             latency_history: self.latency_history.clone(),
             max_log_entries: self.max_log_entries,
+            input_mode: self.input_mode.clone(),
+            form_state: self.form_state.clone(),
+            processing_timeout: self.processing_timeout,
         }
     }
 
@@ -155,6 +209,9 @@ impl TuiState {
             log_buffer: self.log_buffer.clone(),
             latency_history: self.latency_history.clone(),
             max_log_entries: self.max_log_entries,
+            input_mode: self.input_mode.clone(),
+            form_state: self.form_state.clone(),
+            processing_timeout: self.processing_timeout,
         }
     }
 
@@ -167,6 +224,9 @@ impl TuiState {
             log_buffer: self.log_buffer.clone(),
             latency_history: self.latency_history.clone(),
             max_log_entries: self.max_log_entries,
+            input_mode: self.input_mode.clone(),
+            form_state: self.form_state.clone(),
+            processing_timeout: self.processing_timeout,
         }
     }
 
@@ -185,6 +245,55 @@ impl TuiState {
             log_buffer: self.log_buffer.clone(),
             latency_history: Arc::new(new_history),
             max_log_entries: self.max_log_entries,
+            input_mode: self.input_mode.clone(),
+            form_state: self.form_state.clone(),
+            processing_timeout: self.processing_timeout,
+        }
+    }
+
+    /// Set input mode - returns new Arc-wrapped state
+    #[must_use]
+    pub fn set_input_mode(&self, mode: InputMode) -> Self {
+        Self {
+            provider_status: self.provider_status.clone(),
+            global_stats: self.global_stats.clone(),
+            log_buffer: self.log_buffer.clone(),
+            latency_history: self.latency_history.clone(),
+            max_log_entries: self.max_log_entries,
+            input_mode: mode,
+            form_state: self.form_state.clone(),
+            processing_timeout: self.processing_timeout,
+        }
+    }
+
+    /// Set form state - returns new Arc-wrapped state
+    #[must_use]
+    pub fn set_form_state(&self, form: FormState) -> Self {
+        Self {
+            provider_status: self.provider_status.clone(),
+            global_stats: self.global_stats.clone(),
+            log_buffer: self.log_buffer.clone(),
+            latency_history: self.latency_history.clone(),
+            max_log_entries: self.max_log_entries,
+            input_mode: self.input_mode.clone(),
+            form_state: form,
+            processing_timeout: self.processing_timeout,
+        }
+    }
+
+    /// Set processing timeout - returns new Arc-wrapped state
+    /// Used when transitioning to Processing mode
+    #[must_use]
+    pub fn with_processing_timeout(&self, timeout: std::time::Instant) -> Self {
+        Self {
+            provider_status: self.provider_status.clone(),
+            global_stats: self.global_stats.clone(),
+            log_buffer: self.log_buffer.clone(),
+            latency_history: self.latency_history.clone(),
+            max_log_entries: self.max_log_entries,
+            input_mode: self.input_mode.clone(),
+            form_state: self.form_state.clone(),
+            processing_timeout: Some(timeout),
         }
     }
 }
@@ -283,5 +392,68 @@ mod tests {
         assert_eq!(restored.provider_status.get("test"), Some(&ProviderMetrics::default()));
         assert_eq!(restored.global_stats.requests_total, 100);
         assert_eq!(restored.latency_history.len(), 1);
+    }
+
+    #[test]
+    fn test_input_mode_default() {
+        let mode = InputMode::default();
+        assert_eq!(mode, InputMode::Normal);
+    }
+
+    #[test]
+    fn test_input_mode_transitions() {
+        assert!(InputMode::Normal == InputMode::Normal);
+        assert!(InputMode::Editing != InputMode::Normal);
+    }
+
+    #[test]
+    fn test_form_state_clear() {
+        let mut form = FormState {
+            provider_id: "test-provider".to_string(),
+            api_key_buffer: "secret-key-123".to_string(),
+            cursor_position: 10,
+            validation_error: Some("Invalid key".to_string()),
+        };
+
+        form.clear();
+
+        assert!(form.provider_id.is_empty());
+        assert!(form.api_key_buffer.is_empty());
+        assert_eq!(form.cursor_position, 0);
+        assert!(form.validation_error.is_none());
+    }
+
+    #[test]
+    fn test_set_input_mode() {
+        let state = TuiState::new(50);
+        assert_eq!(state.input_mode, InputMode::Normal);
+
+        let editing_state = state.set_input_mode(InputMode::Editing);
+        assert_eq!(editing_state.input_mode, InputMode::Editing);
+
+        let processing_state = editing_state.set_input_mode(InputMode::Processing);
+        assert_eq!(processing_state.input_mode, InputMode::Processing);
+    }
+
+    #[test]
+    fn test_set_form_state() {
+        let state = TuiState::new(50);
+        let mut form = FormState::default();
+        form.provider_id = "openai".to_string();
+        form.api_key_buffer = "sk-test".to_string();
+
+        let new_state = state.set_form_state(form.clone());
+
+        assert_eq!(new_state.form_state.provider_id, "openai");
+        assert_eq!(new_state.form_state.api_key_buffer, "sk-test");
+    }
+
+    #[test]
+    fn test_with_processing_timeout() {
+        let state = TuiState::new(50);
+        let timeout = std::time::Instant::now();
+        let new_state = state.with_processing_timeout(timeout);
+
+        assert!(new_state.processing_timeout.is_some());
     }
 }
