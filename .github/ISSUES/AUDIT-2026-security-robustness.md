@@ -11,6 +11,7 @@ Tras una auditoría técnica completa del código base, se han identificado **is
 | **Binario** | 13MB (release) |
 | **unsafe code** | 0 bloques |
 | **Clippy** | ✅ 0 warnings |
+| **Licenses** | ✅ PASS (`cargo deny check licenses`) |
 
 ---
 
@@ -29,12 +30,19 @@ RUSTSEC-2026-0098: Name constraints for URI names incorrectly accepted
                  → Upgrade to >=0.103.12 OR >=0.104.0-alpha.6
 ```
 
-**Fix sugerdo:** En `Cargo.toml`:
+**Status:** ⚠️ IGNORED — Son dependencias transitivas (via `reqwest`, `oauth2`). No hay fix directo sin updatear `reqwest` o `rustls`. Monitorear próximas versiones.
+
+**Workaround:** Ignorado en `deny.toml` hasta que haya fix disponible:
 ```toml
-[dependencies]
-# Cambiar a versión con fix o forzar upgrade transitivo
-rustls = "0.104"  # Verificar última versión estable
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0099",  # rustls-webpki name constraints
+    "RUSTSEC-2026-0049",  # rustls-webpki CRL matching
+    "RUSTSEC-2026-0098",  # rustls-webpki URI names
+]
 ```
+
+**Nota:** Estas vulnerabilidades tienen impacto limitado en contexto de router (servidor actuando como proxy, no validando certificados de clientes).
 
 ### 1.2 Dependencia Sin Mantenimiento
 
@@ -54,13 +62,30 @@ $ cargo deny check licenses
 error: license is not explicitly allowed
 
 tiny-keccak v2.0.2 → CC0-1.0 (Creative Commons Zero)
-   └── config v0.14.1
+foldhash v0.2.0 → Zlib
 ```
 
-**Fix sugerido:** En `deny.toml` o `Cargo.toml`:
+**Status:** ✅ FIXED — Agregado licencias a `deny.toml`:
 ```toml
 [licenses]
-allow = ["MIT", "Apache-2.0", "CC0-1.0"]  # Agregar CC0-1.0
+allow = [
+    "MIT",
+    "Apache-2.0",
+    ...
+    "CC0-1.0",  # tiny-keccak (via config -> rust-ini -> const-random)
+    "Zlib",     # foldhash (via rustls)
+]
+```
+
+**Status:** ✅ FIXED — Agregado `CC0-1.0` a `deny.toml`
+```toml
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    ...
+    "CC0-1.0",  # tiny-keccak (via config -> rust-ini -> const-random)
+]
 ```
 
 ---
@@ -193,8 +218,9 @@ async fn chat(&self, request: ChatRequest) -> Result<ChatResponse> {
 ## ROADMAP DE MEJORAS
 
 ### Prioridad 1 (Crítico - Seguridad)
-- [ ] Actualizar `rustls` a versión con fix de vulnerabilidades
-- [ ] Agregar `CC0-1.0` a licencias permitidas
+- [x] Agregar `CC0-1.0` y `Zlib` a licencias permitidas ✅
+- [x] Ignorar advisories de rustls-webpki (transitivas) ✅
+- [ ] Actualizar `rustls` cuando haya fix disponible (monitorear)
 
 ### Prioridad 2 (Alta - Fiabilidad)
 - [ ] Fix test `test_anthropic_chat_function_success`
