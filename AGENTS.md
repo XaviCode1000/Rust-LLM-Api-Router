@@ -43,46 +43,51 @@
 
 ---
 
-## Build and Test Commands
+## Development Workflow (HDD-optimized)
 
-### Development Workflow (Low-Resource Hardware)
+**Hardware Context**: Intel i5-4590 (4C), 8GB RAM, HDD
 
-**Hardware Context**: Intel i5-4590 (4C/4T), 8GB RAM, HDD
+### Just Recipes (preferred)
 
 ```bash
-# Install tools (one-time)
-cargo install cargo-nextest cargo-llvm-cov sccache cargo-watch
-
-# Start development server (watch mode)
-./scripts/dev.sh
-
-# Run tests (4x faster than cargo test)
-cargo nextest run --test-threads 2
-
-# Run specific test file
-cargo nextest run --test chat_handler
-cargo nextest run --test live_contract_tests -- --ignored
-
-# Generate coverage report (10x faster than tarpaulin)
-cargo llvm-cov --html --output-dir coverage-llvm
-cargo llvm-cov --summary-only
-
-# Watch mode (auto-rerun on changes)
-cargo watch -x "nextest run --test-threads 2"
+just check          # fmt --check + clippy strict
+just check-fast    # cargo check (fastest)
+just test           # nextest --test-threads 2
+just audit         # cargo audit + cargo deny check
+just cov           # coverage HTML report
+just fmt           # cargo fmt
+just build-release # cargo build --release
+just sccache-stats # show sccache stats
 ```
 
-### Build Commands
+### Raw Commands (when Just isn't available)
 
 ```bash
-# Standard build
-cargo build --release
-
-# With sccache (6x faster)
-sccache --show-stats
-
-# Check only (fastest verification)
+# Vérify compilation (FAST)
 cargo check
+
+# Lint (strict)
+cargo clippy -- -D warnings
+
+# Full lint with all features
+cargo clippy --all-targets --all-features -- -D warnings
+
+# Run tests (ALWAYS use nextest, never cargo test)
+cargo nextest run --test-threads 2
+cargo nextest run --test-threads 2 --all-features
+
+# Coverage
+cargo llvm-cov nextest --html --output-dir coverage-llvm
+cargo llvm-cov nextest --summary-only
+
+# Format check
+cargo fmt --check
+
+# Background checker
+bacon
 ```
+
+**⚠️ HDD timeout rules:** First `cargo check` takes ~4 min (cold compile). After that, `sccache` makes everything fast. **ALWAYS set explicit timeouts** for heavy commands.
 
 ### Linting and Formatting
 
