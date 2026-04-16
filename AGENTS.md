@@ -9,12 +9,15 @@ LLM API Router. High-performance proxy across 34 providers with failover, cascad
 ## Commands
 
 ```bash
-just check          # fmt --check + clippy -D warnings
-just test           # cargo nextest run --test-threads 2
-just audit          # cargo audit + cargo deny check
-just cov            # cargo llvm-cov nextest --html
-just fmt            # cargo fmt
-just build-release  # cargo build --release
+just check          # fmt --check + clippy -D warnings (preferred)
+just test           # cargo nextest run --test-threads 2 (preferred)
+just audit          # cargo audit + cargo deny check (preferred)
+just cov            # cargo llvm-cov nextest --html (preferred)
+just fmt            # cargo fmt (preferred)
+just build-release  # cargo build --release (preferred)
+
+# Fallback (if just not available):
+# cargo check / cargo clippy -D warnings / cargo nextest run --test-threads 2
 ```
 
 ## Non-Standard Tooling
