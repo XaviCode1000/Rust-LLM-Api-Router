@@ -18,6 +18,8 @@ pub struct CascadingTier {
     pub model_id: String,
     /// The order of this tier (0-based, lower = tried first)
     pub tier_order: u32,
+    /// The cost per request for this tier in microdollars
+    pub cost_per_request: u64,
 }
 
 impl CascadingTier {
@@ -28,15 +30,22 @@ impl CascadingTier {
     /// * `account` - The planned account for this tier
     /// * `model_id` - The model ID to use
     /// * `tier_order` - The order of this tier
+    /// * `cost_per_request` - The cost per request in microdollars
     ///
     /// # Returns
     ///
     /// A new CascadingTier instance
-    pub fn new(account: PlannedAccount, model_id: impl Into<String>, tier_order: u32) -> Self {
+    pub fn new(
+        account: PlannedAccount,
+        model_id: impl Into<String>,
+        tier_order: u32,
+        cost_per_request: u64,
+    ) -> Self {
         Self {
             account,
             model_id: model_id.into(),
             tier_order,
+            cost_per_request,
         }
     }
 }
@@ -58,8 +67,7 @@ pub struct CascadingExecutionPlan {
     total_cost_microdollars: u64,
     /// Number of tiers that have been attempted
     tiers_attempted: u32,
-    /// Quality gate for evaluating responses (reserved for future use when integrating with real LLM execution)
-    #[allow(dead_code)]
+    /// Quality gate for evaluating responses
     quality_gate: Arc<dyn QualityGate>,
 }
 
@@ -125,7 +133,7 @@ impl CascadingExecutionPlan {
         let tiers: Vec<CascadingTier> = account_data
             .into_iter()
             .enumerate()
-            .map(|(idx, (account, provider, health, model_id, _, _))| {
+            .map(|(idx, (account, provider, health, model_id, cost_per_request, _))| {
                 let mut planned = PlannedAccount::new(account.id.clone(), &provider, health)
                     .with_execution_order(idx as u32)
                     .with_priority(account.priority);
@@ -139,7 +147,7 @@ impl CascadingExecutionPlan {
 
                 planned = planned.with_model_id(&model_id);
 
-                CascadingTier::new(planned, model_id, idx as u32)
+                CascadingTier::new(planned, model_id, idx as u32, cost_per_request)
             })
             .collect();
 
@@ -294,7 +302,7 @@ impl CascadingExecutionPlan {
 
             // Simulate execution (in real implementation, this would execute the actual request)
             // For now, we just record the cost
-            let cost_estimate = 1000; // Simulated cost for demonstration
+            let cost_estimate = self.current_tier().map(|t| t.cost_per_request).unwrap_or(0);
             self.add_cost(cost_estimate);
 
             return ExecutionResult::success(
@@ -318,6 +326,7 @@ impl CascadingExecutionPlan {
             let tier_account_id = tier.account.account_id.clone();
             let tier_account = tier.account.clone();
             let tier_health_snapshot = tier.account.health_snapshot.clone();
+            let tier_cost = tier.cost_per_request;
             let tier_accounts: Vec<PlannedAccount> =
                 self.tiers.iter().map(|t| t.account.clone()).collect();
 
@@ -331,7 +340,7 @@ impl CascadingExecutionPlan {
             // Simulate execution (in real implementation, this would execute the actual request)
             // For now, we record the cost and use the provided response
             // A real implementation would execute inner.execute() with actual LLM call
-            let cost_estimate = 1000; // Simulated cost for demonstration
+            let cost_estimate = tier_cost;
 
             // Check if we have exceeded cost budget
             if config.max_cost_microdollars > 0
@@ -511,11 +520,12 @@ mod tests {
         let health = AccountHealth::new("test-acc");
         let account = PlannedAccount::new("test-acc", &provider, health);
 
-        let tier = CascadingTier::new(account, "gpt-4", 0);
+        let tier = CascadingTier::new(account, "gpt-4", 0, 1000);
 
         assert_eq!(tier.account.account_id, "test-acc");
         assert_eq!(tier.model_id, "gpt-4");
         assert_eq!(tier.tier_order, 0);
+        assert_eq!(tier.cost_per_request, 1000);
     }
 
     #[tokio::test]

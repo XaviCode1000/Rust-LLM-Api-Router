@@ -9,10 +9,9 @@ use async_trait::async_trait;
 use super::{
     Account, ChatRequest, ChatResponse, DomainError, LlmRequest, LlmResponse, Model, Provider,
 };
-use crate::error::Result;
 
-/// Result type alias for domain operations.
-pub type DomainResult<T> = Result<T, DomainError>;
+/// Result type alias for domain operations (pure domain result).
+pub type DomainResult<T> = std::result::Result<T, DomainError>;
 
 /// Legacy trait for LLM providers (backward compatibility).
 ///
@@ -20,7 +19,7 @@ pub type DomainResult<T> = Result<T, DomainError>;
 #[async_trait]
 pub trait LlmProvider: Send + Sync {
     /// Sends a chat request to the LLM provider.
-    async fn chat(&self, request: LlmRequest) -> Result<LlmResponse>;
+    async fn chat(&self, request: LlmRequest) -> DomainResult<LlmResponse>;
     /// Lists available models from the provider.
     ///
     /// # Arguments
@@ -28,7 +27,7 @@ pub trait LlmProvider: Send + Sync {
     ///
     /// # Returns
     /// A list of available models
-    async fn list_models(&self, api_key: &str) -> Result<Vec<Model>>;
+    async fn list_models(&self, api_key: &str) -> DomainResult<Vec<Model>>;
     /// Returns the provider name.
     fn name(&self) -> &str;
 }

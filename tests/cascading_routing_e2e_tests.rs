@@ -306,13 +306,14 @@ fn test_cascading_tier_creation() {
     let model_id = "gpt-4";
 
     // Act
-    let tier = CascadingTier::new(planned, model_id, 0);
+    let tier = CascadingTier::new(planned, model_id, 0, 1000);
 
     // Assert
     assert_eq!(tier.account.account_id, "test-acc");
     assert_eq!(tier.account.provider_id, "openai");
     assert_eq!(tier.model_id, "gpt-4");
     assert_eq!(tier.tier_order, 0);
+    assert_eq!(tier.cost_per_request, 1000);
 }
 
 /// Test: CascadingTier ordering (lower tier_order is tried first)
@@ -324,9 +325,9 @@ fn test_cascading_tier_ordering() {
     let planned = PlannedAccount::new("test-acc", &provider, health);
 
     // Act
-    let tier0 = CascadingTier::new(planned.clone(), "model-a", 0);
-    let tier1 = CascadingTier::new(planned.clone(), "model-b", 1);
-    let tier2 = CascadingTier::new(planned, "model-c", 2);
+    let tier0 = CascadingTier::new(planned.clone(), "model-a", 0, 1000);
+    let tier1 = CascadingTier::new(planned.clone(), "model-b", 1, 2000);
+    let tier2 = CascadingTier::new(planned, "model-c", 2, 3000);
 
     // Assert
     assert!(tier0.tier_order < tier1.tier_order, "Tier 0 should be before tier 1");
@@ -334,6 +335,9 @@ fn test_cascading_tier_ordering() {
     assert_eq!(tier0.tier_order, 0);
     assert_eq!(tier1.tier_order, 1);
     assert_eq!(tier2.tier_order, 2);
+    assert_eq!(tier0.cost_per_request, 1000);
+    assert_eq!(tier1.cost_per_request, 2000);
+    assert_eq!(tier2.cost_per_request, 3000);
 }
 
 // ============================================================================

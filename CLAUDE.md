@@ -3,7 +3,7 @@
 
 This project is indexed by GitNexus as **Rust-LLM-Api-Router** (4293 symbols, 9259 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
-> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+> If any GitNexus tool warns the index is stale, run `npm exec gitnexus analyze` in terminal first.
 
 ## Always Do
 
@@ -74,13 +74,13 @@ Before completing any code modification task, verify:
 After committing code changes, the GitNexus index becomes stale. Re-run analyze to update it:
 
 ```bash
-npx gitnexus analyze
+npm exec gitnexus analyze
 ```
 
 If the index previously included embeddings, preserve them by adding `--embeddings`:
 
 ```bash
-npx gitnexus analyze --embeddings
+npm exec gitnexus analyze --embeddings
 ```
 
 To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.embeddings` field shows the count (0 means no embeddings). **Running analyze without `--embeddings` will delete any previously generated embeddings.**
@@ -89,29 +89,16 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 
 ## CLI
 
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-| Work in the Tests area (522 symbols) | `.claude/skills/generated/tests/SKILL.md` |
-| Work in the Execution_plan area (180 symbols) | `.claude/skills/generated/execution-plan/SKILL.md` |
-| Work in the Services area (136 symbols) | `.claude/skills/generated/services/SKILL.md` |
-| Work in the Entities area (97 symbols) | `.claude/skills/generated/entities/SKILL.md` |
-| Work in the Persistence area (40 symbols) | `.claude/skills/generated/persistence/SKILL.md` |
-| Work in the Auth area (31 symbols) | `.claude/skills/generated/auth/SKILL.md` |
-| Work in the Cli area (21 symbols) | `.claude/skills/generated/cli/SKILL.md` |
-| Work in the Handlers area (18 symbols) | `.claude/skills/generated/handlers/SKILL.md` |
-| Work in the Secure_storage area (17 symbols) | `.claude/skills/generated/secure-storage/SKILL.md` |
-| Work in the Provider area (12 symbols) | `.claude/skills/generated/provider/SKILL.md` |
-| Work in the Gateway area (11 symbols) | `.claude/skills/generated/gateway/SKILL.md` |
-| Work in the Quality area (11 symbols) | `.claude/skills/generated/quality/SKILL.md` |
-| Work in the Router area (10 symbols) | `.claude/skills/generated/router/SKILL.md` |
-| Work in the Config area (4 symbols) | `.claude/skills/generated/config/SKILL.md` |
-| Work in the Commands area (4 symbols) | `.claude/skills/generated/commands/SKILL.md` |
-| Work in the Responses area (4 symbols) | `.claude/skills/generated/responses/SKILL.md` |
+| Task | Resource |
+|------|----------|
+| Understand architecture / "How does X work?" | Skill Registry → gitnexus-exploring |
+| Blast radius / "What breaks if I change X?" | Skill Registry → gitnexus-impact-analysis |
+| Trace bugs / "Why is X failing?" | Skill Registry → gitnexus-debugging |
+| Rename / extract / split / refactor | Skill Registry → gitnexus-refactoring |
+| Tools, resources, schema reference | Skill Registry → gitnexus-guide |
+| Index, status, clean, wiki CLI commands | Skill Registry → gitnexus-cli |
+| Any area (tests, services, entities, etc.) | Skill Registry → area skill |
+
+**Nota**: El Skill Registry está en `.atl/skill-registry.md`. Todos los paths a skills están centralizados ahí.
 
 <!-- gitnexus:end -->

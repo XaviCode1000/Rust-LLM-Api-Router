@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use crate::domain::entities::{
     LlmRequest, LlmResponse, OpenAIChatRequest, OpenAIChatResponse, OpenAIMessage,
 };
-use crate::domain::traits::LlmProvider;
+use crate::domain::traits::{DomainResult, LlmProvider};
 use crate::domain::Model;
 use crate::error::{Error, Result};
 use crate::infrastructure::http_client::SharedHttpClient;
@@ -66,7 +66,7 @@ impl GroqProvider {
 
 #[async_trait]
 impl LlmProvider for GroqProvider {
-    async fn chat(&self, request: LlmRequest) -> Result<LlmResponse> {
+    async fn chat(&self, request: LlmRequest) -> DomainResult<LlmResponse> {
         // Convert LlmRequest to OpenAIChatRequest (Groq uses OpenAI-compatible format)
         let openai_request = OpenAIChatRequest::new(
             request.model,
@@ -81,8 +81,10 @@ impl LlmProvider for GroqProvider {
                 .collect(),
         );
 
-        // Use the typed chat method
-        let openai_response = self.chat(&openai_request).await?;
+        // Use the typed chat method, mapping errors to domain error
+        let openai_response = self.chat(&openai_request).await.map_err(|e: Error| {
+            crate::domain::errors::DomainError::ExternalServiceError(e.to_string())
+        })?;
 
         // Convert OpenAIChatResponse to LlmResponse
         let response = LlmResponse {
@@ -109,7 +111,9 @@ impl LlmProvider for GroqProvider {
         Ok(response)
     }
 
-    async fn list_models(&self, api_key: &str) -> Result<Vec<Model>> {
+    async fn list_models(&self, api_key: &str) -> DomainResult<Vec<Model>> {
+        use crate::domain::errors::DomainError;
+
         let url = format!("{}/models", self.api_url);
 
         let response = self
@@ -119,7 +123,12 @@ impl LlmProvider for GroqProvider {
             .header("Authorization", format!("Bearer {}", api_key))
             .send()
             .await
-            .map_err(|e| Error::Internal(format!("Failed to fetch models from Groq: {}", e)))?;
+            .map_err(|e| {
+                DomainError::ExternalServiceError(format!(
+                    "Failed to fetch models from Groq: {}",
+                    e
+                ))
+            })?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -127,20 +136,24 @@ impl LlmProvider for GroqProvider {
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(Error::Internal(format!("Groq returned {}: {}", status, error_text)));
+            return Err(DomainError::ExternalServiceError(format!(
+                "Groq returned {}: {}",
+                status, error_text
+            )));
         }
 
         // Parse response - Groq uses OpenAI-compatible format: {"data": [{"id": "...", "object": "model", ...}]}
-        let json: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| Error::Internal(format!("Failed to parse Groq models response: {}", e)))?;
+        let json: serde_json::Value = response.json().await.map_err(|e| {
+            DomainError::Serialization(format!("Failed to parse Groq models response: {}", e))
+        })?;
 
         let mut models = Vec::new();
         let data_array = json
             .get("data")
             .and_then(|d: &serde_json::Value| d.as_array())
-            .ok_or_else(|| Error::Internal("Invalid Groq models response format".to_string()))?;
+            .ok_or_else(|| {
+                DomainError::Serialization("Invalid Groq models response format".to_string())
+            })?;
 
         for item in data_array {
             if let Some(id) = item.get("id").and_then(|v: &serde_json::Value| v.as_str()) {

@@ -4,13 +4,11 @@
 //! using JSON serialization with secure API key handling.
 
 use async_trait::async_trait;
-use fs4::tokio::AsyncFileExt;
+use fs4::FileExt;
 use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
-use tokio::fs::{self, File, OpenOptions};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::fs;
 
 use crate::domain::traits::AccountRepository;
 use crate::domain::{Account, DomainError, DomainResult};
@@ -18,7 +16,7 @@ use crate::infrastructure::secure_storage::{create_secure_storage, SecureStorage
 use crate::Result;
 
 /// Lock acquisition timeout duration (for reference).
-const _LOCK_TIMEOUT: Duration = Duration::from_secs(5);
+// const _LOCK_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Internal representation for JSON serialization.
 /// API keys are stored encrypted in production, plaintext in dev.
@@ -225,15 +223,24 @@ impl JsonAccountRepository {
     async fn read_accounts(&self) -> DomainResult<Vec<AccountData>> {
         self.ensure_file_exists().await?;
 
-        let file = OpenOptions::new().read(true).open(&self.file_path).await?;
+        let file_path = self.file_path.clone();
 
-        // T-21: Acquire shared (read) lock
-        file.lock_shared()?;
+        // Execute file locking in blocking task to avoid blocking the async runtime
+        let contents = tokio::task::spawn_blocking(move || {
+            // Open and lock the file in blocking context
+            let mut file = std::fs::File::open(&file_path)?;
 
-        // Read from the locked file handle
-        let mut contents = String::new();
-        let mut file = file; // Take ownership
-        file.read_to_string(&mut contents).await?;
+            // Acquire shared (read) lock in blocking context
+            FileExt::lock_shared(&mut file)?;
+
+            // Read contents
+            let mut contents = String::new();
+            std::io::Read::read_to_string(&mut file, &mut contents)?;
+
+            DomainResult::Ok(contents)
+        })
+        .await
+        .map_err(|e| DomainError::Internal(e.to_string()))??;
 
         let accounts: Vec<AccountData> = serde_json::from_str(&contents)
             .map_err(|e| DomainError::Serialization(e.to_string()))?;
@@ -281,25 +288,32 @@ impl JsonAccountRepository {
         // T-23: Write to temp file first
         let tmp_path = self.file_path.with_extension("tmp");
 
-        {
-            let mut tmp_file = File::create(&tmp_path).await?;
+        // Write JSON content to temp file path first (async)
+        tokio::fs::write(&tmp_path, &json).await?;
 
-            // T-22: Acquire exclusive (write) lock
-            tmp_file.lock_exclusive()?;
+        // Execute file locking and sync in blocking task
+        let tmp_path_clone = tmp_path.clone();
+        let file_path_clone = self.file_path.clone();
 
-            // Write JSON to temp file
-            tmp_file.write_all(json.as_bytes()).await?;
+        tokio::task::spawn_blocking(move || {
+            // Open the temp file we just wrote
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .open(&tmp_path_clone)?;
+
+            // Acquire exclusive (write) lock in blocking context
+            FileExt::lock_exclusive(&mut file)?;
 
             // Ensure data is flushed to disk before rename
-            tmp_file.sync_all().await?;
-        }
+            file.sync_all()?;
 
-        // T-23: Atomic rename (POSIX atomic on same filesystem)
-        fs::rename(&tmp_path, &self.file_path).await.map_err(|e| {
-            // Clean up temp file on failure
-            let _ = std::fs::remove_file(&tmp_path);
-            std::io::Error::other(format!("Failed to atomically rename temp file: {}", e))
-        })?;
+            // T-23: Atomic rename (POSIX atomic on same filesystem)
+            std::fs::rename(&tmp_path_clone, &file_path_clone)?;
+
+            Ok::<(), DomainError>(())
+        })
+        .await
+        .map_err(|e| DomainError::Internal(e.to_string()))??;
 
         Ok(())
     }

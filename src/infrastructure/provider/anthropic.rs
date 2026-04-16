@@ -13,7 +13,7 @@ use crate::domain::entities::{
     LlmRequest, LlmResponse, OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice, OpenAIMessage,
     OpenAIUsage,
 };
-use crate::domain::traits::LlmProvider;
+use crate::domain::traits::{DomainResult, LlmProvider};
 use crate::domain::Model;
 use crate::error::{Error, Result};
 use crate::infrastructure::http_client::SharedHttpClient;
@@ -177,7 +177,7 @@ impl AnthropicProvider {
 
 #[async_trait]
 impl LlmProvider for AnthropicProvider {
-    async fn chat(&self, request: LlmRequest) -> Result<LlmResponse> {
+    async fn chat(&self, request: LlmRequest) -> DomainResult<LlmResponse> {
         // Convert LlmRequest to OpenAIChatRequest
         let openai_request = OpenAIChatRequest::new(
             request.model,
@@ -192,8 +192,10 @@ impl LlmProvider for AnthropicProvider {
                 .collect(),
         );
 
-        // Use the typed chat method
-        let openai_response = self.chat(&openai_request).await?;
+        // Use the typed chat method, mapping errors to domain error
+        let openai_response = self.chat(&openai_request).await.map_err(|e: Error| {
+            crate::domain::errors::DomainError::ExternalServiceError(e.to_string())
+        })?;
 
         // Convert OpenAIChatResponse to LlmResponse
         let response = LlmResponse {
@@ -220,7 +222,9 @@ impl LlmProvider for AnthropicProvider {
         Ok(response)
     }
 
-    async fn list_models(&self, api_key: &str) -> Result<Vec<Model>> {
+    async fn list_models(&self, api_key: &str) -> DomainResult<Vec<Model>> {
+        use crate::domain::errors::DomainError;
+
         let url = format!("{}/models", self.api_url);
 
         let response = self
@@ -232,7 +236,10 @@ impl LlmProvider for AnthropicProvider {
             .send()
             .await
             .map_err(|e| {
-                Error::Internal(format!("Failed to fetch models from Anthropic: {}", e))
+                DomainError::ExternalServiceError(format!(
+                    "Failed to fetch models from Anthropic: {}",
+                    e
+                ))
             })?;
 
         if !response.status().is_success() {
@@ -241,12 +248,15 @@ impl LlmProvider for AnthropicProvider {
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(Error::Internal(format!("Anthropic returned {}: {}", status, error_text)));
+            return Err(DomainError::ExternalServiceError(format!(
+                "Anthropic returned {}: {}",
+                status, error_text
+            )));
         }
 
         // Parse response - Anthropic format: {"data": [{"id": "...", "type": "model", ...}]}
         let json: serde_json::Value = response.json().await.map_err(|e| {
-            Error::Internal(format!("Failed to parse Anthropic models response: {}", e))
+            DomainError::Serialization(format!("Failed to parse Anthropic models response: {}", e))
         })?;
 
         let mut models = Vec::new();
@@ -254,7 +264,7 @@ impl LlmProvider for AnthropicProvider {
             .get("data")
             .and_then(|d: &serde_json::Value| d.as_array())
             .ok_or_else(|| {
-                Error::Internal("Invalid Anthropic models response format".to_string())
+                DomainError::Serialization("Invalid Anthropic models response format".to_string())
             })?;
 
         for item in data_array {
