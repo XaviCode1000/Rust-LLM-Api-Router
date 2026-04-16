@@ -8,6 +8,7 @@
 
 use std::sync::Arc;
 
+use tokio::sync::watch;
 use uuid::Uuid;
 
 use crate::app::services::execution_plan::{
@@ -23,6 +24,8 @@ use crate::error::{Error, Result};
 use crate::infrastructure::gateway::llm_gateway::ProviderConfig;
 use crate::infrastructure::HttpClient;
 use crate::interfaces::provider_request::{ProviderChatMessage, ProviderChatRequest};
+#[cfg(feature = "tui")]
+use crate::presentation::tui::TuiState;
 
 /// Router configuration for LLM request routing
 #[derive(Debug, Clone)]
@@ -73,6 +76,11 @@ pub struct LlmRouter<R: AccountRepository + ?Sized> {
 
     /// Routing configuration for logging purposes
     routing_config: Option<RoutingConfig>,
+
+    /// Optional TUI state channel for telemetry
+    #[cfg(feature = "tui")]
+    #[allow(dead_code)]
+    tui_state_tx: Option<watch::Sender<TuiState>>,
 }
 
 impl<R: AccountRepository + ?Sized> LlmRouter<R> {
@@ -92,6 +100,8 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             planner,
             config: LlmRouterConfig::default(),
             routing_config: None,
+            #[cfg(feature = "tui")]
+            tui_state_tx: None,
         }
     }
 
@@ -112,6 +122,8 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             planner,
             config: router_config,
             routing_config: None,
+            #[cfg(feature = "tui")]
+            tui_state_tx: None,
         }
     }
 
@@ -133,6 +145,55 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             planner,
             config: LlmRouterConfig::default(),
             routing_config: Some(routing_config),
+            #[cfg(feature = "tui")]
+            tui_state_tx: None,
+        }
+    }
+
+    /// Creates a new LlmRouter with optional TUI telemetry channel.
+    #[cfg(feature = "tui")]
+    #[allow(dead_code)]
+    pub fn new_with_tui(
+        http_client: Arc<HttpClient>,
+        account_repo: Arc<R>,
+        provider_configs: Arc<std::collections::HashMap<String, ProviderConfig>>,
+        planner_config: ExecutionPlannerConfig,
+        tui_state_tx: Option<watch::Sender<TuiState>>,
+    ) -> Self {
+        let planner = ExecutionPlanner::new(account_repo.clone(), planner_config);
+
+        Self {
+            http_client,
+            provider_configs,
+            account_repo,
+            planner,
+            config: LlmRouterConfig::default(),
+            routing_config: None,
+            tui_state_tx,
+        }
+    }
+
+    /// Creates a new LlmRouter with custom config and optional TUI telemetry channel.
+    #[cfg(feature = "tui")]
+    #[allow(dead_code)]
+    pub fn with_config_and_tui(
+        http_client: Arc<HttpClient>,
+        account_repo: Arc<R>,
+        provider_configs: Arc<std::collections::HashMap<String, ProviderConfig>>,
+        planner_config: ExecutionPlannerConfig,
+        router_config: LlmRouterConfig,
+        tui_state_tx: Option<watch::Sender<TuiState>>,
+    ) -> Self {
+        let planner = ExecutionPlanner::new(account_repo.clone(), planner_config);
+
+        Self {
+            http_client,
+            provider_configs,
+            account_repo,
+            planner,
+            config: router_config,
+            routing_config: None,
+            tui_state_tx,
         }
     }
 

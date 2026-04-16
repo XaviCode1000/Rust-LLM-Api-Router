@@ -10,6 +10,7 @@ rust-version = "1.80"
 [features]
 default = []
 completions = ["clap_complete", "clap_mangen"]
+tui = []
 
 [dependencies]
 # Web
@@ -59,6 +60,10 @@ comfy-table = "7"
 inquire = "0.7"
 indicatif = "0.17"
 is-terminal = "0.4"
+
+# TUI - Terminal User Interface
+ratatui = "0.30"
+crossterm = "0.28"
 
 # Directories
 dirs = "5.0"

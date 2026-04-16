@@ -67,6 +67,7 @@
 pub mod cli;
 pub mod routes;
 pub mod state;
+pub mod tui;
 
 pub use cli::commands;
 pub use routes::routes;
