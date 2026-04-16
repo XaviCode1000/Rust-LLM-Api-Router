@@ -17,7 +17,6 @@ use crate::Result;
 
 /// Lock acquisition timeout duration (for reference).
 // const _LOCK_TIMEOUT: Duration = Duration::from_secs(5);
-
 /// Internal representation for JSON serialization.
 /// API keys are stored encrypted in production, plaintext in dev.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -231,7 +230,7 @@ impl JsonAccountRepository {
             let mut file = std::fs::File::open(&file_path)?;
 
             // Acquire shared (read) lock in blocking context
-            FileExt::lock_shared(&mut file)?;
+            FileExt::lock_shared(&file)?;
 
             // Read contents
             let mut contents = String::new();
@@ -297,12 +296,12 @@ impl JsonAccountRepository {
 
         tokio::task::spawn_blocking(move || {
             // Open the temp file we just wrote
-            let mut file = std::fs::OpenOptions::new()
+            let file = std::fs::OpenOptions::new()
                 .write(true)
                 .open(&tmp_path_clone)?;
 
             // Acquire exclusive (write) lock in blocking context
-            FileExt::lock_exclusive(&mut file)?;
+            FileExt::lock_exclusive(&file)?;
 
             // Ensure data is flushed to disk before rename
             file.sync_all()?;
