@@ -95,6 +95,7 @@ llm-router --force-interactive provider list
 
 ### Add Provider
 
+**Modo Manual (avanzado):**
 ```bash
 llm-router provider add --id <id> --name <name> --base-url <url> [--disabled]
 ```
@@ -104,6 +105,17 @@ llm-router provider add --id <id> --name <name> --base-url <url> [--disabled]
 llm-router provider add --id groq --name "Groq" --base-url "https://api.groq.com/openai/v1"
 llm-router provider add --id openai --name "OpenAI" --base-url "https://api.openai.com/v1"
 ```
+
+**Modo Interactivo (recomendado - usuario nuevo):**
+```bash
+# Seleccionar de lista de 34+ proveedores pre-configurados
+llm-router provider add --interactive
+
+# Mostrar lista de proveedores conocidos y salir
+llm-router provider add --list
+```
+
+El modo interactivo muestra los proveedores pre-configurados (OpenAI, Anthropic, Groq, Mistral, etc.) y solo requiere la API key. Para proveedores no listados, hay opción "Otro".
 
 ### List Providers
 
