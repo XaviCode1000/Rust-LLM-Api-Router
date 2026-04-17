@@ -281,11 +281,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Full audit
+      - name: Install cargo-deny
         uses: taiki-e/install-action@cargo-deny
-        run: |
-          cargo deny check advisories --disable-transitive
-          cargo deny check licenses
-          cargo deny check bans
+
+      - name: Check advisories
+        run: cargo deny check advisories --disable-transitive
+
+      - name: Check licenses
+        run: cargo deny check licenses
+
+      - name: Check banned
+        run: cargo deny check bans
 
 # END
