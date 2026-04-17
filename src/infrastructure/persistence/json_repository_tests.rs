@@ -1,7 +1,5 @@
 //! Security-focused tests for JSON account repository
 
-#![cfg(test)]
-
 use super::JsonAccountRepository;
 use crate::domain::traits::AccountRepository;
 use crate::domain::Account;

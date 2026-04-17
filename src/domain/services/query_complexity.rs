@@ -564,8 +564,8 @@ mod tests {
         let request = ChatRequest::new(
             "gpt-4",
             vec![
-                Message::system(&"x".repeat(1000)), // Long system message
-                Message::user("Hi"),                // Short user message
+                Message::system("x".repeat(1000)), // Long system message
+                Message::user("Hi"),               // Short user message
             ],
         );
 

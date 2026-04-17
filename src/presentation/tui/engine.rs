@@ -438,7 +438,8 @@ mod tests {
 
     #[test]
     fn test_render_constants_defined() {
-        assert!(RENDER_THROTTLE_MS > 0);
-        assert!(IDLE_SLEEP_MS > 0);
+        const RENDER_OK: () = assert!(RENDER_THROTTLE_MS > 0);
+        const IDLE_OK: () = assert!(IDLE_SLEEP_MS > 0);
+        let _ = (RENDER_OK, IDLE_OK);
     }
 }

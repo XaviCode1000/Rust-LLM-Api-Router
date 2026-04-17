@@ -337,9 +337,12 @@ mod tests {
 
         let base = 100_u64;
         // Account for jitter multiplier range [0.9, 1.1]
-        assert!(delay0 >= base * 1 * 9 / 10); // 90
-        assert!(delay1 >= base * 2 * 9 / 10); // 180
-        assert!(delay2 >= base * 4 * 9 / 10); // 360
+        let min_0 = base as f64 * 0.9;
+        let min_1 = (base * 2) as f64 * 0.9;
+        let min_2 = (base * 4) as f64 * 0.9;
+        assert!(delay0 >= min_0 as u64); // ~90
+        assert!(delay1 >= min_1 as u64); // ~180
+        assert!(delay2 >= min_2 as u64); // ~360
     }
 
     #[test]

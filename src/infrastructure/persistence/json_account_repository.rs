@@ -505,8 +505,8 @@ mod tests {
         std::fs::write(&tmp_path, "stale data").unwrap();
         assert!(tmp_path.exists());
 
-        // Create repo pointing to same directory
-        let repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
+        // Create repo pointing to same directory (triggers cleanup)
+        let _repo = JsonAccountRepository::with_config_dir(temp_dir.path()).unwrap();
 
         // Temp file should be removed by with_config_dir cleanup
         assert!(!tmp_path.exists());

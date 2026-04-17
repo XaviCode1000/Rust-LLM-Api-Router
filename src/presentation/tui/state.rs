@@ -438,9 +438,12 @@ mod tests {
     #[test]
     fn test_set_form_state() {
         let state = TuiState::new(50);
-        let mut form = FormState::default();
-        form.provider_id = "openai".to_string();
-        form.api_key_buffer = "sk-test".to_string();
+        let form = FormState {
+            provider_id: "openai".to_string(),
+            api_key_buffer: "sk-test".to_string(),
+            cursor_position: 0,
+            validation_error: None,
+        };
 
         let new_state = state.set_form_state(form.clone());
 

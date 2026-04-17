@@ -183,21 +183,9 @@ fn test_backoff_exponential_increase() {
     // 100 * 2^1 = 200
     // 100 * 2^2 = 400
     // Due to jitter in implementation, check ranges instead of exact values
-    let diff0 = if delay0 >= 100 {
-        delay0 - 100
-    } else {
-        100 - delay0
-    };
-    let diff1 = if delay1 >= 200 {
-        delay1 - 200
-    } else {
-        200 - delay1
-    };
-    let diff2 = if delay2 >= 400 {
-        delay2 - 400
-    } else {
-        400 - delay2
-    };
+    let diff0 = delay0.abs_diff(100);
+    let diff1 = delay1.abs_diff(200);
+    let diff2 = delay2.abs_diff(400);
     assert!(diff0 <= 10, "delay0 should be ~100, got {}", delay0);
     assert!(diff1 <= 20, "delay1 should be ~200, got {}", delay1);
     assert!(diff2 <= 40, "delay2 should be ~400, got {}", delay2);
@@ -244,21 +232,9 @@ fn test_backoff_different_base_delays() {
     let delay2 = config.calculate_delay(2); // ~200
 
     // Check ranges due to jitter in implementation
-    let diff0 = if delay0 >= 50 {
-        delay0 - 50
-    } else {
-        50 - delay0
-    };
-    let diff1 = if delay1 >= 100 {
-        delay1 - 100
-    } else {
-        100 - delay1
-    };
-    let diff2 = if delay2 >= 200 {
-        delay2 - 200
-    } else {
-        200 - delay2
-    };
+    let diff0 = delay0.abs_diff(50);
+    let diff1 = delay1.abs_diff(100);
+    let diff2 = delay2.abs_diff(200);
     assert!(diff0 <= 5, "delay0 should be ~50, got {}", delay0);
     assert!(diff1 <= 10, "delay1 should be ~100, got {}", delay1);
     assert!(diff2 <= 20, "delay2 should be ~200, got {}", delay2);

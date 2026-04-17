@@ -336,7 +336,6 @@ async fn benchmark_failover_with_failures() {
     // Benchmark - first fails, second succeeds
     let start = std::time::Instant::now();
     for i in 0..1000 {
-        let i = i;
         let result = manager
             .execute_with_failover("openai", |account: &rust_llm_api_router::domain::Account| {
                 let account_id = account.id.clone();
@@ -385,7 +384,7 @@ async fn benchmark_health_tracking() {
     // Benchmark getting health
     let start = std::time::Instant::now();
     for _ in 0..10000 {
-        let _ = manager.get_all_health();
+        let _ = tokio::runtime::Handle::current().block_on(manager.get_all_health());
     }
     let elapsed = start.elapsed();
 
