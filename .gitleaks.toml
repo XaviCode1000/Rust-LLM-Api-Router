@@ -29,14 +29,18 @@ regexes = [
 ]
 
 # Override specific default rules that generate false positives
+# Using v8 syntax: [[rules]] requires id field
 [[rules]]
 id = "generic-api-key"
 description = "Generic API Key"
 regex = '''(?i)(?:key|api|token|secret|password)[a-z0-9_ .\-,]{0,25}(?:=|>|:{1,3}=|\|\|:|<=|=>|:|\?=)[^'"\\n,;>]{8,128}'''
 tags = ["key", "API", "generic"]
 
-# Allow test fixtures with dummy keys
-[[rules.allowlist]]
+# Allow test fixtures with dummy keys - v8 syntax uses [[rules.allowlists]]
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
 description = "Allow test/mock API keys"
 regexes = [
     '''(?i)test[-_]key''',
