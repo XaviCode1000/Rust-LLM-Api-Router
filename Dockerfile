@@ -10,11 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config libssl-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Cache dependencies: copy manifests and build a dummy binary
+# Cache dependencies: fetch crates to warm the cache
 COPY Cargo.toml Cargo.lock ./
-RUN mkdir -p src && echo "fn main() {}" > src/main.rs && \
-    cargo build --release && \
-    rm -rf src
+RUN cargo fetch
 
 # Copy actual source and build
 COPY . .
