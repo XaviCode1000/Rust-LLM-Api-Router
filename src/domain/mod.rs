@@ -48,6 +48,7 @@
 
 pub mod entities;
 pub mod errors;
+pub mod providers;
 pub mod services;
 pub mod traits;
 
@@ -57,6 +58,9 @@ pub use entities::{
     Model, ModelPricing, OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice, OpenAIError,
     OpenAIErrorResponse, OpenAIMessage, OpenAIUsage, Provider, Usage,
 };
+
+// Re-export providers module
+pub use providers::{known_providers, ProviderId, ProviderSelection, SelectionState};
 
 // Re-export errors explicitly
 pub use errors::DomainError;

@@ -7,8 +7,28 @@ use rust_llm_api_router::app::services::execution_plan::{
 };
 use rust_llm_api_router::domain::traits::AccountRepository;
 use rust_llm_api_router::domain::Account;
+use rust_llm_api_router::domain::DomainError;
 use rust_llm_api_router::infrastructure::persistence::JsonAccountRepository;
+use std::fmt;
 use std::sync::Arc;
+
+/// Benchmark error type that implements From<DomainError> required by FailoverManager.
+#[derive(Clone, Debug, PartialEq)]
+struct BenchError(String);
+
+impl fmt::Display for BenchError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for BenchError {}
+
+impl From<DomainError> for BenchError {
+    fn from(e: DomainError) -> Self {
+        BenchError(format!("DomainError: {}", e))
+    }
+}
 
 // Note: Run these benchmarks with: cargo bench
 
@@ -291,7 +311,10 @@ async fn benchmark_failover_manager_execution() {
             .execute_with_failover(
                 "openai",
                 |_account: &rust_llm_api_router::domain::Account| async move {
-                    Ok::<(String, Vec<(String, String)>), String>(("result".to_string(), vec![]))
+                    Ok::<(String, Vec<(String, String)>), BenchError>((
+                        "result".to_string(),
+                        vec![],
+                    ))
                 },
             )
             .await;
@@ -319,9 +342,11 @@ async fn benchmark_failover_with_failures() {
                 let account_id = account.id.clone();
                 async move {
                     if account_id.contains("1") {
-                        Err::<(String, Vec<(String, String)>), String>("fail".to_string())
+                        Err::<(String, Vec<(String, String)>), BenchError>(BenchError(
+                            "fail".to_string(),
+                        ))
                     } else {
-                        Ok::<_, String>((format!("success-{}", i), vec![]))
+                        Ok::<_, BenchError>((format!("success-{}", i), vec![]))
                     }
                 }
             })
@@ -347,7 +372,10 @@ async fn benchmark_health_tracking() {
             .execute_with_failover(
                 "openai",
                 |_account: &rust_llm_api_router::domain::Account| async move {
-                    Ok::<(String, Vec<(String, String)>), String>(("result".to_string(), vec![]))
+                    Ok::<(String, Vec<(String, String)>), BenchError>((
+                        "result".to_string(),
+                        vec![],
+                    ))
                 },
             )
             .await;

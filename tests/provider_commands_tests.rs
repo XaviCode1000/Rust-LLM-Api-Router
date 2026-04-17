@@ -31,12 +31,13 @@ fn create_add_provider_args(
     api_key: Option<&str>,
 ) -> AddProviderArgs {
     AddProviderArgs {
-        id: id.to_string(),
-        name: name.to_string(),
-        base_url: base_url.to_string(),
+        id: Some(id.to_string()),
+        name: Some(name.to_string()),
+        base_url: Some(base_url.to_string()),
         api_key: api_key.map(String::from),
         disabled: false,
         interactive: false,
+        list: false,
     }
 }
 
@@ -57,16 +58,21 @@ async fn handle_provider_command_with_dir(
                 eprintln!("Warning: No API key provided. Use --api-key or --interactive.");
             }
 
+            // Unwrap Option<String> values (tests always provide Some values)
+            let id = args.id.unwrap_or_default();
+            let name = args.name.unwrap_or_default();
+            let base_url = args.base_url.unwrap_or_default();
+
             let provider = if args.disabled {
-                Provider::disabled(&args.id, &args.name, &args.base_url)
+                Provider::disabled(&id, &name, &base_url)
             } else {
-                Provider::new(&args.id, &args.name, &args.base_url)
+                Provider::new(&id, &name, &base_url)
             };
 
             repo.save(provider)
                 .await
                 .map_err(|e| rust_llm_api_router::Error::Internal(e.to_string()))?;
-            println!("✓ Provider '{}' added successfully", args.id);
+            println!("✓ Provider '{}' added successfully", id);
             Ok(())
         },
         ProviderCommands::List => {

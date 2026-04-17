@@ -34,12 +34,13 @@ async fn test_cli_remove_provider_from_single_provider_list() {
 
     // Add single provider
     let add_args = AddProviderArgs {
-        id: "only-provider".to_string(),
-        name: "Only Provider".to_string(),
-        base_url: "https://api.only.com".to_string(),
+        id: Some("only-provider".to_string()),
+        name: Some("Only Provider".to_string()),
+        base_url: Some("https://api.only.com".to_string()),
         api_key: Some("key".to_string()),
         disabled: false,
         interactive: false,
+        list: false,
     };
     cmd_add_provider(add_args, &repo).await.unwrap();
 
@@ -73,12 +74,13 @@ async fn test_cli_remove_provider_last_one_with_error_handling() {
 
     // Add single provider
     let add_args = AddProviderArgs {
-        id: "last-one".to_string(),
-        name: "Last One".to_string(),
-        base_url: "https://api.last.com".to_string(),
+        id: Some("last-one".to_string()),
+        name: Some("Last One".to_string()),
+        base_url: Some("https://api.last.com".to_string()),
         api_key: Some("key".to_string()),
         disabled: false,
         interactive: false,
+        list: false,
     };
     cmd_add_provider(add_args, &repo).await.unwrap();
 
@@ -111,12 +113,13 @@ async fn test_cli_remove_provider_from_multiple() {
     // Add multiple providers
     cmd_add_provider(
         AddProviderArgs {
-            id: "prov-1".to_string(),
-            name: "Provider 1".to_string(),
-            base_url: "https://prov1.com".to_string(),
+            id: Some("prov-1".to_string()),
+            name: Some("Provider 1".to_string()),
+            base_url: Some("https://prov1.com".to_string()),
             api_key: Some("key-1".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -125,12 +128,13 @@ async fn test_cli_remove_provider_from_multiple() {
 
     cmd_add_provider(
         AddProviderArgs {
-            id: "prov-2".to_string(),
-            name: "Provider 2".to_string(),
-            base_url: "https://prov2.com".to_string(),
+            id: Some("prov-2".to_string()),
+            name: Some("Provider 2".to_string()),
+            base_url: Some("https://prov2.com".to_string()),
             api_key: Some("key-2".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -139,12 +143,13 @@ async fn test_cli_remove_provider_from_multiple() {
 
     cmd_add_provider(
         AddProviderArgs {
-            id: "prov-3".to_string(),
-            name: "Provider 3".to_string(),
-            base_url: "https://prov3.com".to_string(),
+            id: Some("prov-3".to_string()),
+            name: Some("Provider 3".to_string()),
+            base_url: Some("https://prov3.com".to_string()),
             api_key: Some("key-3".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -174,12 +179,13 @@ async fn test_cli_remove_provider_first_of_many() {
     // Add three providers
     cmd_add_provider(
         AddProviderArgs {
-            id: "first".to_string(),
-            name: "First".to_string(),
-            base_url: "https://first.com".to_string(),
+            id: Some("first".to_string()),
+            name: Some("First".to_string()),
+            base_url: Some("https://first.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -188,12 +194,13 @@ async fn test_cli_remove_provider_first_of_many() {
 
     cmd_add_provider(
         AddProviderArgs {
-            id: "second".to_string(),
-            name: "Second".to_string(),
-            base_url: "https://second.com".to_string(),
+            id: Some("second".to_string()),
+            name: Some("Second".to_string()),
+            base_url: Some("https://second.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -202,12 +209,13 @@ async fn test_cli_remove_provider_first_of_many() {
 
     cmd_add_provider(
         AddProviderArgs {
-            id: "third".to_string(),
-            name: "Third".to_string(),
-            base_url: "https://third.com".to_string(),
+            id: Some("third".to_string()),
+            name: Some("Third".to_string()),
+            base_url: Some("https://third.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -234,12 +242,13 @@ async fn test_cli_remove_provider_last_of_many() {
     // Add three providers
     cmd_add_provider(
         AddProviderArgs {
-            id: "first".to_string(),
-            name: "First".to_string(),
-            base_url: "https://first.com".to_string(),
+            id: Some("first".to_string()),
+            name: Some("First".to_string()),
+            base_url: Some("https://first.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -248,12 +257,13 @@ async fn test_cli_remove_provider_last_of_many() {
 
     cmd_add_provider(
         AddProviderArgs {
-            id: "second".to_string(),
-            name: "Second".to_string(),
-            base_url: "https://second.com".to_string(),
+            id: Some("second".to_string()),
+            name: Some("Second".to_string()),
+            base_url: Some("https://second.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -262,12 +272,13 @@ async fn test_cli_remove_provider_last_of_many() {
 
     cmd_add_provider(
         AddProviderArgs {
-            id: "third".to_string(),
-            name: "Third".to_string(),
-            base_url: "https://third.com".to_string(),
+            id: Some("third".to_string()),
+            name: Some("Third".to_string()),
+            base_url: Some("https://third.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -294,12 +305,13 @@ async fn test_cli_remove_provider_middle_of_many() {
     // Add three providers
     cmd_add_provider(
         AddProviderArgs {
-            id: "first".to_string(),
-            name: "First".to_string(),
-            base_url: "https://first.com".to_string(),
+            id: Some("first".to_string()),
+            name: Some("First".to_string()),
+            base_url: Some("https://first.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -308,12 +320,13 @@ async fn test_cli_remove_provider_middle_of_many() {
 
     cmd_add_provider(
         AddProviderArgs {
-            id: "second".to_string(),
-            name: "Second".to_string(),
-            base_url: "https://second.com".to_string(),
+            id: Some("second".to_string()),
+            name: Some("Second".to_string()),
+            base_url: Some("https://second.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -322,12 +335,13 @@ async fn test_cli_remove_provider_middle_of_many() {
 
     cmd_add_provider(
         AddProviderArgs {
-            id: "third".to_string(),
-            name: "Third".to_string(),
-            base_url: "https://third.com".to_string(),
+            id: Some("third".to_string()),
+            name: Some("Third".to_string()),
+            base_url: Some("https://third.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -354,12 +368,13 @@ async fn test_cli_remove_provider_persists_across_instances() {
     // Add provider
     cmd_add_provider(
         AddProviderArgs {
-            id: "to-remove".to_string(),
-            name: "Remove Me".to_string(),
-            base_url: "https://remove.com".to_string(),
+            id: Some("to-remove".to_string()),
+            name: Some("Remove Me".to_string()),
+            base_url: Some("https://remove.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -390,12 +405,13 @@ async fn test_cli_remove_provider_with_special_characters_in_id() {
     // Add provider with special characters
     cmd_add_provider(
         AddProviderArgs {
-            id: "test-provider-123".to_string(),
-            name: "Test Provider".to_string(),
-            base_url: "https://test.com".to_string(),
+            id: Some("test-provider-123".to_string()),
+            name: Some("Test Provider".to_string()),
+            base_url: Some("https://test.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -422,12 +438,13 @@ async fn test_cli_remove_provider_case_sensitive() {
     // Add provider
     cmd_add_provider(
         AddProviderArgs {
-            id: "MyProvider".to_string(),
-            name: "My Provider".to_string(),
-            base_url: "https://myprovider.com".to_string(),
+            id: Some("MyProvider".to_string()),
+            name: Some("My Provider".to_string()),
+            base_url: Some("https://myprovider.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -459,12 +476,13 @@ async fn test_cli_workflow_add_remove_multiple_sequential() {
     for i in 0..5 {
         cmd_add_provider(
             AddProviderArgs {
-                id: format!("provider-{}", i),
-                name: format!("Provider {}", i),
-                base_url: format!("https://provider{}.com", i),
+                id: Some(format!("provider-{}", i)),
+                name: Some(format!("Provider {}", i)),
+                base_url: Some(format!("https://provider{}.com", i)),
                 api_key: Some("key".to_string()),
                 disabled: false,
                 interactive: false,
+                list: false,
             },
             &repo,
         )
@@ -497,12 +515,13 @@ async fn test_cli_workflow_add_disable_remove() {
     // Add provider
     cmd_add_provider(
         AddProviderArgs {
-            id: "workflow-provider".to_string(),
-            name: "Workflow Provider".to_string(),
-            base_url: "https://workflow.com".to_string(),
+            id: Some("workflow-provider".to_string()),
+            name: Some("Workflow Provider".to_string()),
+            base_url: Some("https://workflow.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -544,12 +563,13 @@ async fn test_cli_workflow_add_enable_remove() {
     // Add disabled provider
     cmd_add_provider(
         AddProviderArgs {
-            id: "disabled-provider".to_string(),
-            name: "Disabled Provider".to_string(),
-            base_url: "https://disabled.com".to_string(),
+            id: Some("disabled-provider".to_string()),
+            name: Some("Disabled Provider".to_string()),
+            base_url: Some("https://disabled.com".to_string()),
             api_key: Some("key".to_string()),
             disabled: true,
             interactive: false,
+            list: false,
         },
         &repo,
     )

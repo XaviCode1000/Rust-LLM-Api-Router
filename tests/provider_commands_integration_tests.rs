@@ -20,12 +20,13 @@ fn create_test_repo() -> (JsonProviderRepository, JsonAccountRepository, TempDir
 /// Helper para crear AddProviderArgs
 fn create_add_args(id: &str, name: &str, base_url: &str, api_key: Option<&str>) -> AddProviderArgs {
     AddProviderArgs {
-        id: id.to_string(),
-        name: name.to_string(),
-        base_url: base_url.to_string(),
+        id: Some(id.to_string()),
+        name: Some(name.to_string()),
+        base_url: Some(base_url.to_string()),
         api_key: api_key.map(String::from),
         disabled: false,
         interactive: false,
+        list: false,
     }
 }
 

@@ -22,6 +22,8 @@ just build-release  # cargo build --release (preferred)
 
 ## Non-Standard Tooling
 
+For any file search or grep in the current git indexed directory use fff tools
+
 - **Testing**: `cargo-nextest` (not cargo test), `cargo-llvm-cov` (not tarpaulin)
 - **Task orchestration**: `just` (not raw scripts)
 - **Build cache**: `sccache`
@@ -70,5 +72,8 @@ This project is indexed. Run `gitnexus_query` for execution flows, `gitnexus_con
 
 ---
 
+For any file search or grep in the current git indexed directory use fff tools
+
 **Last Updated**: April 2026
 **Quick Ref**: Run `just` for all commands
+

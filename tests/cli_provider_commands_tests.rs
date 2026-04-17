@@ -38,12 +38,13 @@ async fn test_cli_add_provider_success_enabled() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
     let args = AddProviderArgs {
-        id: "test-provider".to_string(),
-        name: "Test Provider".to_string(),
-        base_url: "https://api.test.com/v1".to_string(),
+        id: Some("test-provider".to_string()),
+        name: Some("Test Provider".to_string()),
+        base_url: Some("https://api.test.com/v1".to_string()),
         api_key: Some("test-api-key".to_string()),
         disabled: false,
         interactive: false,
+        list: false,
     };
 
     let result = cmd_add_provider(args, &repo).await;
@@ -62,12 +63,13 @@ async fn test_cli_add_provider_success_disabled() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
     let args = AddProviderArgs {
-        id: "disabled-provider".to_string(),
-        name: "Disabled Provider".to_string(),
-        base_url: "https://api.disabled.com/v1".to_string(),
+        id: Some("disabled-provider".to_string()),
+        name: Some("Disabled Provider".to_string()),
+        base_url: Some("https://api.disabled.com/v1".to_string()),
         api_key: Some("test-key".to_string()),
         disabled: true,
         interactive: false,
+        list: false,
     };
 
     let result = cmd_add_provider(args, &repo).await;
@@ -83,12 +85,13 @@ async fn test_cli_add_provider_empty_api_key_warning() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
     let args = AddProviderArgs {
-        id: "no-key-provider".to_string(),
-        name: "No Key Provider".to_string(),
-        base_url: "https://api.nokey.com/v1".to_string(),
+        id: Some("no-key-provider".to_string()),
+        name: Some("No Key Provider".to_string()),
+        base_url: Some("https://api.nokey.com/v1".to_string()),
         api_key: None,
         disabled: false,
         interactive: false,
+        list: false,
     };
 
     let result = cmd_add_provider(args, &repo).await;
@@ -102,23 +105,25 @@ async fn test_cli_add_provider_duplicate_overwrites() {
 
     // Add first provider
     let args1 = AddProviderArgs {
-        id: "dup-provider".to_string(),
-        name: "Original".to_string(),
-        base_url: "https://original.com/v1".to_string(),
+        id: Some("dup-provider".to_string()),
+        name: Some("Original".to_string()),
+        base_url: Some("https://original.com/v1".to_string()),
         api_key: Some("key-1".to_string()),
         disabled: false,
         interactive: false,
+        list: false,
     };
     cmd_add_provider(args1, &repo).await.unwrap();
 
     // Add duplicate - should overwrite
     let args2 = AddProviderArgs {
-        id: "dup-provider".to_string(),
-        name: "Updated".to_string(),
-        base_url: "https://updated.com/v1".to_string(),
+        id: Some("dup-provider".to_string()),
+        name: Some("Updated".to_string()),
+        base_url: Some("https://updated.com/v1".to_string()),
         api_key: Some("key-2".to_string()),
         disabled: false,
         interactive: false,
+        list: false,
     };
     let result = cmd_add_provider(args2, &repo).await;
 
@@ -435,17 +440,18 @@ async fn test_cli_validate_provider_unreachable_url() {
 #[test]
 fn test_provider_commands_add_variant() {
     let cmd = ProviderCommands::Add(AddProviderArgs {
-        id: "test".to_string(),
-        name: "Test".to_string(),
-        base_url: "https://test.com".to_string(),
+        id: Some("test".to_string()),
+        name: Some("Test".to_string()),
+        base_url: Some("https://test.com".to_string()),
         api_key: Some("key".to_string()),
         disabled: false,
         interactive: false,
+        list: false,
     });
 
     match cmd {
         ProviderCommands::Add(args) => {
-            assert_eq!(args.id, "test");
+            assert_eq!(args.id, Some("test".to_string()));
         },
         _ => panic!("Expected Add command"),
     }
@@ -529,12 +535,13 @@ async fn test_cli_multiple_providers_workflow() {
     // Add multiple providers
     cmd_add_provider(
         AddProviderArgs {
-            id: "prov-a".to_string(),
-            name: "Provider A".to_string(),
-            base_url: "https://a.com".to_string(),
+            id: Some("prov-a".to_string()),
+            name: Some("Provider A".to_string()),
+            base_url: Some("https://a.com".to_string()),
             api_key: Some("key-a".to_string()),
             disabled: false,
             interactive: false,
+            list: false,
         },
         &repo,
     )
@@ -543,12 +550,13 @@ async fn test_cli_multiple_providers_workflow() {
 
     cmd_add_provider(
         AddProviderArgs {
-            id: "prov-b".to_string(),
-            name: "Provider B".to_string(),
-            base_url: "https://b.com".to_string(),
+            id: Some("prov-b".to_string()),
+            name: Some("Provider B".to_string()),
+            base_url: Some("https://b.com".to_string()),
             api_key: Some("key-b".to_string()),
             disabled: true,
             interactive: false,
+            list: false,
         },
         &repo,
     )

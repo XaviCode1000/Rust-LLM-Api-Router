@@ -11,26 +11,37 @@
 
 use clap::{Args, Subcommand};
 
+use crate::domain::known_providers;
 use crate::domain::traits::{AccountRepository, ProviderRepository};
-use crate::domain::Provider;
+use crate::domain::{Provider, SelectionState};
 use crate::presentation::cli::input::read_api_key_interactive;
 use crate::presentation::cli::{output, prompt, spinner, table};
 use crate::Result;
 
+// Re-export provider list functions from sibling module
+pub use crate::presentation::cli::commands::provider_list::{
+    auto_fill_provider, cmd_list_known, display_known_providers, select_provider_interactive,
+};
+
 /// Add provider arguments
+///
+/// Modified to support:
+/// - --list flag to show known providers
+/// - --interactive mode for interactive selection
+/// - Partial args when using interactive mode
 #[derive(Debug, Args)]
 pub struct AddProviderArgs {
-    /// Provider unique identifier
+    /// Provider unique identifier (required without --interactive, optional with --interactive)
     #[arg(long)]
-    pub id: String,
+    pub id: Option<String>,
 
-    /// Human-readable provider name
+    /// Human-readable provider name (auto-filled with --interactive from known providers)
     #[arg(long)]
-    pub name: String,
+    pub name: Option<String>,
 
-    /// Base URL for API requests
+    /// Base URL for API requests (auto-filled with --interactive from known providers)
     #[arg(long)]
-    pub base_url: String,
+    pub base_url: Option<String>,
 
     /// API key for authentication (or use --interactive)
     #[arg(long)]
@@ -40,9 +51,13 @@ pub struct AddProviderArgs {
     #[arg(long)]
     pub disabled: bool,
 
-    /// Interactive mode (prompt for API key)
+    /// Interactive mode: select provider from list or enter custom
     #[arg(long, short)]
     pub interactive: bool,
+
+    /// List all known providers and exit
+    #[arg(long)]
+    pub list: bool,
 }
 
 /// Remove provider arguments
@@ -132,7 +147,78 @@ pub async fn handle_provider_command(
 }
 
 /// Add a new provider
+///
+/// Handles:
+/// - `--list` flag: Display known providers and exit
+/// - `--interactive` mode: Interactive provider selection
+/// - Auto-fill from known providers if ID matches
+/// - Backward compatibility with existing flags
 pub async fn cmd_add_provider(args: AddProviderArgs, repo: &impl ProviderRepository) -> Result<()> {
+    // Check --list flag first
+    if args.list {
+        display_known_providers()?;
+        return Ok(());
+    }
+
+    // Determine provider details
+    let (provider_id, provider_name, provider_base_url) = if args.interactive {
+        // Interactive mode: check if we need selection or can auto-fill
+        if let (Some(id), (None, None)) = (&args.id, (&args.name, &args.base_url)) {
+            // If ID provided but name/base_url missing, try auto-fill
+            let (name, base_url, _) = auto_fill_provider(id, "", "");
+            (id.clone(), name, base_url)
+        } else if args.id.is_none() && args.name.is_none() && args.base_url.is_none() {
+            // No args: show interactive selection
+            let selection = select_provider_interactive()?;
+
+            match selection.state {
+                SelectionState::Selected => {
+                    let id = selection.provider_id.unwrap();
+                    let kp = known_providers::find(&id).unwrap();
+                    (id, kp.name.to_string(), kp.base_url.to_string())
+                },
+                SelectionState::Cancelled => {
+                    output::info("Provider selection cancelled.");
+                    return Ok(());
+                },
+                SelectionState::Invalid => {
+                    output::error("Invalid selection. Enter a number (1-34) or provider ID.");
+                    return Ok(());
+                },
+                _ => {
+                    output::error("Selection error.");
+                    return Ok(());
+                },
+            }
+        } else {
+            // Has args, use them
+            (
+                args.id.unwrap_or_default(),
+                args.name.unwrap_or_default(),
+                args.base_url.unwrap_or_default(),
+            )
+        }
+    } else {
+        // Non-interactive: validate required args
+        let id = args.id.clone().unwrap_or_default();
+        let name = args.name.clone().unwrap_or_default();
+        let base_url = args.base_url.clone().unwrap_or_default();
+
+        if id.is_empty() || name.is_empty() || base_url.is_empty() {
+            return Err(crate::Error::Internal(
+                "Missing required arguments: --id, --name, and --base_url are required without --interactive".to_string()
+            ));
+        }
+
+        // Auto-fill if ID matches known provider
+        let (name, base_url, was_filled) = auto_fill_provider(&id, &name, &base_url);
+        if was_filled {
+            output::dim(&format!("Auto-filled '{}' details from known providers", name));
+        }
+
+        (id, name, base_url)
+    };
+
     // Get API key (from args or interactive)
     let api_key = if args.interactive {
         read_api_key_interactive()?
@@ -144,17 +230,18 @@ pub async fn cmd_add_provider(args: AddProviderArgs, repo: &impl ProviderReposit
         output::warning("No API key provided. Use --api-key or --interactive.");
     }
 
+    // Create provider
     let provider = if args.disabled {
-        Provider::disabled(&args.id, &args.name, &args.base_url)
+        Provider::disabled(&provider_id, &provider_name, &provider_base_url)
     } else {
-        Provider::new(&args.id, &args.name, &args.base_url)
+        Provider::new(&provider_id, &provider_name, &provider_base_url)
     };
 
     repo.save(provider)
         .await
         .map_err(|e| crate::Error::Internal(e.to_string()))?;
 
-    output::success(&format!("Provider '{}' added successfully", args.id));
+    output::success(&format!("Provider '{}' added successfully", provider_id));
     Ok(())
 }
 
