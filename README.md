@@ -31,17 +31,44 @@ Listo. Ya está corriendo en `http://localhost:8080`
 
 ## 1. Instalar
 
-### Docker (Recomendado)
+### Opción 1: Script Automático (Recomendado)
+
+Una línea que lo instala sola:
+
+```bash
+# Usuario (se instala en ~/.local/bin o ~/.cargo/bin)
+curl -sS https://raw.githubusercontent.com/XaviCode1000/Rust-LLM-Api-Router/main/scripts/install.sh | sh
+
+# Sistema (se instala en /usr/local/bin)
+curl -sS https://raw.githubusercontent.com/XaviCode1000/Rust-LLM-Api-Router/main/scripts/install.sh | sh -s -- --bin-dir /usr/local/bin
+```
+
+El script detecta tu sistema operativo y arquitectura automáticamente.
+
+### Opción 2: Docker (Rápido)
 
 ```bash
 docker run -d -p 8080:8080 ghcr.io/xavicode1000/rust-llm-api-router:latest
 ```
 
-### Binario (sin Docker)
+### Opción 3: Binario Manual
 
 ```bash
 # Descargá de: https://github.com/XaviCode1000/Rust-LLM-Api-Router/releases
-./llm-router
+# Linux:   llm-router-x86_64-unknown-linux.tar.gz
+# macOS:   llm-router-x86_64-apple-darwin.tar.gz
+
+tar -xzf llm-router-*.tar.gz
+./llm-router --help
+```
+
+### Opción 4: Compilar (Desarrolladores)
+
+```bash
+git clone https://github.com/XaviCode1000/Rust-LLM-Api-Router.git
+cd Rust-LLM-Api-Router
+cargo build --release
+./target/release/llm-router --help
 ```
 
 ---
