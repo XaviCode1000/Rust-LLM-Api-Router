@@ -45,14 +45,14 @@ env:
   CARGO_PROFILE_DEV_DEBUG: 0
   CARGO_PROFILE_TEST_DEBUG: 0
   CARGO_TERM_COLOR: always
-  
+
   # Warnings as errors
   RUSTFLAGS: "-Dwarnings"
   RUSTDOCFLAGS: "-Dwarnings"
-  
+
   # sccache (optional, for faster builds)
   SCCACHE_GHA_ENABLED: "true"
-  
+
   # Nextest
   CARGO_NEXTEST_ENABLED: "true"
 
@@ -60,9 +60,9 @@ env:
 # Jobs
 # --------------------------------------------------------------------------
 jobs:
-  # ═══════════════════════════════════════════════════════════════════════
+  # ============================================================================
   # 1. LINT - Fastest fail, runs first
-  # ═══════════════════════════════════════════════════════════════════════
+  # ============================================================================
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -70,32 +70,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy, llvm-tools-preview
-      
+
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      
+
       - name: Install sccache
         uses: mozilla-actions/sccache-action@v0.0.6
-      
+
       - name: Format check
         run: cargo fmt --all -- --check
-      
+
       - name: Clippy
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
-      
+
       - name: Check docs
         run: cargo doc --locked --workspace --no-deps --document-private-items
 
-  # ═══════════════════════════════════════════════════════════════════════
+  # ============================================================================
   # 2. SECURITY - Critical vulnerabilities block merge
-  # ═══════════════════════════════════════════════���═══════════════════════
+  # ============================================================================
   security:
     name: Security
     runs-on: ubuntu-latest
@@ -103,25 +103,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      
+
       - name: Install cargo-deny
         uses: taiki-e/install-action@cargo-deny
-      
+
       # Check advisories - FAIL on critical/high issues
       - name: Check advisories
         run: cargo deny check advisories
-      
+
       # Check licenses - FAIL on forbidden licenses
       - name: Check licenses
         run: cargo deny check licenses
-      
+
       # Check bans - FAIL on banned dependencies
       - name: Check banned
         run: cargo deny check bans
 
-  # ═══════════════════════════════════════════════════════════════════════════════
+  # ============================================================================
   # 3. TEST - Core functionality
-  # ═══════════════════════════════════════════════════════════════════════════════
+  # ============================================================================
   test:
     name: Test (${{ matrix.target }})
     runs-on: ubuntu-latest
@@ -134,22 +134,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Install nextest
         uses: taiki-e/install-action@nextest
-      
+
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      
+
       # Unit + Integration tests
       - name: Run tests
         run: cargo nextest run --locked --workspace --all-features --profile ci
-      
+
       # Store test results for flaky analysis
       - name: Upload nextest results
         if: always()
@@ -159,9 +159,9 @@ jobs:
           path: .nextest/ci/test-results/
           retention-days: 7
 
-  # ═══════════════════════════════════════════════════════════════════════
+  # ============================================================================
   # 4. COVERAGE - Only on main, full analysis
-  # ═══════════════════════════════════════════════════════════════════════
+  # ============================================================================
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
@@ -170,35 +170,35 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Install llvm-tools
         run: rustup component add llvm-tools-preview
-      
+
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
-      
+
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
-      
+
       - name: Generate coverage
         run: |
           cargo llvm-cov nextest \
             --workspace --all-features \
             --lcov --output-path lcov.info \
             --doctests
-      
+
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
         with:
           files: lcov.info
           fail_ci_if_error: false
 
-  # ═══════════════════════════════════════════════════════════════════════
+  # ============================================================================
   # 5. DOCS - Only on main, verify documentation builds
-  # ═══════��═══════════════════════════════════════════════════════════════
+  # ============================================================================
   docs:
     name: Docs
     runs-on: ubuntu-latest
@@ -207,24 +207,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
-      
+
       - name: Build docs
         run: |
           cargo doc --locked --workspace --all-features \
             --document-private-items --no-deps
-      
+
       - name: Run doctests
         run: cargo test --locked --workspace --doc
 
-  # ═══════════════════════════════════════════════════════════════════════
+  # ============================================================================
   # 6. LIVE CONTRACT TESTS - Only on main with secrets
-  # ═══════════════════════════════════════════════════════════════════════
+  # ============================================================================
   live-tests:
     name: Live Tests
     runs-on: ubuntu-latest
@@ -233,13 +233,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
-      
+
       # Check for API keys
       - name: Check secrets
         id: check-secrets
@@ -253,7 +253,7 @@ jobs:
             fi
           done
           echo "missing=$missing" >> "$GITHUB_OUTPUT"
-      
+
       # Run live tests if secrets available
       - name: Run live tests
         if: steps.check-secrets.outputs.missing == '0'
@@ -263,15 +263,15 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: cargo nextest run --test live_contract_tests -- --ignored
-      
+
       # Skip notice if no secrets
       - name: No secrets notice
         if: steps.check-secrets.outputs.missing != '0'
         run: echo "::notice::Live tests skipped - API keys not configured"
 
-  # ═══════════════════════════════════════════════════════════════════════
+  # ============================================================================
   # 7. AUDIT SCHEDULE - Weekly dependency audit
-  # ═══════════════════════════════════════════════════════════════════════
+  # ============================================================================
   audit-weekly:
     name: Weekly Audit
     runs-on: ubuntu-latest
@@ -280,7 +280,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      
+
       - name: Full audit
         uses: taiki-e/install-action@cargo-deny
         run: |
