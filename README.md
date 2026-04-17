@@ -59,7 +59,8 @@ docker run -d -p 8080:8080 ghcr.io/xavicode1000/rust-llm-api-router:latest
 # macOS:   llm-router-x86_64-apple-darwin.tar.gz
 
 tar -xzf llm-router-*.tar.gz
-./llm-router --help
+mv llm-router ~/.local/bin/  # o /usr/local/bin/
+llm-router --help
 ```
 
 ### Opción 4: Compilar (Desarrolladores)
@@ -79,15 +80,17 @@ Si no sabés usar la terminal — todo es guiada:
 
 ```bash
 # Agregá proveedor de forma guiada
-./llm-router provider add --interactive
+llm-router provider add --interactive
 
 # Agregá tu cuenta/API key de forma segura
-./llm-router account add --interactive
+llm-router account add --interactive
 
 # Ver qué tenés configurado
-./llm-router provider list
-./llm-router account list
+llm-router provider list
+llm-router account list
 ```
+
+*(Si acabás de instalar y no está en tu PATH, usá `./llm-router` en vez de `llm-router`)*
 
 El programa te pregunta cada dato. Solo respondé.
 
@@ -98,14 +101,14 @@ El programa te pregunta cada dato. Solo respondé.
 Si sabés lo que hacés, podés configurar todo desde línea de comandos:
 
 ```bash
-# Agregar proveedor-directo
-./llm-router provider add --id groq --name "Groq" --url "https://api.groq.com/openai/v1"
+# Agregar proveedor directo
+llm-router provider add --id groq --name "Groq" --url "https://api.groq.com/openai/v1"
 
 # Agregar cuenta/API key
-./llm-router account add --id mi-key --provider groq --api-key $GROQ_API_KEY
+llm-router account add --id mi-key --provider groq --api-key $GROQ_API_KEY
 
 # Ver el estado
-./llm-router status
+llm-router status
 ```
 
 Para configuración avanzada (vault, cascading, failover), ver [docs/](docs/)
@@ -128,13 +131,13 @@ http://localhost:8080/v1/chat/completions
 docker run -d -p 8080:8080 ghcr.io/xavicode1000/rust-llm-api-router:latest
 
 # 2. Agregar proveedor (modo interactivo)
-./llm-router provider add --interactive
+llm-router provider add --interactive
 # Te pregunta: Provider ID? → groq
 # Te pregunta: Nombre? → Groq
 # Te pregunta: URL? → https://api.groq.com/openai/v1
 
 # 3. Agregar tu API key (modo interactivo)
-./llm-router account add --interactive
+llm-router account add --interactive
 # Te pregunta: Account ID? → mi-key
 # Te pregunta: Provider? → groq
 # Te pregunta: API Key? → (la escribís y queda guardada)
