@@ -367,11 +367,11 @@ src/infrastructure/
 ├── gateway/                # LLM Gateway
 │   ├── mod.rs
 │   ├── llm_gateway.rs      # LlmGatewayImpl, ProviderConfig, default_providers()
-│   └── README.md
+│   └── README.md       # Module removed during docs consolidation (2026-04-17)
 ├── provider/               # Provider adapters
 │   ├── mod.rs
 │   ├── openai.rs           # OpenAI-compatible format
-│   ├── anthropic.rs        # Anthropic format (API v2024-06-20)
+│   ├── anthropic.rs        # Anthropic format (API v2023-06-01)
 │   └── groq.rs             # Groq format
 ├── persistence/            # JSON file persistence
 │   ├── mod.rs
@@ -382,7 +382,7 @@ src/infrastructure/
 │   ├── api_key_strategy.rs # API Key authentication
 │   ├── pkce_strategy.rs    # OAuth 2.1 PKCE
 │   ├── device_flow_strategy.rs # OAuth Device Flow (headless)
-│   └── README.md
+│   └── README.md       # Module removed during docs consolidation (2026-04-17)
 └── secure_storage/         # Encrypted credential storage
     ├── mod.rs
     ├── encrypted_store.rs  # Encrypted key-value store

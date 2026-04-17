@@ -1,327 +1,154 @@
 # LLM API Router
 
-<p align="center">
-  <a href="https://github.com/XaviCode1000/Rust-LLM-Api-Router/actions/workflows/ci.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/XaviCode1000/Rust-LLM-Api-Router/ci.yml?branch=main&label=CI" alt="CI Status">
-  </a>
-  <a href="https://codecov.io/gh/XaviCode1000/Rust-LLM-Api-Router">
-    <img src="https://img.shields.io/codecov/c/github/XaviCode1000/Rust-LLM-Api-Router?label=Coverage" alt="Coverage">
-  </a>
-  <a href="https://crates.io/crates/rust-llm-api-router">
-    <img src="https://img.shields.io/crates/v/rust-llm-api-router" alt="Crate">
-  </a>
-  <a href="https://docs.rs/rust-llm-api-router">
-    <img src="https://img.shields.io/docsrs/rust-llm-api-router" alt="Documentation">
-  </a>
-  <a href="https://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT">
-  </a>
-</p>
+> Un solo comando. 34 proveedores de IA. Olvidate de configuraciones.
 
-**Un solo endpoint para 34 proveedores de IA.** Ahorrá costos, evitá caídas, y mantené el control de tus APIs — todo con una interfaz compatible con OpenAI.
+[![CI](https://github.com/XaviCode1000/Rust-LLM-Api-Router/actions/workflows/ci.yml/badge.svg)](https://github.com/XaviCode1000/Rust-LLM-Api-Router/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
 
-## ¿Qué Hace?
-
-LLM API Router es un **proxy inteligente** que se sienta entre tus aplicaciones y los proveedores de IA (OpenAI, Anthropic, Groq, etc.) y hace tres cosas:
-
-1. **Balancea costos** — Usa el modelo más barato que pueda manejar tu consulta
-2. **Previene caídas** — Si un proveedor falla, rota automáticamente a otro
-3. **Consolida APIs** — Todos los proveedores hablan el mismo idioma (OpenAI-compatible)
-
-> **¿Para quién es?** Equipos que usan múltiples proveedores de IA, quieren reducir costos de API, necesitan alta disponibilidad, o ambos.
-
----
-
-## Empezar en 5 Minutos
-
-### 1. Instalá
+## TL;DR
 
 ```bash
-# Docker (recomendado)
-docker pull ghcr.io/xavicode1000/rust-llm-api-router:latest
+# Esto inicia el servidor
+docker run -d -p 8080:8080 ghcr.io/xavicode1000/rust-llm-api-router:latest
+```
+
+Listo. Ya está corriendo en `http://localhost:8080`
+
+---
+
+## Para Qué Sirve?
+
+| Problema | Solución |
+|----------|----------|
+| Tengo muchas API keys | **Una sola** para todas |
+| Me cae un proveedor | **Se encarga solo** |
+| Quiero pagar menos | **Elige el más barato** automáticamente |
+| No quiero configurar nada | **Docker y listo** |
+
+---
+
+## 1. Instalar
+
+### Docker (Recomendado)
+
+```bash
+docker run -d -p 8080:8080 ghcr.io/xavicode1000/rust-llm-api-router:latest
+```
+
+### Binario (sin Docker)
+
+```bash
+# Descargá de: https://github.com/XaviCode1000/Rust-LLM-Api-Router/releases
+./llm-router
+```
+
+---
+
+## 2. Configuración Guía (No Técnico)
+
+Si no sabés usar la terminal — todo es guiada:
+
+```bash
+# Agregá proveedor de forma guiada
+./llm-router provider add --interactive
+
+# Agregá tu cuenta/API key de forma segura
+./llm-router account add --interactive
+
+# Ver qué tenés configurado
+./llm-router provider list
+./llm-router account list
+```
+
+El programa te pregunta cada dato. Solo respondé.
+
+---
+
+## 2b. Configuración Manual (Técnico)
+
+Si sabés lo que hacés, podés configurar todo desde línea de comandos:
+
+```bash
+# Agregar proveedor-directo
+./llm-router provider add --id groq --name "Groq" --url "https://api.groq.com/openai/v1"
+
+# Agregar cuenta/API key
+./llm-router account add --id mi-key --provider groq --api-key $GROQ_API_KEY
+
+# Ver el estado
+./llm-router status
+```
+
+Para configuración avanzada (vault, cascading, failover), ver [docs/](docs/)
+
+---
+
+## 3. Usar
+
+```bash
+# Tu app usa este endpoint
+http://localhost:8080/v1/chat/completions
+```
+
+---
+
+## Ejemplo Completo
+
+```bash
+# 1. Iniciar servidor
 docker run -d -p 8080:8080 ghcr.io/xavicode1000/rust-llm-api-router:latest
 
-# O compilá desde fuente
-cargo build --release
-./target/release/llm-router --port 8080
-```
+# 2. Agregar proveedor (modo interactivo)
+./llm-router provider add --interactive
+# Te pregunta: Provider ID? → groq
+# Te pregunta: Nombre? → Groq
+# Te pregunta: URL? → https://api.groq.com/openai/v1
 
-### 2. Registrá un Proveedor
+# 3. Agregar tu API key (modo interactivo)
+./llm-router account add --interactive
+# Te pregunta: Account ID? → mi-key
+# Te pregunta: Provider? → groq
+# Te pregunta: API Key? → (la escribís y queda guardada)
 
-```bash
-./target/release/llm-router provider add \
-  --id groq \
-  --name "Groq" \
-  --base-url "https://api.groq.com/openai/v1"
-```
-
-### 3. Agregá tu API Key
-
-```bash
-./target/release/llm-router account add \
-  --id mi-groq \
-  --provider groq \
-  --api-key "tu-api-key"
-```
-
-### 4. Usalo
-
-```bash
+# 4. Listo! Usar en tu app
 curl -X POST http://localhost:8080/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "groq:llama-3.3-70b-versatile",
-    "messages": [{"role": "user", "content": "Hola!"}]
-  }'
+  -H "Authorization: Bearer mi-key" \
+  -d '{"model": "groq:llama-3.3-70b-versatile", "messages": [{"role": "user", "content": "Hola"}]}'
 ```
-
-**Listo.** Tu app ahora habla con Groq a través del router.
 
 ---
 
-## Funcionalidades Principales
+## Proveedores
 
-| Función | Qué Hace |
+**Gratuitos:** Zhipu AI, GitHub Models, Kluster AI
+
+**Pagos:** OpenAI, Anthropic, Groq, Mistral, Ollama, DeepSeek, +25 más
+
+---
+
+## Problemas?
+
+| Problema | Solución |
 |---------|----------|
-| **34 Proveedores** | OpenAI, Anthropic, Groq, Mistral, Ollama, y 29 más (incluyendo 5 con free tier permanente) |
-| **Multi-Cuenta** | Múltiples API keys por proveedor con rotación automática |
-| **Failover Automático** | Si un proveedor cae, rota a otro sin que lo notes |
-| **Streaming (SSE)** | Respuestas token por token en tiempo real |
-| **Ahorro de Costos** | Elige el modelo más barato capaz de manejar tu consulta |
-| **CLI Interactiva** | Gestioná todo desde la terminal con colores y tablas |
-| **API Compatible OpenAI** | Drop-in replacement — tu app no necesita cambios |
+| Puerto ocupado | Cambiá el puerto: `docker run -p 8081:8080 ...` |
+| No puedo acceder | Verificá que Docker esté corriendo |
+| Necesitás ayuda | Ir a [docs/](docs/) |
 
 ---
 
-## Estrategias de Enrutamiento Inteligente
+## Documentación
 
-El router puede **pensar antes de enviar** tu request:
-
-| Estrategia | Cuándo Usarla |
-|------------|---------------|
-| **Cost-Aware** | Querés el modelo más barato posible para cada tipo de consulta |
-| **Cascading** | Empezá barato, escalá si la calidad no alcanza |
-| **Task-Based** | Diferentes modelos para código, chat, razonamiento, etc. |
-| **Failover** | Alta disponibilidad — si uno falla, otro responde |
-
-**Ejemplo rápido:**
-```bash
-# Activar enrutamiento cascading (empieza barato, escala si hace falta)
-./target/release/llm-router --routing-strategy cascading --quality-threshold 0.85
-```
-
-> 📖 **Guía completa de enrutamiento:** [docs/routing.md](docs/routing.md)
+| Para Qué | Ir A |
+|----------|-------|
+| Referencia CLI | [docs/cli.md](docs/cli.md) |
+| API Endpoint | [docs/api.md](docs/api.md) |
+| Arquitectura | [docs/architecture.md](docs/architecture.md) |
+| Cascading/Failover | [docs/routing.md](docs/routing.md) |
+| Deploy producción | [docs/deployment.md](docs/deployment.md) |
+| Desarrollo | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
 
 ---
 
-## Proveedores Soportados
-
-### Principales (Testeados ✅)
-
-| Proveedor | Estado |
-|-----------|--------|
-| OpenAI | ✅ |
-| Anthropic | ✅ |
-| Groq | ✅ |
-| Mistral AI | ✅ |
-| OpenRouter | ✅ |
-| Cerebras | ✅ |
-| Cloudflare Workers AI | ✅ |
-
-### Otros 27 Proveedores
-
-**Locales:** Ollama, LM Studio, vLLM
-**Enterprise:** Azure OpenAI, AWS Bedrock, Google Vertex AI
-**Plataformas:** DeepSeek, Together, Fireworks AI, xAI/Grok, Perplexity, Replicate, Anyscale, DeepInfra, Novita AI, SambaNova, HuggingFace, AI21 Labs, Aleph Alpha, NVIDIA NIM, Cohere, Google AI Studio
-**Free Tier Permanente:** Zhipu AI (GLM-4 Flash), GitHub Models (GPT-4o gratis), Kluster AI, LLM7.io, SiliconFlow
-
-> 📋 **Lista completa con URLs:** [docs/architecture.md](docs/architecture.md)
-
----
-
-## Modelos Verificados
-
-### Groq
-- `llama-3.3-70b-versatile` ✅
-- `llama-3.1-8b-instant` ✅
-- `groq/compound` ✅
-- `groq/compound-mini` ✅
-
-> ⚠️ Modelos viejos de Groq como `llama3-8b-8192` fueron descontinuados.
-
----
-
-## Uso con Tu App
-
-### OpenCode
-
-```json
-{
-  "model": "groq:llama-3.3-70b-versatile",
-  "provider": {
-    "openai": {
-      "options": {
-        "baseURL": "http://localhost:8080/v1",
-        "apiKey": "demo-key"
-      }
-    }
-  }
-}
-```
-
-### Cualquier Cliente OpenAI
-
-Solo cambiá la `baseURL` a `http://localhost:8080/v1` y listo.
-
----
-
-## Comandos CLI Esenciales
-
-### Proveedores
-
-```bash
-./target/release/llm-router provider list          # Ver proveedores
-./target/release/llm-router provider add ...       # Agregar
-./target/release/llm-router provider enable ...    # Habilitar
-./target/release/llm-router provider models ...    # Ver modelos disponibles
-```
-
-### Cuentas
-
-```bash
-./target/release/llm-router account list           # Ver cuentas
-./target/release/llm-router account add ...        # Agregar API key
-./target/release/llm-router account validate ...   # Verificar que funcione
-```
-
-### Autenticación Segura
-
-```bash
-./target/release/llm-router auth login --provider groq     # OAuth (abre navegador)
-./target/release/llm-router auth login --provider groq --device-flow  # Headless
-./target/release/llm-router logout --all                   # Cerrar sesión
-```
-
-> 📖 **Referencia completa de CLI:** [docs/cli.md](docs/cli.md)
-
----
-
-## Endpoints de API
-
-| Endpoint | Qué Hace |
-|----------|----------|
-| `POST /v1/chat/completions` | Enviar consulta (compatible OpenAI) |
-| `GET /v1/models` | Listar modelos disponibles |
-| `GET /health` | Health check básico |
-| `GET /health/detail` | Estado detallado del sistema |
-| `GET /accounts` | Ver cuentas registradas |
-| `GET /metrics` | Métricas Prometheus |
-
-> 📖 **Referencia completa de API:** [docs/api.md](docs/api.md)
-
----
-
-## Configuración
-
-### Variables de Entorno
-
-```bash
-PORT=8080                           # Puerto del servidor
-HOST=0.0.0.0                        # Host
-LOG_LEVEL=info                      # trace, debug, info, warn, error
-ROUTING_STRATEGY=auto               # auto, cost-optimized, cascading, failover
-CASCADING_MIN_QUALITY=0.75         # Umbral de calidad mínimo
-SECURE_STORAGE=auto                 # auto, keyring, encrypted, disabled
-```
-
-### Archivos de Configuración
-
-```
-~/.config/rust-llm-api-router/
-├── providers.json    # Proveedores registrados
-└── accounts.json     # Cuentas con API keys
-```
-
----
-
-## Seguridad
-
-- **API Keys:** Guardadas en el llavero del sistema (macOS Keychain, Windows Credential Manager, Linux Secret Service)
-- **OAuth 2.1 / PKCE:** Autenticación segura con navegador
-- **Device Flow:** Para entornos sin navegador (servidores, CI/CD)
-- **Cifrado:** AES-256-GCM con Argon2id como fallback
-
-> 📖 **Detalles de seguridad:** [docs/security.md](docs/security.md)
-
----
-
-## Calidad del Proyecto
-
-| Métrica | Valor |
-|---------|-------|
-| **Tests** | ~680+ pasando (incl. 19 proptest, 5 snapshot, 3 live contract) |
-| **Cobertura** | 80.35% |
-| **Proveedores** | 34 soportados |
-| **MSRV** | 1.80 |
-| **Clippy** | ✅ Clean (0 errores, 0 warnings) |
-| **Secret Scanning** | ✅ gitleaks CI en cada push/PR |
-| **Licencia** | MIT |
-
----
-
-## Para Desarrolladores
-
-¿Querés contribuir, entender la arquitectura, o ver cómo funciona por dentro?
-
-| Tema | Dónde |
-|------|-------|
-| **Guía de Uso** | [docs/USAGE.md](docs/USAGE.md) |
-| **Configuración** | [docs/CONFIG.md](docs/CONFIG.md) |
-| **Arquitectura** | [docs/architecture.md](docs/architecture.md) |
-| **Guía de Desarrollo** | [DEVELOPMENT.md](DEVELOPMENT.md) |
-| **Estrategias de Routing** | [docs/routing.md](docs/routing.md) |
-| **Testing** | [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) |
-| **Deployment** | [docs/deployment.md](docs/deployment.md) |
-| **Seguridad** | [docs/security.md](docs/security.md) |
-| **CLI Reference** | [docs/cli.md](docs/cli.md) |
-| **API Reference** | [docs/api.md](docs/api.md) |
-
----
-
-## Contribuir
-
-1. Fork el repo
-2. Creá una rama (`git checkout -b feature/mi-feature`)
-3. Commiteá (`git commit -m 'feat: agregué X'`)
-4. Pusheá (`git push origin feature/mi-feature`)
-5. Abrí un PR
-
----
-
-## Roadmap
-
-### ✅ Completado
-
-- Streaming SSE
-- 34 proveedores soportados (incluyendo 5 free tier)
-- Cost-Aware Routing (#23)
-- Cascading Routing (#24)
-- Task-Based Routing (#26)
-- CLI moderna con colores y tablas (#19)
-- Almacenamiento seguro de API keys (#22)
-- Docker y GHCR (#15)
-- 80%+ cobertura de tests
-
-### 🔄 Próximo
-
-- Kubernetes manifests
-- Testing completo de los 34 proveedores
-- Guías por proveedor
-
----
-
-## Licencia
-
-MIT — ver [LICENSE](LICENSE) para detalles.
+MIT — usalo como quieras.

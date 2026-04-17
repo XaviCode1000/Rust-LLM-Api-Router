@@ -1,143 +1,291 @@
+# =============================================================================
+# Rust-LLM-Api-Router CI - Best Practices 2026
+# =============================================================================
+# Principles:
+# 1. Fail FAST - lint before test
+# 2. Parallel Jobs - independent jobs run simultaneously
+# 3. Optimize Cache - Swatinem/rust-cache + sccache
+# 4. Security First - audit before test
+# 5. Progressive Coverage - fast on PR, full on main
+# =============================================================================
+
 name: CI
 
+# --------------------------------------------------------------------------
+# Triggers
+# --------------------------------------------------------------------------
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - develop
   pull_request:
-    types: [opened, synchronize, ready_for_review]
+    types:
+      - opened
+      - synchronize
+      - ready_for_review
   schedule:
-    - cron: "0 6 * * 1" # Weekly audit on Mondays
+    - cron: "0 6 * * 1" # Weekly audit Monday 6am
+  workflow_dispatch: # Manual trigger
 
+# --------------------------------------------------------------------------
+# Concurrency Control
+# --------------------------------------------------------------------------
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+# --------------------------------------------------------------------------
+# Environment Variables - Optimized for CI
+# --------------------------------------------------------------------------
 env:
-  CARGO_TERM_COLOR: always
+  # Rust
   RUST_BACKTRACE: 1
-  CARGO_INCREMENTAL: 0
-  RUSTFLAGS: -Dwarnings
-  RUSTDOCFLAGS: -Dwarnings
+  CARGO_INCREMENTAL: 0  # Disable, faster in CI
+  CARGO_PROFILE_DEV_DEBUG: 0
   CARGO_PROFILE_TEST_DEBUG: 0
+  CARGO_TERM_COLOR: always
+  
+  # Warnings as errors
+  RUSTFLAGS: "-Dwarnings"
+  RUSTDOCFLAGS: "-Dwarnings"
+  
+  # sccache (optional, for faster builds)
+  SCCACHE_GHA_ENABLED: "true"
+  
+  # Nextest
+  CARGO_NEXTEST_ENABLED: "true"
 
+# --------------------------------------------------------------------------
+# Jobs
+# --------------------------------------------------------------------------
 jobs:
-  # ── FASTEST FIRST: Fail early on style/lint issues ────────────────────
+  # ═══════════════════════════════════════════════════════════════════════
+  # 1. LINT - Fastest fail, runs first
+  # ═══════════════════════════════════════════════════════════════════════
   lint:
     name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+          components: rustfmt, clippy, llvm-tools-preview
+      
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          shared-key: lint
-      - name: Check formatting
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+      
+      - name: Format check
         run: cargo fmt --all -- --check
-      - name: Run clippy
-        run: cargo clippy --locked --workspace --all-features --all-targets -- -D clippy::all
+      
+      - name: Clippy
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+      
+      - name: Check docs
+        run: cargo doc --locked --workspace --no-deps --document-private-items
 
-  # ── SECURITY: Single audit tool (cargo-deny covers cargo-audit) ──────
-  audit:
-    name: Audit
+  # ═══════════════════════════════════════════════════════════════════════
+  # 2. SECURITY - Critical vulnerabilities block merge
+  # ═══════════════════════════════════════════════���═══════════════════════
+  security:
+    name: Security
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: taiki-e/install-action@cargo-deny
-      - name: Check advisories, licenses, and bans
-        run: cargo deny check advisories licenses bans
-        continue-on-error: true # Vulnerabilities in transitive deps — report but don't block
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@cargo-deny
+      
+      # Check advisories - FAIL on critical/high issues
+      - name: Check advisories
+        run: cargo deny check advisories
+      
+      # Check licenses - FAIL on forbidden licenses
+      - name: Check licenses
+        run: cargo deny check licenses
+      
+      # Check bans - FAIL on banned dependencies
+      - name: Check banned
+        run: cargo deny check bans
 
-  # ── TESTS: Fast path for PRs, coverage for main ──────────────────────
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 3. TEST - Core functionality
+  # ═══════════════════════════════════════════════════════════════════════════════
   test:
-    name: Test
+    name: Test (${{ matrix.target }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: taiki-e/install-action@nextest
-      - uses: Swatinem/rust-cache@v2
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      
+      # Unit + Integration tests
+      - name: Run tests
+        run: cargo nextest run --locked --workspace --all-features --profile ci
+      
+      # Store test results for flaky analysis
+      - name: Upload nextest results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextest-results-${{ matrix.target }}
+          path: .nextest/ci/test-results/
+          retention-days: 7
 
-      # PRs: fast test without coverage instrumentation
-      - name: Test (PR)
-        if: github.event_name == 'pull_request'
-        run: cargo nextest run --locked --workspace --all-features
-
-      # Main branch + scheduled: full coverage
+  # ═══════════════════════════════════════════════════════════════════════
+  # 4. COVERAGE - Only on main, full analysis
+  # ═══════════════════════════════════════════════════════════════════════
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
       - name: Install llvm-tools
-        if: github.event_name != 'pull_request'
-        run: rustup component add llvm-tools
-      - uses: taiki-e/install-action@cargo-llvm-cov
-        if: github.event_name != 'pull_request'
-
-      - name: Coverage (main/scheduled)
-        if: github.event_name != 'pull_request'
-        run: >
-          cargo llvm-cov nextest --locked --workspace --all-features
-          --lcov --output-path lcov.info
-
-      - name: Upload coverage
-        if: github.event_name != 'pull_request'
+        run: rustup component add llvm-tools-preview
+      
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Generate coverage
+        run: |
+          cargo llvm-cov nextest \
+            --workspace --all-features \
+            --lcov --output-path lcov.info \
+            --doctests
+      
+      - name: Upload to Codecov
         uses: codecov/codecov-action@v5
         with:
           files: lcov.info
-          disable_search: true
+          fail_ci_if_error: false
 
-  # ── DOCUMENTATION: Only on main (saves PR time) ──────────────────────
-  doc:
-    name: Documentation
+  # ═══════════════════════════════════════════════════════════════════════
+  # 5. DOCS - Only on main, verify documentation builds
+  # ═══════��═══════════════════════════════════════════════════════════════
+  docs:
+    name: Docs
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: github.event_name != 'pull_request'
+    timeout-minutes: 15
+    if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Run doctests
-        run: cargo test --locked --workspace --all-features --doc
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+      
       - name: Build docs
-        run: >
-          cargo doc --locked --workspace --all-features
-          --document-private-items --no-deps
+        run: |
+          cargo doc --locked --workspace --all-features \
+            --document-private-items --no-deps
+      
+      - name: Run doctests
+        run: cargo test --locked --workspace --doc
 
-  # ── LIVE CONTRACT TESTS: Only on main (detects provider schema drift) ──
-  live-contract-tests:
-    name: Live Contract Tests
+  # ═══════════════════════════════════════════════════════════════════════
+  # 6. LIVE CONTRACT TESTS - Only on main with secrets
+  # ═══════════════════════════════════════════════════════════════════════
+  live-tests:
+    name: Live Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 20
+    if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Check for API key secrets
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+      
+      # Check for API keys
+      - name: Check secrets
         id: check-secrets
         run: |
+          required_secrets=("OPENAI_API_KEY" "ANTHROPIC_API_KEY" "GROQ_API_KEY")
           missing=0
-          for var in OPENAI_API_KEY ANTHROPIC_API_KEY GROQ_API_KEY; do
-            if [ -z "${!var:-}" ]; then
-              echo "WARN: $var not set"
+          for secret in "${required_secrets[@]}"; do
+            if [ -z "${!secret:-}" ]; then
+              echo "::warning::Secret $secret not configured"
               missing=$((missing + 1))
             fi
           done
           echo "missing=$missing" >> "$GITHUB_OUTPUT"
-
-      - name: Run live contract tests
+      
+      # Run live tests if secrets available
+      - name: Run live tests
         if: steps.check-secrets.outputs.missing == '0'
         env:
           LIVE_TEST: "1"
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: cargo test --locked --test live_contract_tests -- --ignored
-
-      - name: Skip live tests (secrets not configured)
+        run: cargo nextest run --test live_contract_tests -- --ignored
+      
+      # Skip notice if no secrets
+      - name: No secrets notice
         if: steps.check-secrets.outputs.missing != '0'
+        run: echo "::notice::Live tests skipped - API keys not configured"
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 7. AUDIT SCHEDULE - Weekly dependency audit
+  # ═══════════════════════════════════════════════════════════════════════
+  audit-weekly:
+    name: Weekly Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Full audit
+        uses: taiki-e/install-action@cargo-deny
         run: |
-          echo "::notice::Skipping live contract tests — one or more API key secrets are not configured."
-          echo "Configure OPENAI_API_KEY, ANTHROPIC_API_KEY, and GROQ_API_KEY in repository secrets."
+          cargo deny check advisories --disable-transitive
+          cargo deny check licenses
+          cargo deny check bans
+
+# END

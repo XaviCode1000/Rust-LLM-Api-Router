@@ -32,6 +32,7 @@ impl OpenAiProvider {
     }
 
     /// Make a chat completion request to OpenAI API
+    #[tracing::instrument(skip(self, request), fields(target = "openai", model = %request.model))]
     pub async fn chat(&self, request: &OpenAIChatRequest) -> Result<OpenAIChatResponse> {
         let url = format!("{}/v1/chat/completions", self.api_url);
 

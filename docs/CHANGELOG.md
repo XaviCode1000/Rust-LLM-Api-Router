@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Test Mocks**: Fixed Anthropic API version in test mocks - was incorrectly using `2024-06-20`, correct version is `2023-06-01` per Anthropic API spec
+
 ### Added
 
 #### Cost-Aware Routing (Issue #23)

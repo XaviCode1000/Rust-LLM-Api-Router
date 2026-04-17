@@ -1,3 +1,16 @@
+//! Cascading execution plan implementation.
+//!
+//! # ⚠️ EXPERIMENTAL
+//! This module is under active development. The `CascadingExecutionPlan.execute()`
+//! method uses simulated costs for tier selection — actual HTTP calls to providers
+//! are not yet made to measure real latency and throughput. This is a known
+//! limitation tracked in Issue #32.
+//!
+//! ## TODO
+//! - [ ] Integrate with real provider HTTP clients
+//! - [ ] Measure actual latency per tier
+//! - [ ] Track real throughput during execution
+
 use std::sync::Arc;
 
 use crate::app::services::execution_plan::execution::{ExecutionConfig, ExecutionResult};

@@ -549,7 +549,6 @@ match result {
 
 ## See Also
 
-- [Execution Plan Module](../src/app/services/execution_plan/README.md) - Detailed execution plan documentation
 - [Architecture](architecture.md) - Overall system architecture
 - [API Reference](api.md) - API endpoints and usage
-- [Cascading Routing Exploration](cascading-routing-exploration.md) - Technical exploration of cascading routing design
+- [GitNexus Architecture](ARCHITECTURE-GITNEXUS.md) - Code knowledge graph stats

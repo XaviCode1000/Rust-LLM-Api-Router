@@ -414,6 +414,6 @@ llm-router account list | cat
 
 ---
 
-**Last updated**: 2026-03-29  
-**Rust version**: 1.93.0  
-**Stack version**: 2025-26 optimal
+**Last updated**: 2026-04-17 (documentation cleanup: re-indexed GitNexus)
+**Rust version**: 1.80+ (MSRV)
+**Stack version**: 2025-26 optimal (Tokio 1.x, Axum 0.7, Tower 0.5)

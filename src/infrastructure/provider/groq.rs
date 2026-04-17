@@ -33,6 +33,7 @@ impl GroqProvider {
 
     /// Make a chat completion request to Groq API
     /// Groq uses OpenAI-compatible API format
+    #[tracing::instrument(skip(self, request), fields(target = "groq", model = %request.model))]
     pub async fn chat(&self, request: &OpenAIChatRequest) -> Result<OpenAIChatResponse> {
         let url = format!("{}/v1/chat/completions", self.api_url);
 

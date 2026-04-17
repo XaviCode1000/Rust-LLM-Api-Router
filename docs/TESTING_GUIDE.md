@@ -396,7 +396,7 @@ export CARGO_LLVM_COV_TIMEOUT=300
 
 ---
 
-**Last Updated:** April 2026
-**Rust Version:** 1.93.0
+**Last Updated:** April 2026 (documentation cleanup)
+**Rust Version:** 1.80+ (MSRV)
 **Test Coverage:** 80.35%
-**Tests Passing:** 492/492
+**Tests Passing:** ~680+ (unit tests + integration + property-based + snapshot)

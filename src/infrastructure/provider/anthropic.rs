@@ -90,6 +90,7 @@ impl AnthropicProvider {
     /// - Headers: x-api-key and anthropic-version
     /// - Request format: { model, messages, max_tokens }
     /// - Response format: { id, content, usage, stop_reason }
+    #[tracing::instrument(skip(self, request), fields(target = "anthropic", model = %request.model))]
     pub async fn chat(&self, request: &OpenAIChatRequest) -> Result<OpenAIChatResponse> {
         let url = format!("{}/v1/messages", self.api_url);
 
