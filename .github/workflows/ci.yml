@@ -69,7 +69,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -102,7 +102,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Install cargo-deny
         uses: taiki-e/install-action@cargo-deny
@@ -133,7 +133,7 @@ jobs:
           - x86_64-unknown-linux-gnu
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -169,7 +169,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -206,7 +206,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -232,7 +232,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -279,7 +279,7 @@ jobs:
     if: github.event_name == 'schedule'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Full audit
         uses: taiki-e/install-action@cargo-deny
