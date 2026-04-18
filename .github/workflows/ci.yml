@@ -29,6 +29,16 @@ on:
   workflow_dispatch: # Manual trigger
 
 # --------------------------------------------------------------------------
+# Permissions - Least Privilege
+# --------------------------------------------------------------------------
+permissions:
+  contents: read
+  checks: write
+  actions: read
+  security-events: write
+  pull-requests: write
+
+# --------------------------------------------------------------------------
 # Concurrency Control
 # --------------------------------------------------------------------------
 concurrency:
@@ -67,6 +77,8 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -100,6 +112,9 @@ jobs:
     name: Security
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -126,6 +141,8 @@ jobs:
     name: Test (${{ matrix.target }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -167,6 +184,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -204,6 +223,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -230,6 +251,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -277,6 +300,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     if: github.event_name == 'schedule'
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6

@@ -1,0 +1,83 @@
+# =============================================================================
+# Reusable Workflow - Rust Build & Test
+# =============================================================================
+# Use from other workflows:
+# jobs:
+#   build:
+#     uses: ./.github/workflows/reusable/rust-build.yml
+#     with:
+#       target: x86_64-unknown-linux-gnu
+#       profile: default
+# =============================================================================
+
+name: Reusable — Rust Build
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        type: string
+        default: x86_64-unknown-linux-gnu
+        description: Cargo target triple
+      profile:
+        type: string
+        default: default
+        description: Cargo profile (dev/test/release)
+      features:
+        type: string
+        default: ""
+        description: Additional features to test
+      run-tests:
+        type: boolean
+        default: true
+        description: Run tests after build
+      run-doc-tests:
+        type: boolean
+        default: false
+        description: Run doctests
+
+# Least privilege
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ inputs.target }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ inputs.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      # Build
+      - name: Build
+        run: |
+          cargo build --locked --workspace \
+            --profile ${{ inputs.profile }} \
+            --target ${{ inputs.target }} \
+            ${{ inputs.features != '' && format('--features {0}', inputs.features) || '' }}
+
+      # Run tests if enabled
+      - name: Run tests
+        if: inputs.run-tests
+        run: |
+          cargo nextest run --locked --workspace \
+            --profile ci \
+            --target ${{ inputs.target }} \
+            ${{ inputs.features != '' && format('--features {0}', inputs.features) || '' }}
+
+      # Run doctests if enabled
+      - name: Run doctests
+        if: inputs.run-doc-tests
+        run: cargo test --locked --workspace --doc --target ${{ inputs.target }}

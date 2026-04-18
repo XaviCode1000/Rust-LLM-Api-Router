@@ -1,0 +1,70 @@
+# =============================================================================
+# Dependabot - Auto-update GitHub Actions and dependencies
+# =============================================================================
+# Updates:
+# - GitHub Actions (weekly)
+# - Rust crates (daily)
+# =============================================================================
+
+version: 2
+
+updates:
+  # -----------------------------------------------------------------------
+  # Update GitHub Actions
+  # -----------------------------------------------------------------------
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: UTC
+    open-pull-requests-limit: 10
+    groups:
+      # Group all actions together
+      actions:
+        patterns:
+          - "*"
+    # Ignore minor/patch updates for actions (opt-in via labels)
+    ignore:
+      - dependency-type: direct-production
+        update-types:
+          - minor-update
+          - patch-update
+
+  # -----------------------------------------------------------------------
+  # Update Rust crates
+  # -----------------------------------------------------------------------
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: daily
+      time: "10:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    groups:
+      # Group major updates together
+      major:
+        patterns:
+          - "*"
+        update-types:
+          - major
+      # Group minor/patch together
+      minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor-update
+          - patch-update
+    # Ignore dev dependencies
+    ignore:
+      - dependency-type: development
+
+  # -----------------------------------------------------------------------
+  # Docker base images (if applicable)
+  # -----------------------------------------------------------------------
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3

@@ -1,0 +1,40 @@
+# =============================================================================
+# Composite Action - Setup Rust Environment
+# =============================================================================
+# Reusable action to set up Rust toolchain with caching
+# =============================================================================
+
+name: Setup Rust
+description: Sets up Rust toolchain with caching for CI
+
+inputs:
+  toolchain:
+    description: Rust toolchain version
+    default: stable
+    type: string
+  targets:
+    description: Additional target triples
+    default: ""
+    type: string
+  components:
+    description: Rust components to install (comma-separated)
+    default: ""
+    type: string
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        targets: ${{ inputs.targets }}
+        components: ${{ inputs.components }}
+
+    - name: Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        save-if: ${{ github.ref == 'refs/heads/main' }}
