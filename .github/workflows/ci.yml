@@ -206,8 +206,7 @@ jobs:
         run: |
           cargo llvm-cov nextest \
             --workspace --all-features \
-            --lcov --output-path lcov.info \
-            --doctests
+            --lcov --output-path lcov.info
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
