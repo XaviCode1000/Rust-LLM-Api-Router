@@ -1,7 +1,7 @@
 //! OpenAI-compatible API types
 //!
 //! These types match the OpenAI Chat Completions API format.
-//! See: https://platform.openai.com/docs/api-reference/chat
+//! See: <https://platform.openai.com/docs/api-reference/chat>
 
 use serde::{Deserialize, Serialize};
 

@@ -4,7 +4,7 @@
 //! This module handles the conversion between OpenAI-compatible types
 //! and Anthropic's native format.
 //!
-//! See: https://docs.anthropic.com/claude/reference/messages_post
+//! See: <https://docs.anthropic.com/claude/reference/messages_post>
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};

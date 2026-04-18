@@ -184,40 +184,40 @@ impl ProviderSelection {
 ///
 /// | ID | Name | Base URL |
 /// |----|------|----------|
-/// | openai | OpenAI | https://api.openai.com/v1 |
-/// | anthropic | Anthropic | https://api.anthropic.com |
-/// | google-ai | Google AI | https://generativelanguage.googleapis.com/v1 |
-/// | mistral | Mistral AI | https://api.mistral.ai/v1 |
-/// | cohere | Cohere | https://api.cohere.ai/v1 |
-/// | ai21 | AI21 Labs | https://api.ai21.com |
-/// | azure-openai | Azure OpenAI | https://{resource}.openai.azure.com |
-/// | bedrock | AWS Bedrock | https://bedrock-runtime.{region}.amazonaws.com |
-/// | vertex-ai | Google Vertex AI | https://{region}-aiplatform.googleapis.com |
+/// | openai | OpenAI | <https://api.openai.com/v1> |
+/// | anthropic | Anthropic | <https://api.anthropic.com> |
+/// | google-ai | Google AI | <https://generativelanguage.googleapis.com/v1> |
+/// | mistral | Mistral AI | <https://api.mistral.ai/v1> |
+/// | cohere | Cohere | <https://api.cohere.ai/v1> |
+/// | ai21 | AI21 Labs | <https://api.ai21.com> |
+/// | azure-openai | Azure OpenAI | <https://{resource}.openai.azure.com> |
+/// | bedrock | AWS Bedrock | <https://bedrock-runtime.{region}.amazonaws.com> |
+/// | vertex-ai | Google Vertex AI | <https://{region}-aiplatform.googleapis.com> |
 /// | anthropic-vertex | Anthropic (Vertex) | via Vertex AI |
-/// | openrouter | OpenRouter | https://openrouter.ai/api/v1 |
-/// | samba | SambaNova | https://api.sambanova.ai/v1 |
-/// | deepseek | DeepSeek | https://api.deepseek.com/v1 |
-/// | fireworks | Fireworks AI | https://api.fireworks.ai/v1 |
-/// | together | Together AI | https://api.together.xyz/v1 |
-/// | octane | Octane AI | https://app.octane.ai/v1 |
-/// | x-ai | xAI | https://api.x.ai/v1 |
-/// | meta-llama | Meta Llama (Cloud) | https://api.llama.com |
-/// | perplexity | Perplexity | https://api.perplexity.ai |
-/// | novita | Novita AI | https://api.novita.ai/v1 |
-/// | navigatr | Navigatr | https://api.navigatr.io/v1 |
-/// | hypereval | HyperEval | https://api.hypereval.ai |
-/// | nitro | Nitro | https://api.nitro.chat/v1 |
-/// | ciasie | Ciasie | https://api.ciasie.cn/v1 |
-/// | tongyi | Alibaba Tongyi | https://dashscope.aliyuncs.com |
-/// | baidu | Baidu ERNIE | https://aip.baidubce.com |
-/// | tencent | Tencent Hunyuan | https://hunyuan.tencentcloudapi.com |
-/// | minimax | MiniMax | https://api.minimax.chat/v1 |
-/// | claude-code | Claude Code | https://claude-code.ai/v1 |
-/// | lmstudio | LM Studio | http://localhost:1234/v1 |
-/// | ollama | Ollama | http://localhost:11434/v1 |
-/// | kaggle | Kaggle | https://api.kaggle.com/v1 |
-/// | cloudflare | Cloudflare Workers AI | https://api.cloudflare.com/client/v4 |
-/// | groq | Groq | https://api.groq.com/openai/v1 |
+/// | openrouter | OpenRouter | <https://openrouter.ai/api/v1> |
+/// | samba | SambaNova | <https://api.sambanova.ai/v1> |
+/// | deepseek | DeepSeek | <https://api.deepseek.com/v1> |
+/// | fireworks | Fireworks AI | <https://api.fireworks.ai/v1> |
+/// | together | Together AI | <https://api.together.xyz/v1> |
+/// | octane | Octane AI | <https://app.octane.ai/v1> |
+/// | x-ai | xAI | <https://api.x.ai/v1> |
+/// | meta-llama | Meta Llama (Cloud) | <https://api.llama.com> |
+/// | perplexity | Perplexity | <https://api.perplexity.ai> |
+/// | novita | Novita AI | <https://api.novita.ai/v1> |
+/// | navigatr | Navigatr | <https://api.navigatr.io/v1> |
+/// | hypereval | HyperEval | <https://api.hypereval.ai> |
+/// | nitro | Nitro | <https://api.nitro.chat/v1> |
+/// | ciasie | Ciasie | <https://api.ciasie.cn/v1> |
+/// | tongyi | Alibaba Tongyi | <https://dashscope.aliyuncs.com> |
+/// | baidu | Baidu ERNIE | <https://aip.baidubce.com> |
+/// | tencent | Tencent Hunyuan | <https://hunyuan.tencentcloudapi.com> |
+/// | minimax | MiniMax | <https://api.minimax.chat/v1> |
+/// | claude-code | Claude Code | <https://claude-code.ai/v1> |
+/// | lmstudio | LM Studio | <http://localhost:1234/v1> |
+/// | ollama | Ollama | <http://localhost:11434/v1> |
+/// | kaggle | Kaggle | <https://api.kaggle.com/v1> |
+/// | cloudflare | Cloudflare Workers AI | <https://api.cloudflare.com/client/v4> |
+/// | groq | Groq | <https://api.groq.com/openai/v1> |
 pub mod known_providers {
     use super::KnownProvider;
 

@@ -330,8 +330,8 @@ impl QueryClassifier {
 
     /// Returns the full classification (complexity + task type).
     ///
-    /// This is a convenience method that calls both [`classify`] and
-    /// [`classify_task`] in a single call.
+    /// This is a convenience method that calls both classify and
+    /// classify_task in a single call.
     #[must_use]
     pub fn classify_full(&self, request: &ChatRequest) -> QueryClassification {
         QueryClassification {

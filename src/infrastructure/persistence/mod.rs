@@ -7,7 +7,7 @@
 //! # Storage
 //!
 //! Data is stored in the XDG config directory:
-//! ```
+//! ```text
 //! ~/.config/rust-llm-api-router/
 //! ├── providers.json    # Provider configurations
 //! └── accounts.json    # Account (API key) data
@@ -15,8 +15,8 @@
 //!
 //! # Implementations
 //!
-//! - [`JsonAccountRepository`]: Account persistence
-//! - [`JsonProviderRepository`]: Provider persistence
+//! - JsonAccountRepository: Account persistence
+//! - JsonProviderRepository: Provider persistence
 //!
 //! # Example
 //!

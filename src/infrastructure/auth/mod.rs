@@ -14,7 +14,7 @@
 //!
 //! # Architecture
 //!
-//! Each strategy implements the [`AuthenticationStrategy`] trait from the domain layer:
+//! Each strategy implements the AuthenticationStrategy trait from the domain layer:
 //!
 //! ```ignore
 //! #[async_trait]
@@ -142,9 +142,9 @@
 //!
 //! Authentication errors are mapped to domain errors:
 //!
-//! - [`crate::domain::error::DomainError::InvalidCredentials`]: Invalid API key or OAuth credentials
-//! - [`crate::domain::error::DomainError::AuthenticationFailed`]: Authentication flow failed
-//! - [`crate::domain::error::DomainError::TokenExpired`]: Access token expired, needs refresh
+//! - DomainError::InvalidCredentials: Invalid API key or OAuth credentials
+//! - DomainError::AuthenticationFailed: Authentication flow failed
+//! - DomainError::TokenExpired: Access token expired, needs refresh
 
 pub mod api_key_strategy;
 pub mod device_flow_strategy;

@@ -15,10 +15,10 @@
 //! ## Account Rotation (`services/account_rotation.rs`)
 //!
 //! Implements account selection strategies:
-//! - [`RoundRobinStrategy`]: Sequential rotation
-//! - [`WeightedStrategy`]: Priority-based selection
-//! - [`LatencyStrategy`]: Lowest latency selection
-//! - [`UserAffinityStrategy`]: Same account per user
+//! - RoundRobinStrategy: Sequential rotation
+//! - WeightedStrategy: Priority-based selection
+//! - LatencyStrategy: Lowest latency selection
+//! - UserAffinityStrategy: Same account per user
 //!
 //! ## Failover (`services/failover.rs`)
 //!
@@ -30,7 +30,7 @@
 //! ## Execution Planning (`services/execution_plan/`)
 //!
 //! Proactive execution planning module:
-//! - [`ExecutionPlanner`]: Creates optimal execution plans
+//! - ExecutionPlanner: Creates optimal execution plans
 //! - **Plan Types**: Standard, Failover, LoadBalanced, CostOptimized
 //! - **Rotation**: RoundRobin, HealthWeighted, Priority, LRU
 //! - **Metrics**: Prometheus metrics for monitoring

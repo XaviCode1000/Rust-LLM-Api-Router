@@ -165,7 +165,7 @@ jobs:
 
       # Unit + Integration tests (nextest doesn't support doctests)
       - name: Run tests
-        run: cargo nextest run --locked --workspace --all-features --profile ci --exclude-kind doctests
+        run: cargo nextest run --locked --workspace --all-features --profile ci --no-crate-type doctest
 
       # Store test results for flaky analysis
       - name: Upload nextest results
