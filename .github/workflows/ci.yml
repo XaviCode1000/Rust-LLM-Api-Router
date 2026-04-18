@@ -170,7 +170,7 @@ jobs:
       # Store test results for flaky analysis
       - name: Upload nextest results
         if: always()
-        uses: actions/upload-artifact@v4.4.4
+        uses: actions/upload-artifact@v4
         with:
           name: nextest-results-${{ matrix.target }}
           path: .nextest/ci/test-results/
