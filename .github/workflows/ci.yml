@@ -163,9 +163,9 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      # Unit + Integration tests (nextest doesn't support doctests)
+      # Unit + Integration tests (nextest doesn't run doctests by default)
       - name: Run tests
-        run: cargo nextest run --locked --workspace --all-features --profile ci --no-crate-type doctest
+        run: cargo nextest run --locked --workspace --all-features --profile ci
 
       # Store test results for flaky analysis
       - name: Upload nextest results
