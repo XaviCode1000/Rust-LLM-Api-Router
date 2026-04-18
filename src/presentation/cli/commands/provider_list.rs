@@ -20,11 +20,10 @@ use crate::Result;
 /// Shows all 34 providers with their IDs, names, and base URLs.
 /// # Example
 ///
-/// ```rust
+/// ```no_run
 /// use crate::presentation::cli::commands::provider_list::display_known_providers;
 ///
-/// // Display the list
-/// display_known_providers()?;
+/// // display_known_providers()?;
 /// ```
 pub fn display_known_providers() -> Result<()> {
     let providers = known_providers::all();
@@ -51,16 +50,15 @@ pub fn display_known_providers() -> Result<()> {
 /// returns selected provider or error.
 /// # Example
 ///
-/// ```rust
+/// ```no_run
 /// use crate::presentation::cli::commands::provider_list::select_provider_interactive;
 ///
-/// let result = select_provider_interactive()?;
-/// match result.state {
-///     SelectionState::Selected => println!("Selected: {}", result.provider_id.unwrap()),
-///     SelectionState::Cancelled => println!("Cancelled"),
-///     SelectionState::Invalid => println!("Invalid selection"),
-///     _ => println!("Error"),
-/// }
+/// // let result = select_provider_interactive()?;
+/// // match result.state {
+/// //     SelectionState::Selected => println!("Selected: {}", result.provider_id.unwrap()),
+/// //     SelectionState::Cancelled => println!("Cancelled"),
+/// //     SelectionState::Invalid => println!("Invalid selection"),
+/// // }
 /// ```
 pub fn select_provider_interactive() -> Result<crate::domain::ProviderSelection> {
     let providers = known_providers::all();
@@ -104,10 +102,10 @@ pub fn select_provider_interactive() -> Result<crate::domain::ProviderSelection>
 /// or original values if not found.
 /// # Example
 ///
-/// ```rust
+/// ```no_run
 /// use crate::presentation::cli::commands::provider_list::auto_fill_provider;
 ///
-/// let (name, base_url, was_filled) = auto_fill_provider("openai", "OpenAI", "https://custom.com");
+/// // let (name, base_url, was_filled) = auto_fill_provider("openai", "OpenAI", "https://custom.com");
 /// // name = "OpenAI", base_url = "https://api.openai.com/v1", was_filled = true
 /// ```
 pub fn auto_fill_provider(

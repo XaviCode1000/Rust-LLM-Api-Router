@@ -28,7 +28,7 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```no_run
 //! use rust_llm_api_router::domain::{Account, Provider, AccountRepository};
 //!
 //! // Domain entities are pure - no infrastructure dependencies

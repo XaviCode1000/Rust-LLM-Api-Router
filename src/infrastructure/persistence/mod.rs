@@ -20,7 +20,7 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```no_run
 //! use rust_llm_api_router::infrastructure::persistence::{
 //!     JsonAccountRepository, JsonProviderRepository,
 //! };
@@ -28,11 +28,11 @@
 //!
 //! let account_repo = JsonAccountRepository::new(
 //!     PathBuf::from("/tmp/accounts.json")
-//! ).await?;
+//! ).await.unwrap();
 //!
 //! let provider_repo = JsonProviderRepository::new(
 //!     PathBuf::from("/tmp/providers.json")
-//! ).await?;
+//! ).await.unwrap();
 //! ```
 //!
 //! # Design Decisions

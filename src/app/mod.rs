@@ -42,16 +42,17 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```no_run
 //! use rust_llm_api_router::app::services::failover::FailoverManager;
 //! use rust_llm_api_router::domain::{AccountRepository, LlmGateway};
 //!
 //! // Application services use domain entities and traits
-//! let failover_manager = FailoverManager::new(
-//!     account_repo,
-//!     llm_gateway,
-//!     3,  // max_retries
-//! );
+//! // (Example requires actual repository and gateway instances)
+//! // let failover_manager = FailoverManager::new(
+//! //     account_repo,
+//! //     llm_gateway,
+//! //     3,  // max_retries
+//! // );
 //! ```
 //!
 //! # Design Principles

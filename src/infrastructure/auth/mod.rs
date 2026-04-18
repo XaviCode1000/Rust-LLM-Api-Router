@@ -41,11 +41,11 @@
 //!
 //! **Use case:** Groq, OpenRouter, Mistral, Cerebras, OpenAI, etc.
 //!
-//! ```rust
+//! ```no_run
 //! use rust_llm_api_router::infrastructure::auth::ApiKeyAuthStrategy;
 //!
 //! let strategy = ApiKeyAuthStrategy::new("groq");
-//! let account = strategy.complete_auth("gsk_xxx".to_string()).await?;
+//! let account = strategy.complete_auth("gsk_xxx".to_string()).await.unwrap();
 //! ```
 //!
 //! ## OAuth 2.1 PKCE Strategy ([`PkceAuthStrategy`])
@@ -67,7 +67,7 @@
 //!
 //! **Use case:** Providers requiring OAuth (future providers)
 //!
-//! ```rust
+//! ```no_run
 //! use rust_llm_api_router::infrastructure::auth::PkceAuthStrategy;
 //!
 //! let strategy = PkceAuthStrategy::new(
@@ -77,9 +77,9 @@
 //!     "https://auth.provider.com/token",
 //!     "http://localhost/callback",
 //!     vec!["read".to_string(), "write".to_string()],
-//! )?;
+//! ).unwrap();
 //!
-//! let auth_url = strategy.initiate_auth().await?;
+//! let auth_url = strategy.initiate_auth().await.unwrap();
 //! ```
 //!
 //! ## Device Flow Strategy ([`DeviceFlowAuthStrategy`])
@@ -96,7 +96,7 @@
 //!
 //! **Use case:** CLI tools, IoT devices, embedded systems
 //!
-//! ```rust
+//! ```no_run
 //! use rust_llm_api_router::infrastructure::auth::DeviceFlowAuthStrategy;
 //!
 //! let strategy = DeviceFlowAuthStrategy::new(
@@ -106,7 +106,7 @@
 //!     "https://auth.provider.com/token",
 //!     vec!["read".to_string()],
 //!     Some(5),  // 5 second polling interval
-//! )?;
+//! ).unwrap();
 //! ```
 //!
 //! # Security Considerations
@@ -119,13 +119,13 @@
 //!
 //! # Example: Adding a New Provider with OAuth
 //!
-//! ```rust
+//! ```no_run
 //! use rust_llm_api_router::domain::Account;
 //! use rust_llm_api_router::infrastructure::auth::{ApiKeyAuthStrategy, PkceAuthStrategy};
 //!
 //! // For most providers, use API key
 //! let api_key_strategy = ApiKeyAuthStrategy::new("openai");
-//! let account = api_key_strategy.complete_auth("sk-xxx".to_string()).await?;
+//! let account = api_key_strategy.complete_auth("sk-xxx".to_string()).await.unwrap();
 //!
 //! // For OAuth-enabled providers
 //! let oauth_strategy = PkceAuthStrategy::new(
@@ -135,7 +135,7 @@
 //!     "https://provider.com/oauth/token",
 //!     "http://localhost:8080/callback",
 //!     vec!["chat:write".to_string()],
-//! )?;
+//! ).unwrap();
 //! ```
 //!
 //! # Error Handling

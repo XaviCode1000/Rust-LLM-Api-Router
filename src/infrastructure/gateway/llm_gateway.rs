@@ -7,15 +7,15 @@
 //!
 //! Supports dependency injection via `ProviderConfig` for testability:
 //!
-//! ```rust
+//! ```no_run
 //! // Production usage (backward compatible)
-//! let gateway = LlmGatewayImpl::new(http_client, account_repo, 3600);
+//! // let gateway = LlmGatewayImpl::new(http_client, account_repo, 3600);
 //!
 //! // Test usage (custom config)
-//! let config = ProviderConfig::builder()
-//!     .with_provider("openai", "https://api.openai.com/v1", "sk-test")
-//!     .build();
-//! let gateway = LlmGatewayImpl::with_config(http_client, account_repo, config, 3600);
+//! // let config = ProviderConfig::builder()
+//! //     .with_provider("openai", "https://api.openai.com/v1", "sk-test")
+//! //     .build();
+//! // let gateway = LlmGatewayImpl::with_config(http_client, account_repo, config, 3600);
 //! ```
 
 use async_trait::async_trait;

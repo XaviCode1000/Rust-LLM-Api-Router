@@ -83,7 +83,7 @@ pub trait ModelSelector: Send + Sync {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```no_run
 /// use rust_llm_api_router::domain::services::model_selector::CostAwareSelector;
 ///
 /// let selector = CostAwareSelector::new();

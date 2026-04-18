@@ -402,7 +402,7 @@ pub mod known_providers {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```no_run
     /// use rust_llm_api_router::domain::known_providers;
     ///
     /// for provider in known_providers::all() {
@@ -424,7 +424,7 @@ pub mod known_providers {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```no_run
     /// use rust_llm_api_router::domain::known_providers;
     ///
     /// if let Some(provider) = known_providers::find("openai") {

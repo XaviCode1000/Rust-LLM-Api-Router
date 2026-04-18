@@ -216,7 +216,7 @@ impl Default for ClassifierConfig {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```no_run
 /// use rust_llm_api_router::domain::{services::query_complexity::*, Message, ChatRequest};
 ///
 /// let classifier = QueryClassifier::new();

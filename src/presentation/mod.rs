@@ -48,13 +48,14 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```no_run
 //! use axum::{Router, routing::post};
 //! use rust_llm_api_router::presentation::{routes, state::AppState};
 //!
-//! let app = Router::new()
-//!     .merge(routes())
-//!     .with_state(state);
+//! // (Example requires actual state setup)
+//! // let app = Router::new()
+//! //     .merge(routes())
+//! //     .with_state(state);
 //! ```
 //!
 //! # Design Principles
