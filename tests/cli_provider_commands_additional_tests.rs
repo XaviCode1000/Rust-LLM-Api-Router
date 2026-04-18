@@ -29,8 +29,8 @@ async fn test_cli_add_provider_with_empty_base_url() {
         list: false,
     };
     let result = cmd_add_provider(args, &repo).await;
-    // Empty URL is accepted (no validation in current implementation)
-    assert!(result.is_ok());
+    // Empty URL is now validated and rejected
+    assert!(result.is_err());
 }
 
 #[tokio::test]

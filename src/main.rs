@@ -87,7 +87,7 @@ async fn tui_action_processor(
                 );
                 if let Err(e) = account_repo.save(account).await {
                     // Log error to TUI
-                    let _ = state_tx.send_modify(|s| {
+                    state_tx.send_modify(|s| {
                         let mut buffer = (*s.log_buffer).clone();
                         buffer.push_back(rust_llm_api_router::presentation::tui::LogEntry {
                             timestamp: chrono::Utc::now(),
@@ -105,7 +105,7 @@ async fn tui_action_processor(
                 router.reload_accounts(accounts).await;
 
                 // Send confirmation log
-                let _ = state_tx.send_modify(|s| {
+                state_tx.send_modify(|s| {
                     let mut buffer = (*s.log_buffer).clone();
                     buffer.push_back(rust_llm_api_router::presentation::tui::LogEntry {
                         timestamp: chrono::Utc::now(),
@@ -120,7 +120,7 @@ async fn tui_action_processor(
                 // Delete from repository
                 if let Err(e) = account_repo.delete(&account_id).await {
                     // Log error to TUI
-                    let _ = state_tx.send_modify(|s| {
+                    state_tx.send_modify(|s| {
                         let mut buffer = (*s.log_buffer).clone();
                         buffer.push_back(rust_llm_api_router::presentation::tui::LogEntry {
                             timestamp: chrono::Utc::now(),
@@ -138,7 +138,7 @@ async fn tui_action_processor(
                 router.reload_accounts(accounts).await;
 
                 // Send confirmation log
-                let _ = state_tx.send_modify(|s| {
+                state_tx.send_modify(|s| {
                     let mut buffer = (*s.log_buffer).clone();
                     buffer.push_back(rust_llm_api_router::presentation::tui::LogEntry {
                         timestamp: chrono::Utc::now(),
@@ -152,7 +152,7 @@ async fn tui_action_processor(
             TuiAction::ToggleProvider(provider_id) => {
                 // Toggle provider enabled state
                 // For now, just log the action
-                let _ = state_tx.send_modify(|s| {
+                state_tx.send_modify(|s| {
                     let mut buffer = (*s.log_buffer).clone();
                     buffer.push_back(rust_llm_api_router::presentation::tui::LogEntry {
                         timestamp: chrono::Utc::now(),

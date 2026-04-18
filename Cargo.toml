@@ -57,8 +57,8 @@ clap_mangen = { version = "0.2", optional = true }
 # CLI - Interactive experience
 owo-colors = "4"
 comfy-table = "7"
-inquire = "0.7"
-indicatif = "0.17"
+inquire = "0.9"
+indicatif = "0.18"
 is-terminal = "0.4"
 
 # TUI - Terminal User Interface

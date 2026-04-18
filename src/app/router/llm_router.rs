@@ -275,7 +275,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
         cb_open: bool,
     ) {
         if let Some(ref tx) = self.tui_state_tx {
-            let _ = tx.send_modify(|state| {
+            tx.send_modify(|state| {
                 // Update provider metrics - clone, modify, replace
                 let mut provider_status = (*state.provider_status).clone();
                 let metrics = provider_status
