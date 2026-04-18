@@ -43,5 +43,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # GHA cache with scoped key to avoid throttling
+          cache-from: type=gha,scope=rust-llm-router
+          cache-to: type=gha,mode=max,scope=rust-llm-router
+          # Optimize build
+          pull: false
+          no-cache: false
