@@ -129,7 +129,14 @@ impl CascadingExecutionPlan {
                     })
                     .unwrap_or(u64::MAX);
 
-                (account, provider, health, model_id, cost_per_request, idx as u32)
+                (
+                    account,
+                    provider,
+                    health,
+                    model_id,
+                    cost_per_request,
+                    idx as u32,
+                )
             })
             .collect();
 
@@ -146,22 +153,24 @@ impl CascadingExecutionPlan {
         let tiers: Vec<CascadingTier> = account_data
             .into_iter()
             .enumerate()
-            .map(|(idx, (account, provider, health, model_id, cost_per_request, _))| {
-                let mut planned = PlannedAccount::new(account.id.clone(), &provider, health)
-                    .with_execution_order(idx as u32)
-                    .with_priority(account.priority);
+            .map(
+                |(idx, (account, provider, health, model_id, cost_per_request, _))| {
+                    let mut planned = PlannedAccount::new(account.id.clone(), &provider, health)
+                        .with_execution_order(idx as u32)
+                        .with_priority(account.priority);
 
-                // Mark only the first tier as primary initially
-                if idx == 0 {
-                    planned = planned.as_primary();
-                } else {
-                    planned = planned.as_fallback();
-                }
+                    // Mark only the first tier as primary initially
+                    if idx == 0 {
+                        planned = planned.as_primary();
+                    } else {
+                        planned = planned.as_fallback();
+                    }
 
-                planned = planned.with_model_id(&model_id);
+                    planned = planned.with_model_id(&model_id);
 
-                CascadingTier::new(planned, model_id, idx as u32, cost_per_request)
-            })
+                    CascadingTier::new(planned, model_id, idx as u32, cost_per_request)
+                },
+            )
             .collect();
 
         // Limit to max tiers from config

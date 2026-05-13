@@ -306,7 +306,13 @@ async fn test_multi_provider_isolation() {
         .expect_find_active_by_provider()
         .with(eq("anthropic"))
         .times(1)
-        .returning(|_| Ok(vec![Account::new("anthropic-1", "anthropic", "sk-anthropic-key")]));
+        .returning(|_| {
+            Ok(vec![Account::new(
+                "anthropic-1",
+                "anthropic",
+                "sk-anthropic-key",
+            )])
+        });
 
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
@@ -432,7 +438,10 @@ async fn test_repository_error_handling() {
         .execute_with_failover("openai", |_| async { Ok(("success".to_string(), vec![])) })
         .await;
 
-    assert!(result.is_err(), "Should return error for repository failure");
+    assert!(
+        result.is_err(),
+        "Should return error for repository failure"
+    );
 }
 
 /// Test: Empty account list handling
@@ -453,7 +462,10 @@ async fn test_empty_account_list() {
         .execute_with_failover("openai", |_| async { Ok(("success".to_string(), vec![])) })
         .await;
 
-    assert!(result.is_err(), "Should return error for empty account list");
+    assert!(
+        result.is_err(),
+        "Should return error for empty account list"
+    );
 }
 
 // ============================================================================

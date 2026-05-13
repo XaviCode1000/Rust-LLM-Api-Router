@@ -59,7 +59,10 @@ impl OpenAiProvider {
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            Err(Error::Internal(format!("OpenAI API error ({}): {}", status, error_text)))
+            Err(Error::Internal(format!(
+                "OpenAI API error ({}): {}",
+                status, error_text
+            )))
         }
     }
 }
@@ -163,7 +166,11 @@ impl LlmProvider for OpenAiProvider {
                     .and_then(|v: &serde_json::Value| v.as_str())
                     .unwrap_or(id);
 
-                models.push(Model::new(id.to_string(), name.to_string(), self.name.clone()));
+                models.push(Model::new(
+                    id.to_string(),
+                    name.to_string(),
+                    self.name.clone(),
+                ));
             }
         }
 

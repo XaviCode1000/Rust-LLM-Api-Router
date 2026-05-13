@@ -243,7 +243,10 @@ async fn test_cli_remove_account_not_found() {
     let result = cmd_remove_account(args, &repo).await;
 
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), rust_llm_api_router::Error::ProviderNotFound(_)));
+    assert!(matches!(
+        result.unwrap_err(),
+        rust_llm_api_router::Error::ProviderNotFound(_)
+    ));
 }
 
 #[tokio::test]
@@ -335,7 +338,10 @@ async fn test_cli_set_priority_not_found() {
     let result = cmd_set_priority(args, &repo).await;
 
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), rust_llm_api_router::Error::ProviderNotFound(_)));
+    assert!(matches!(
+        result.unwrap_err(),
+        rust_llm_api_router::Error::ProviderNotFound(_)
+    ));
 }
 
 // ============================================================================
@@ -400,7 +406,10 @@ async fn test_cli_validate_account_not_found() {
     let result = cmd_validate_account(args, &repo).await;
 
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), rust_llm_api_router::Error::ProviderNotFound(_)));
+    assert!(matches!(
+        result.unwrap_err(),
+        rust_llm_api_router::Error::ProviderNotFound(_)
+    ));
 }
 
 #[tokio::test]
@@ -443,7 +452,7 @@ async fn test_handle_account_command_add() {
         AccountCommands::Add(args) => {
             assert_eq!(args.id, "cmd-test");
             assert_eq!(args.provider, "openai");
-        },
+        }
         _ => panic!("Expected Add command"),
     }
 }
@@ -453,7 +462,7 @@ async fn test_handle_account_command_list() {
     let cmd = AccountCommands::List;
 
     match cmd {
-        AccountCommands::List => {}, // OK
+        AccountCommands::List => {} // OK
         _ => panic!("Expected List command"),
     }
 }
@@ -468,7 +477,7 @@ async fn test_handle_account_command_remove() {
     match cmd {
         AccountCommands::Remove(args) => {
             assert_eq!(args.id, "to-remove");
-        },
+        }
         _ => panic!("Expected Remove command"),
     }
 }
@@ -484,7 +493,7 @@ async fn test_handle_account_command_set_priority() {
         AccountCommands::SetPriority(args) => {
             assert_eq!(args.id, "priority-acc");
             assert_eq!(args.priority, 50);
-        },
+        }
         _ => panic!("Expected SetPriority command"),
     }
 }
@@ -498,7 +507,7 @@ async fn test_handle_account_command_validate() {
     match cmd {
         AccountCommands::Validate(args) => {
             assert_eq!(args.id, "validate-acc");
-        },
+        }
         _ => panic!("Expected Validate command"),
     }
 }

@@ -44,7 +44,10 @@ async fn test_account_repository_find_non_existent() {
 
     let result = repo.find_by_id("non-existent").await;
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), DomainError::AccountNotFound(_)));
+    assert!(matches!(
+        result.unwrap_err(),
+        DomainError::AccountNotFound(_)
+    ));
 }
 
 #[tokio::test]

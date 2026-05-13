@@ -413,8 +413,10 @@ mod tests {
     #[test]
     fn test_classify_empty_user_messages_is_low() {
         let classifier = QueryClassifier::new();
-        let request =
-            ChatRequest::new("gpt-4", vec![Message::system("You are a helpful assistant")]);
+        let request = ChatRequest::new(
+            "gpt-4",
+            vec![Message::system("You are a helpful assistant")],
+        );
 
         assert_eq!(classifier.classify(&request), QueryComplexity::Low);
     }
@@ -454,8 +456,10 @@ mod tests {
     #[test]
     fn test_classify_code_keyword_is_medium() {
         let classifier = QueryClassifier::new();
-        let request =
-            ChatRequest::new("gpt-4", vec![Message::user("Write a test for this function")]);
+        let request = ChatRequest::new(
+            "gpt-4",
+            vec![Message::user("Write a test for this function")],
+        );
 
         assert_eq!(classifier.classify(&request), QueryComplexity::Medium);
     }
@@ -548,8 +552,10 @@ mod tests {
         };
         let classifier = QueryClassifier::with_config(config);
 
-        let request =
-            ChatRequest::new("gpt-4", vec![Message::user("Tell me about quantum computing")]);
+        let request = ChatRequest::new(
+            "gpt-4",
+            vec![Message::user("Tell me about quantum computing")],
+        );
 
         assert_eq!(classifier.classify(&request), QueryComplexity::High);
     }
@@ -596,8 +602,10 @@ mod tests {
     #[test]
     fn test_classifier_is_deterministic() {
         let classifier = QueryClassifier::new();
-        let request =
-            ChatRequest::new("gpt-4", vec![Message::user("Explain quantum mechanics in detail")]);
+        let request = ChatRequest::new(
+            "gpt-4",
+            vec![Message::user("Explain quantum mechanics in detail")],
+        );
 
         let first = classifier.classify(&request);
         let second = classifier.classify(&request);
@@ -638,8 +646,10 @@ mod tests {
     #[test]
     fn test_classify_task_code_request_is_code() {
         let classifier = QueryClassifier::new();
-        let request =
-            ChatRequest::new("gpt-4", vec![Message::user("Write a function to sort an array")]);
+        let request = ChatRequest::new(
+            "gpt-4",
+            vec![Message::user("Write a function to sort an array")],
+        );
 
         assert_eq!(classifier.classify_task(&request), TaskType::Code);
     }
@@ -671,8 +681,10 @@ mod tests {
     #[test]
     fn test_classify_task_translation_request_is_translation() {
         let classifier = QueryClassifier::new();
-        let request =
-            ChatRequest::new("gpt-4", vec![Message::user("Translate this text to Spanish")]);
+        let request = ChatRequest::new(
+            "gpt-4",
+            vec![Message::user("Translate this text to Spanish")],
+        );
 
         assert_eq!(classifier.classify_task(&request), TaskType::Translation);
     }
@@ -688,8 +700,10 @@ mod tests {
     #[test]
     fn test_classify_task_case_insensitive() {
         let classifier = QueryClassifier::new();
-        let request =
-            ChatRequest::new("gpt-4", vec![Message::user("EXPLAIN how TRANSFORMERS work")]);
+        let request = ChatRequest::new(
+            "gpt-4",
+            vec![Message::user("EXPLAIN how TRANSFORMERS work")],
+        );
 
         assert_eq!(classifier.classify_task(&request), TaskType::Reasoning);
     }
@@ -697,8 +711,10 @@ mod tests {
     #[test]
     fn test_classify_full_returns_both() {
         let classifier = QueryClassifier::new();
-        let request =
-            ChatRequest::new("gpt-4", vec![Message::user("Write a function to sort an array")]);
+        let request = ChatRequest::new(
+            "gpt-4",
+            vec![Message::user("Write a function to sort an array")],
+        );
 
         let classification = classifier.classify_full(&request);
 
@@ -709,8 +725,10 @@ mod tests {
     #[test]
     fn test_classify_full_backward_compat_with_classify() {
         let classifier = QueryClassifier::new();
-        let request =
-            ChatRequest::new("gpt-4", vec![Message::user("Explain quantum mechanics in detail")]);
+        let request = ChatRequest::new(
+            "gpt-4",
+            vec![Message::user("Explain quantum mechanics in detail")],
+        );
 
         let standalone = classifier.classify(&request);
         let from_full = classifier.classify_full(&request).complexity;

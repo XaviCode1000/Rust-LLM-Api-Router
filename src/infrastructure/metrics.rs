@@ -20,12 +20,17 @@ impl Metrics {
 
         let requests_total = Counter::new("llm_requests_total", "Total number of LLM requests")?;
 
-        let requests_in_flight =
-            Gauge::new("llm_requests_in_flight", "Number of requests currently being processed")?;
+        let requests_in_flight = Gauge::new(
+            "llm_requests_in_flight",
+            "Number of requests currently being processed",
+        )?;
 
         let request_duration = Histogram::with_opts(
-            HistogramOpts::new("llm_request_duration_seconds", "Request duration in seconds")
-                .buckets(vec![0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0]),
+            HistogramOpts::new(
+                "llm_request_duration_seconds",
+                "Request duration in seconds",
+            )
+            .buckets(vec![0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0]),
         )?;
 
         registry.register(Box::new(requests_total.clone()))?;
@@ -47,12 +52,17 @@ impl Metrics {
 
         let requests_total = Counter::new("llm_requests_total", "Total number of LLM requests")?;
 
-        let requests_in_flight =
-            Gauge::new("llm_requests_in_flight", "Number of requests currently being processed")?;
+        let requests_in_flight = Gauge::new(
+            "llm_requests_in_flight",
+            "Number of requests currently being processed",
+        )?;
 
         let request_duration = Histogram::with_opts(
-            HistogramOpts::new("llm_request_duration_seconds", "Request duration in seconds")
-                .buckets(vec![0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0]),
+            HistogramOpts::new(
+                "llm_request_duration_seconds",
+                "Request duration in seconds",
+            )
+            .buckets(vec![0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0]),
         )?;
 
         // Create execution plan metrics

@@ -65,7 +65,7 @@ impl SecureStorage for KeyringStorage {
                 // Clean up
                 let _ = entry.delete_password();
                 read_ok
-            },
+            }
             Err(_) => false,
         }
     }

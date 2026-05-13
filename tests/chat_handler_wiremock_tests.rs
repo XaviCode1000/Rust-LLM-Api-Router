@@ -58,7 +58,10 @@ async fn setup_test_app_with_mock_provider(mock_server: &MockServer) -> (axum::R
     let state = create_test_app_state(http_client, repo, provider_config);
 
     let app = axum::Router::new()
-        .route("/v1/chat/completions", axum::routing::post(chat_completions))
+        .route(
+            "/v1/chat/completions",
+            axum::routing::post(chat_completions),
+        )
         .with_state(state);
 
     (app, temp_dir)
@@ -364,7 +367,11 @@ async fn test_chat_handler_rate_limit_429() {
 
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(create_error_mock_response(429, "rate_limit_error", "Rate limit exceeded"))
+        .respond_with(create_error_mock_response(
+            429,
+            "rate_limit_error",
+            "Rate limit exceeded",
+        ))
         .expect(1)
         .mount(&mock_server)
         .await;
@@ -403,7 +410,11 @@ async fn test_chat_handler_auth_error_401() {
 
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(create_error_mock_response(401, "invalid_request_error", "Invalid API key"))
+        .respond_with(create_error_mock_response(
+            401,
+            "invalid_request_error",
+            "Invalid API key",
+        ))
         .expect(1)
         .mount(&mock_server)
         .await;
@@ -438,7 +449,11 @@ async fn test_chat_handler_forbidden_403() {
 
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(create_error_mock_response(403, "forbidden", "Access forbidden"))
+        .respond_with(create_error_mock_response(
+            403,
+            "forbidden",
+            "Access forbidden",
+        ))
         .expect(1)
         .mount(&mock_server)
         .await;
@@ -626,7 +641,11 @@ async fn test_chat_handler_invalid_model_name_400() {
     // Mock returns 400 for invalid model
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(create_error_mock_response(400, "invalid_request_error", "Invalid model"))
+        .respond_with(create_error_mock_response(
+            400,
+            "invalid_request_error",
+            "Invalid model",
+        ))
         .expect(1)
         .mount(&mock_server)
         .await;

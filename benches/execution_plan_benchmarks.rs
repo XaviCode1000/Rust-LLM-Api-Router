@@ -47,8 +47,11 @@ fn setup_repo_with_accounts(repo: &Arc<dyn AccountRepository>, count: usize) {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         for i in 0..count {
-            let account =
-                Account::new(format!("bench-account-{}", i), "openai", format!("sk-key-{}", i));
+            let account = Account::new(
+                format!("bench-account-{}", i),
+                "openai",
+                format!("sk-key-{}", i),
+            );
             repo.save(account).await.expect("Should save account");
         }
     });
@@ -132,7 +135,10 @@ async fn benchmark_create_plan_many_accounts() {
     }
     let elapsed = start.elapsed();
 
-    println!("Create plan with 50 accounts: {:?} per iteration", elapsed / 1000);
+    println!(
+        "Create plan with 50 accounts: {:?} per iteration",
+        elapsed / 1000
+    );
 }
 
 // ============================================================================
@@ -160,7 +166,10 @@ async fn benchmark_plan_execution_single_account() {
     }
     let elapsed = start.elapsed();
 
-    println!("Single account execution: {:?} per iteration", elapsed / 1000);
+    println!(
+        "Single account execution: {:?} per iteration",
+        elapsed / 1000
+    );
 }
 
 /// Benchmark: Plan execution with multiple accounts (failover)
@@ -185,7 +194,10 @@ async fn benchmark_plan_execution_failover() {
     }
     let elapsed = start.elapsed();
 
-    println!("Failover execution (5 accounts): {:?} per iteration", elapsed / 1000);
+    println!(
+        "Failover execution (5 accounts): {:?} per iteration",
+        elapsed / 1000
+    );
 }
 
 /// Benchmark: Plan execution with all accounts failing
@@ -322,7 +334,10 @@ async fn benchmark_failover_manager_execution() {
     }
     let elapsed = start.elapsed();
 
-    println!("FailoverManager execution: {:?} per iteration", elapsed / 1000);
+    println!(
+        "FailoverManager execution: {:?} per iteration",
+        elapsed / 1000
+    );
 }
 
 /// Benchmark: FailoverManager with failures
@@ -337,18 +352,21 @@ async fn benchmark_failover_with_failures() {
     let start = std::time::Instant::now();
     for i in 0..1000 {
         let result = manager
-            .execute_with_failover("openai", |account: &rust_llm_api_router::domain::Account| {
-                let account_id = account.id.clone();
-                async move {
-                    if account_id.contains("1") {
-                        Err::<(String, Vec<(String, String)>), BenchError>(BenchError(
-                            "fail".to_string(),
-                        ))
-                    } else {
-                        Ok::<_, BenchError>((format!("success-{}", i), vec![]))
+            .execute_with_failover(
+                "openai",
+                |account: &rust_llm_api_router::domain::Account| {
+                    let account_id = account.id.clone();
+                    async move {
+                        if account_id.contains("1") {
+                            Err::<(String, Vec<(String, String)>), BenchError>(BenchError(
+                                "fail".to_string(),
+                            ))
+                        } else {
+                            Ok::<_, BenchError>((format!("success-{}", i), vec![]))
+                        }
                     }
-                }
-            })
+                },
+            )
             .await;
         let _ = result;
     }
@@ -427,7 +445,10 @@ async fn benchmark_concurrent_planning() {
     let repo = create_test_repo();
     setup_repo_with_accounts(&repo, 10);
 
-    let planner = Arc::new(ExecutionPlanner::new(repo, ExecutionPlannerConfig::default()));
+    let planner = Arc::new(ExecutionPlanner::new(
+        repo,
+        ExecutionPlannerConfig::default(),
+    ));
 
     // Benchmark concurrent planning
     let start = std::time::Instant::now();

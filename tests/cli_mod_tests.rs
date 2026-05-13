@@ -30,7 +30,7 @@ fn test_cli_parse_provider_subcommand() {
     let cli = Cli::parse_from(["llm-router", "provider", "list"]);
     assert!(cli.commands.is_some());
     match cli.commands {
-        Some(CliCommands::Provider(_)) => {},
+        Some(CliCommands::Provider(_)) => {}
         _ => panic!("Expected Provider command"),
     }
 }
@@ -40,7 +40,7 @@ fn test_cli_parse_account_subcommand() {
     let cli = Cli::parse_from(["llm-router", "account", "list"]);
     assert!(cli.commands.is_some());
     match cli.commands {
-        Some(CliCommands::Account(_)) => {},
+        Some(CliCommands::Account(_)) => {}
         _ => panic!("Expected Account command"),
     }
 }

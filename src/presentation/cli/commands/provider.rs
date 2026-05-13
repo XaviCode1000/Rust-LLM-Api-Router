@@ -176,19 +176,19 @@ pub async fn cmd_add_provider(args: AddProviderArgs, repo: &impl ProviderReposit
                     let id = selection.provider_id.unwrap();
                     let kp = known_providers::find(&id).unwrap();
                     (id, kp.name.to_string(), kp.base_url.to_string())
-                },
+                }
                 SelectionState::Cancelled => {
                     output::info("Provider selection cancelled.");
                     return Ok(());
-                },
+                }
                 SelectionState::Invalid => {
                     output::error("Invalid selection. Enter a number (1-34) or provider ID.");
                     return Ok(());
-                },
+                }
                 _ => {
                     output::error("Selection error.");
                     return Ok(());
-                },
+                }
             }
         } else {
             // Has args, use them
@@ -213,7 +213,10 @@ pub async fn cmd_add_provider(args: AddProviderArgs, repo: &impl ProviderReposit
         // Auto-fill if ID matches known provider
         let (name, base_url, was_filled) = auto_fill_provider(&id, &name, &base_url);
         if was_filled {
-            output::dim(&format!("Auto-filled '{}' details from known providers", name));
+            output::dim(&format!(
+                "Auto-filled '{}' details from known providers",
+                name
+            ));
         }
 
         (id, name, base_url)
@@ -302,21 +305,33 @@ pub async fn cmd_list_models(
     let account = match accounts.into_iter().find(|a| a.is_active) {
         Some(acc) => acc,
         None => {
-            output::error(&format!("No active account found for provider '{}'", provider_id));
-            output::info(&format!("Please run: llm-router auth login --provider {}", provider_id));
+            output::error(&format!(
+                "No active account found for provider '{}'",
+                provider_id
+            ));
+            output::info(&format!(
+                "Please run: llm-router auth login --provider {}",
+                provider_id
+            ));
             return Ok(());
-        },
+        }
     };
 
     let api_key = match &account.api_key {
         Some(key) if !key.is_empty() => key.clone(),
         _ => {
-            output::error(&format!("No API key configured for provider '{}'", provider_id));
+            output::error(&format!(
+                "No API key configured for provider '{}'",
+                provider_id
+            ));
             return Ok(());
-        },
+        }
     };
 
-    output::info(&format!("Fetching models for provider '{}'...", provider_id));
+    output::info(&format!(
+        "Fetching models for provider '{}'...",
+        provider_id
+    ));
 
     // Create HTTP client and fetch models
     let http_client = reqwest::Client::new();
@@ -340,7 +355,10 @@ pub async fn cmd_list_models(
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_default();
-        output::error(&format!("Failed to fetch models (HTTP {}): {}", status, error_text));
+        output::error(&format!(
+            "Failed to fetch models (HTTP {}): {}",
+            status, error_text
+        ));
         return Ok(());
     }
 
@@ -362,7 +380,10 @@ pub async fn cmd_list_models(
     match response.json::<ProviderModelsResponse>().await {
         Ok(models_response) => {
             if models_response.data.is_empty() {
-                output::info(&format!("No models available for provider '{}'", provider_id));
+                output::info(&format!(
+                    "No models available for provider '{}'",
+                    provider_id
+                ));
                 return Ok(());
             }
 
@@ -377,11 +398,11 @@ pub async fn cmd_list_models(
 
             let total = models_response.data.len();
             output::info(&format!("\nTotal: {} models", total));
-        },
+        }
         Err(e) => {
             // Try alternative format (some providers return different structure)
             output::error(&format!("Error parsing models response: {}", e));
-        },
+        }
     }
 
     Ok(())
@@ -470,11 +491,11 @@ pub async fn cmd_validate_provider(
         Ok(p) => p,
         Err(crate::domain::DomainError::ProviderNotFound(id)) => {
             return Err(crate::Error::ProviderNotFound(id));
-        },
+        }
         Err(crate::domain::DomainError::ProviderDisabled(id)) => {
             output::warning(&format!("Provider '{}' is disabled. Enable it first.", id));
             return Ok(());
-        },
+        }
         Err(e) => return Err(crate::Error::Internal(e.to_string())),
     };
 
@@ -504,14 +525,17 @@ pub async fn cmd_validate_provider(
                     response.status()
                 ));
             }
-        },
+        }
         Err(e) => {
             spinner.finish_with_message(&format!(
                 "✗ Provider '{}' is not reachable: {}",
                 provider.id, e
             ));
-            output::error(&format!("Provider '{}' is not reachable: {}", provider.id, e));
-        },
+            output::error(&format!(
+                "Provider '{}' is not reachable: {}",
+                provider.id, e
+            ));
+        }
     }
 
     Ok(())

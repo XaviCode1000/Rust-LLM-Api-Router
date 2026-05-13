@@ -82,7 +82,10 @@ fn test_planning_options_budget_mode_default_false() {
 
     // Act & Assert
     assert!(!options.budget_mode, "Default budget_mode should be false");
-    assert!(!options.enable_cascading, "Default enable_cascading should be false");
+    assert!(
+        !options.enable_cascading,
+        "Default enable_cascading should be false"
+    );
 }
 
 /// Test: PlanningOptions::cost_optimized() should enable budget_mode
@@ -92,8 +95,14 @@ fn test_planning_options_cost_optimized_enables_budget_mode() {
     let options = PlanningOptions::cost_optimized();
 
     // Act & Assert
-    assert!(options.budget_mode, "Cost optimized should enable budget_mode");
-    assert!(options.cost_optimized, "Cost optimized should set cost_optimized flag");
+    assert!(
+        options.budget_mode,
+        "Cost optimized should enable budget_mode"
+    );
+    assert!(
+        options.cost_optimized,
+        "Cost optimized should set cost_optimized flag"
+    );
     assert!(
         !options.enable_cascading,
         "Cost optimized should not enable cascading by default"
@@ -107,12 +116,30 @@ fn test_planning_options_cascading_preset() {
     let options = PlanningOptions::cascading();
 
     // Act & Assert
-    assert!(options.enable_cascading, "Cascading preset should enable cascading");
-    assert!(options.budget_mode, "Cascading preset should enable budget_mode");
-    assert!(options.cost_optimized, "Cascading preset should enable cost_optimized");
-    assert!(!options.enable_failover, "Cascading preset should disable failover");
-    assert!(!options.enable_load_balancing, "Cascading preset should disable load balancing");
-    assert_eq!(options.max_retries, 1, "Cascading preset should have max_retries = 1");
+    assert!(
+        options.enable_cascading,
+        "Cascading preset should enable cascading"
+    );
+    assert!(
+        options.budget_mode,
+        "Cascading preset should enable budget_mode"
+    );
+    assert!(
+        options.cost_optimized,
+        "Cascading preset should enable cost_optimized"
+    );
+    assert!(
+        !options.enable_failover,
+        "Cascading preset should disable failover"
+    );
+    assert!(
+        !options.enable_load_balancing,
+        "Cascading preset should disable load balancing"
+    );
+    assert_eq!(
+        options.max_retries, 1,
+        "Cascading preset should have max_retries = 1"
+    );
 }
 
 /// Test: budget_mode triggers cascading selection in execution context
@@ -123,9 +150,18 @@ fn test_budget_mode_triggers_cascading_selection() {
         ExecutionContext::new("req-1", "gpt-4").with_planning_options(PlanningOptions::cascading());
 
     // Act & Assert
-    assert!(context.planning_options.budget_mode, "Budget mode should be true");
-    assert!(context.planning_options.enable_cascading, "Cascading should be enabled");
-    assert!(context.planning_options.cost_optimized, "Cost optimized should be enabled");
+    assert!(
+        context.planning_options.budget_mode,
+        "Budget mode should be true"
+    );
+    assert!(
+        context.planning_options.enable_cascading,
+        "Cascading should be enabled"
+    );
+    assert!(
+        context.planning_options.cost_optimized,
+        "Cost optimized should be enabled"
+    );
 }
 
 // ============================================================================
@@ -139,10 +175,19 @@ fn test_quality_config_defaults() {
     let config = QualityConfig::default();
 
     // Act & Assert
-    assert_eq!(config.min_quality_score, 0.75, "Default min quality score should be 0.75");
-    assert_eq!(config.min_response_length, 10, "Default min response length should be 10");
+    assert_eq!(
+        config.min_quality_score, 0.75,
+        "Default min quality score should be 0.75"
+    );
+    assert_eq!(
+        config.min_response_length, 10,
+        "Default min response length should be 10"
+    );
     assert_eq!(config.max_tiers, 3, "Default max tiers should be 3");
-    assert_eq!(config.per_tier_timeout_ms, 5000, "Default per tier timeout should be 5000ms");
+    assert_eq!(
+        config.per_tier_timeout_ms, 5000,
+        "Default per tier timeout should be 5000ms"
+    );
 }
 
 /// Test: HeuristicQualityEvaluator accepts good response (passes all checks)
@@ -162,7 +207,10 @@ async fn test_heuristic_evaluator_accepts_good_response() {
     // Assert
     assert!(score.is_acceptable, "Good response should be acceptable");
     assert_eq!(score.score, 1.0, "Good response should have perfect score");
-    assert!(score.checks_failed.is_empty(), "No checks should fail for good response");
+    assert!(
+        score.checks_failed.is_empty(),
+        "No checks should fail for good response"
+    );
 }
 
 /// Test: HeuristicQualityEvaluator rejects incoherent and short response
@@ -182,14 +230,23 @@ async fn test_heuristic_evaluator_rejects_incoherent_and_short() {
         .await;
 
     // Assert
-    assert!(!score.is_acceptable, "Incoherent short response should be unacceptable");
+    assert!(
+        !score.is_acceptable,
+        "Incoherent short response should be unacceptable"
+    );
     assert!(score.score < 0.75, "Score should be less than 0.75");
-    assert!(score.checks_failed.contains(&"length".to_string()), "Length check should fail");
+    assert!(
+        score.checks_failed.contains(&"length".to_string()),
+        "Length check should fail"
+    );
     assert!(
         score.checks_failed.contains(&"coherence".to_string()),
         "Coherence check should fail"
     );
-    assert!(score.checks_failed.len() >= 2, "At least 2 checks should fail");
+    assert!(
+        score.checks_failed.len() >= 2,
+        "At least 2 checks should fail"
+    );
 }
 
 /// Test: HeuristicQualityEvaluator flags error patterns
@@ -213,7 +270,10 @@ async fn test_heuristic_evaluator_flags_error_patterns() {
         "Coherence check should fail"
     );
     // However, the response passes other checks (length, completeness, structure) => 3/4 = 0.75 >= 0.75 => acceptable.
-    assert!(score.is_acceptable, "Score of 0.75 should still be acceptable");
+    assert!(
+        score.is_acceptable,
+        "Score of 0.75 should still be acceptable"
+    );
     assert_eq!(score.score, 0.75, "Score should be exactly 0.75");
     // The response may still pass other checks (length, completeness, structure)
 }
@@ -240,7 +300,10 @@ async fn test_heuristic_evaluator_accepts_valid_json() {
     );
     // Other checks may fail? length > 10, completeness ends with '}' good, coherence no error patterns.
     // So should be acceptable.
-    assert!(score.is_acceptable, "Valid JSON response should be acceptable");
+    assert!(
+        score.is_acceptable,
+        "Valid JSON response should be acceptable"
+    );
 }
 
 /// Test: Quality threshold boundary - score exactly 0.75 (3 passes)
@@ -260,9 +323,16 @@ async fn test_quality_threshold_boundary_exactly_075() {
         .await;
 
     // Assert
-    assert!(score.is_acceptable, "Score of exactly 0.75 should be acceptable");
+    assert!(
+        score.is_acceptable,
+        "Score of exactly 0.75 should be acceptable"
+    );
     assert_eq!(score.score, 0.75, "Score should be exactly 0.75");
-    assert_eq!(score.checks_failed.len(), 1, "Exactly one check should fail");
+    assert_eq!(
+        score.checks_failed.len(),
+        1,
+        "Exactly one check should fail"
+    );
     assert!(
         score.checks_failed.contains(&"completeness".to_string()),
         "Completeness check should fail"
@@ -287,9 +357,16 @@ async fn test_quality_threshold_boundary_below_075() {
         .await;
 
     // Assert
-    assert!(!score.is_acceptable, "Score below 0.75 should be unacceptable");
+    assert!(
+        !score.is_acceptable,
+        "Score below 0.75 should be unacceptable"
+    );
     assert!(score.score < 0.75, "Score should be less than 0.75");
-    assert_eq!(score.checks_failed.len(), 2, "Exactly two checks should fail");
+    assert_eq!(
+        score.checks_failed.len(),
+        2,
+        "Exactly two checks should fail"
+    );
 }
 
 // ============================================================================
@@ -330,8 +407,14 @@ fn test_cascading_tier_ordering() {
     let tier2 = CascadingTier::new(planned, "model-c", 2, 3000);
 
     // Assert
-    assert!(tier0.tier_order < tier1.tier_order, "Tier 0 should be before tier 1");
-    assert!(tier1.tier_order < tier2.tier_order, "Tier 1 should be before tier 2");
+    assert!(
+        tier0.tier_order < tier1.tier_order,
+        "Tier 0 should be before tier 1"
+    );
+    assert!(
+        tier1.tier_order < tier2.tier_order,
+        "Tier 1 should be before tier 2"
+    );
     assert_eq!(tier0.tier_order, 0);
     assert_eq!(tier1.tier_order, 1);
     assert_eq!(tier2.tier_order, 2);
@@ -352,12 +435,18 @@ fn test_streaming_config_flags() {
     let non_streaming = ExecutionConfig::non_streaming();
 
     // Act & Assert
-    assert!(streaming.stream, "Streaming config should have stream = true");
+    assert!(
+        streaming.stream,
+        "Streaming config should have stream = true"
+    );
     assert!(
         !streaming.enable_quality_escalation,
         "Streaming should disable quality escalation"
     );
-    assert!(!non_streaming.stream, "Non-streaming config should have stream = false");
+    assert!(
+        !non_streaming.stream,
+        "Non-streaming config should have stream = false"
+    );
     assert!(
         non_streaming.enable_quality_escalation,
         "Non-streaming should enable quality escalation"
@@ -406,7 +495,10 @@ async fn test_streaming_prevents_cascading_concept() {
         !result.used_quality_escalation,
         "Quality escalation should not be used in streaming"
     );
-    assert!(result.final_quality_score.is_none(), "No quality score in streaming mode");
+    assert!(
+        result.final_quality_score.is_none(),
+        "No quality score in streaming mode"
+    );
 }
 
 // ============================================================================
@@ -448,9 +540,15 @@ async fn test_cost_budget_zero_means_unlimited() {
 
     // Assert
     // With unlimited budget, execution should succeed and not be stopped by budget.
-    assert!(result.success, "Execution should succeed with unlimited budget");
+    assert!(
+        result.success,
+        "Execution should succeed with unlimited budget"
+    );
     // Total cost should be positive (simulated cost per tier)
-    assert!(result.total_cost_microdollars > 0, "Total cost should be positive");
+    assert!(
+        result.total_cost_microdollars > 0,
+        "Total cost should be positive"
+    );
 }
 
 /// Test: Cascading execution with cost budget enforcement
@@ -521,7 +619,10 @@ async fn test_cascading_execution_quality_escalation() {
 
     // Escalate to second tier (tier_order = 1) to trigger quality escalation
     // (quality escalation only applies to tiers after the first)
-    assert!(plan.escalate_to_next_tier(), "Should escalate to second tier");
+    assert!(
+        plan.escalate_to_next_tier(),
+        "Should escalate to second tier"
+    );
 
     // Non-streaming config with quality escalation enabled
     let config = ExecutionConfig::non_streaming();
@@ -534,8 +635,14 @@ async fn test_cascading_execution_quality_escalation() {
     // Assert
     assert!(result.success, "Execution should succeed");
     // Now quality escalation should be used because tier_order > 0
-    assert!(result.used_quality_escalation, "Quality escalation should be used");
-    assert!(result.final_quality_score.is_some(), "Quality score should be present");
+    assert!(
+        result.used_quality_escalation,
+        "Quality escalation should be used"
+    );
+    assert!(
+        result.final_quality_score.is_some(),
+        "Quality score should be present"
+    );
     // Since quality simulated as 0.85 >= 0.75, execution succeeds at tier 1
     assert_eq!(result.final_tier_index, 1, "Should succeed on second tier");
 }
@@ -580,8 +687,14 @@ fn test_timeout_reasonable_range() {
     let config = QualityConfig::default();
 
     // Act & Assert
-    assert!(config.per_tier_timeout_ms >= 1000, "Timeout should be at least 1 second");
-    assert!(config.per_tier_timeout_ms <= 30000, "Timeout should be at most 30 seconds");
+    assert!(
+        config.per_tier_timeout_ms >= 1000,
+        "Timeout should be at least 1 second"
+    );
+    assert!(
+        config.per_tier_timeout_ms <= 30000,
+        "Timeout should be at most 30 seconds"
+    );
 }
 
 /// Test: Cost budget positive enforces limit

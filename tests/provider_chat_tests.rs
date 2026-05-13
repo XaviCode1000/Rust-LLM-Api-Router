@@ -59,7 +59,10 @@ async fn test_openai_chat_function_success() {
     assert_eq!(response.id, "chatcmpl-test-123");
     assert_eq!(response.model, "gpt-4");
     assert_eq!(response.choices.len(), 1);
-    assert_eq!(response.choices[0].message.content, "Hello! How can I help you?");
+    assert_eq!(
+        response.choices[0].message.content,
+        "Hello! How can I help you?"
+    );
     assert_eq!(response.choices[0].message.role, "assistant");
     assert_eq!(response.choices[0].finish_reason, Some("stop".to_string()));
     assert_eq!(response.usage.prompt_tokens, 10);
@@ -112,7 +115,10 @@ async fn test_openai_chat_function_with_system_message() {
     let response = provider.chat(&request).await.unwrap();
 
     assert_eq!(response.id, "chatcmpl-system-test");
-    assert_eq!(response.choices[0].message.content, "I am a helpful assistant.");
+    assert_eq!(
+        response.choices[0].message.content,
+        "I am a helpful assistant."
+    );
 
     mock_server.verify().await;
 }
@@ -291,8 +297,10 @@ async fn test_groq_chat_function_success() {
     let client = Arc::new(HttpClient::new().unwrap());
     let provider = GroqProvider::new(mock_server.uri(), "sk-groq-key".to_string(), client);
 
-    let request =
-        OpenAIChatRequest::new("llama-3.1-70b-versatile", vec![OpenAIMessage::user("Hello")]);
+    let request = OpenAIChatRequest::new(
+        "llama-3.1-70b-versatile",
+        vec![OpenAIMessage::user("Hello")],
+    );
 
     let response = provider.chat(&request).await.unwrap();
 
@@ -395,8 +403,10 @@ async fn test_anthropic_chat_function_success() {
     let provider =
         AnthropicProvider::new(mock_server.uri(), "sk-anthropic-key".to_string(), client);
 
-    let request =
-        OpenAIChatRequest::new("claude-3-sonnet-20240229", vec![OpenAIMessage::user("Hello")]);
+    let request = OpenAIChatRequest::new(
+        "claude-3-sonnet-20240229",
+        vec![OpenAIMessage::user("Hello")],
+    );
 
     let response = provider.chat(&request).await.unwrap();
 
@@ -405,7 +415,10 @@ async fn test_anthropic_chat_function_success() {
     assert_eq!(response.choices.len(), 1);
     assert_eq!(response.choices[0].message.content, "Hello from Claude!");
     assert_eq!(response.choices[0].message.role, "assistant");
-    assert_eq!(response.choices[0].finish_reason, Some("end_turn".to_string()));
+    assert_eq!(
+        response.choices[0].finish_reason,
+        Some("end_turn".to_string())
+    );
     assert_eq!(response.usage.prompt_tokens, 12);
     assert_eq!(response.usage.completion_tokens, 10);
     assert_eq!(response.usage.total_tokens, 22);
@@ -456,7 +469,10 @@ async fn test_anthropic_chat_function_with_system_message() {
     let response = provider.chat(&request).await.unwrap();
 
     assert_eq!(response.id, "msg-system-test");
-    assert_eq!(response.choices[0].message.content, "I am Claude, a helpful assistant.");
+    assert_eq!(
+        response.choices[0].message.content,
+        "I am Claude, a helpful assistant."
+    );
 
     mock_server.verify().await;
 }
@@ -604,8 +620,11 @@ fn test_openai_provider_creation() {
 #[test]
 fn test_groq_provider_creation() {
     let client = Arc::new(HttpClient::new().unwrap());
-    let provider =
-        GroqProvider::new("https://api.groq.com".to_string(), "sk-groq-key".to_string(), client);
+    let provider = GroqProvider::new(
+        "https://api.groq.com".to_string(),
+        "sk-groq-key".to_string(),
+        client,
+    );
 
     assert_eq!(provider.name(), "groq");
 }

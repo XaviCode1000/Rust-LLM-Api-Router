@@ -225,7 +225,7 @@ impl FailoverManager {
                         self.record_success(&account.id, start.elapsed().as_millis() as u64)
                             .await;
                         return Ok(response);
-                    },
+                    }
                     Err(e) => {
                         // Record failure
                         self.record_failure(&account.id).await;
@@ -237,7 +237,7 @@ impl FailoverManager {
                             tokio::time::sleep(Duration::from_millis(delay_ms)).await;
                             continue;
                         }
-                    },
+                    }
                 }
             } else {
                 // No more accounts available
@@ -365,7 +365,10 @@ mod tests {
         let min = delays.first().copied().unwrap_or(0);
         let max = delays.last().copied().unwrap_or(0);
 
-        assert!(min != max || max == 0, "Jitter should produce variation in delays");
+        assert!(
+            min != max || max == 0,
+            "Jitter should produce variation in delays"
+        );
     }
 
     #[test]

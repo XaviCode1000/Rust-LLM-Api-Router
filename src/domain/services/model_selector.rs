@@ -236,7 +236,7 @@ impl ModelSelector for CostAwareSelector {
                     })
                     .expect("eligible is non-empty after prior check");
                 Ok(fallback)
-            },
+            }
         }
     }
 
@@ -255,7 +255,12 @@ mod tests {
     // ========================================================================
 
     fn budget_model() -> Model {
-        Model::with_pricing("gpt-4o-mini", "GPT-4o Mini", "openai", ModelPricing::new(0.15, 0.60))
+        Model::with_pricing(
+            "gpt-4o-mini",
+            "GPT-4o Mini",
+            "openai",
+            ModelPricing::new(0.15, 0.60),
+        )
     }
 
     fn mid_tier_model() -> Model {
@@ -263,7 +268,12 @@ mod tests {
     }
 
     fn premium_model() -> Model {
-        Model::with_pricing("gpt-4-turbo", "GPT-4 Turbo", "openai", ModelPricing::new(10.0, 30.0))
+        Model::with_pricing(
+            "gpt-4-turbo",
+            "GPT-4 Turbo",
+            "openai",
+            ModelPricing::new(10.0, 30.0),
+        )
     }
 
     fn model_without_pricing() -> Model {
@@ -394,7 +404,10 @@ mod tests {
 
         let result = selector.select(&low_complexity_request(), &models);
 
-        assert!(matches!(result, Err(SelectionError::NoModelAvailable { .. })));
+        assert!(matches!(
+            result,
+            Err(SelectionError::NoModelAvailable { .. })
+        ));
     }
 
     // ========================================================================
@@ -490,11 +503,20 @@ mod tests {
     #[test]
     fn test_capability_tier_boundaries() {
         // < $2.0/1M → Low
-        assert_eq!(CostAwareSelector::capability_tier(1.0), QueryComplexity::Low);
+        assert_eq!(
+            CostAwareSelector::capability_tier(1.0),
+            QueryComplexity::Low
+        );
         // < $15.0/1M → Medium
-        assert_eq!(CostAwareSelector::capability_tier(5.0), QueryComplexity::Medium);
+        assert_eq!(
+            CostAwareSelector::capability_tier(5.0),
+            QueryComplexity::Medium
+        );
         // >= $15.0/1M → High
-        assert_eq!(CostAwareSelector::capability_tier(20.0), QueryComplexity::High);
+        assert_eq!(
+            CostAwareSelector::capability_tier(20.0),
+            QueryComplexity::High
+        );
     }
 
     // ========================================================================
@@ -505,7 +527,12 @@ mod tests {
     fn test_select_across_multiple_providers() {
         let selector = CostAwareSelector::new();
         let models = vec![
-            Model::with_pricing("llama-3-8b", "Llama 3 8B", "groq", ModelPricing::new(0.05, 0.10)),
+            Model::with_pricing(
+                "llama-3-8b",
+                "Llama 3 8B",
+                "groq",
+                ModelPricing::new(0.05, 0.10),
+            ),
             Model::with_pricing(
                 "claude-3-haiku",
                 "Claude 3 Haiku",

@@ -109,9 +109,18 @@ mod tests {
         ];
 
         let mut health_map = HashMap::new();
-        health_map.insert("acc1".to_string(), create_test_health("acc1", 200.0, Some(100)));
-        health_map.insert("acc2".to_string(), create_test_health("acc2", 50.0, Some(100)));
-        health_map.insert("acc3".to_string(), create_test_health("acc3", 150.0, Some(100)));
+        health_map.insert(
+            "acc1".to_string(),
+            create_test_health("acc1", 200.0, Some(100)),
+        );
+        health_map.insert(
+            "acc2".to_string(),
+            create_test_health("acc2", 50.0, Some(100)),
+        );
+        health_map.insert(
+            "acc3".to_string(),
+            create_test_health("acc3", 150.0, Some(100)),
+        );
 
         let selected = strategy.select_with_health(&accounts, &health_map);
         assert!(selected.is_some());
@@ -129,7 +138,10 @@ mod tests {
             h.circuit_breaker_state = CircuitBreakerState::Open;
             h
         });
-        health_map.insert("acc2".to_string(), create_test_health("acc2", 200.0, Some(100)));
+        health_map.insert(
+            "acc2".to_string(),
+            create_test_health("acc2", 200.0, Some(100)),
+        );
 
         let selected = strategy.select_with_health(&accounts, &health_map);
         assert!(selected.is_some());
@@ -142,8 +154,14 @@ mod tests {
         let accounts = vec![create_test_account("acc1"), create_test_account("acc2")];
 
         let mut health_map = HashMap::new();
-        health_map.insert("acc1".to_string(), create_test_health("acc1", 50.0, Some(0)));
-        health_map.insert("acc2".to_string(), create_test_health("acc2", 200.0, Some(100)));
+        health_map.insert(
+            "acc1".to_string(),
+            create_test_health("acc1", 50.0, Some(0)),
+        );
+        health_map.insert(
+            "acc2".to_string(),
+            create_test_health("acc2", 200.0, Some(100)),
+        );
 
         let selected = strategy.select_with_health(&accounts, &health_map);
         assert!(selected.is_some());
@@ -221,14 +239,14 @@ impl RateLimitInfo {
             match name_lower.as_str() {
                 "x-ratelimit-remaining" => {
                     info.remaining = value_str.parse().ok();
-                },
+                }
                 "x-ratelimit-reset" => {
                     info.reset_timestamp = value_str.parse().ok();
-                },
+                }
                 "x-ratelimit-limit" => {
                     info.limit = value_str.parse().ok();
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
 

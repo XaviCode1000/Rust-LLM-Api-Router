@@ -20,7 +20,10 @@ pub async fn handle_logout_command() -> Result<()> {
     let accounts_result = account_repo.find_all().await;
 
     if accounts_result.is_err() {
-        output::error(&format!("Failed to retrieve accounts: {}", accounts_result.err().unwrap()));
+        output::error(&format!(
+            "Failed to retrieve accounts: {}",
+            accounts_result.err().unwrap()
+        ));
         return Ok(());
     }
 
@@ -31,7 +34,10 @@ pub async fn handle_logout_command() -> Result<()> {
         return Ok(());
     }
 
-    output::info(&format!("Found {} account(s). Logging out from all...", accounts.len()));
+    output::info(&format!(
+        "Found {} account(s). Logging out from all...",
+        accounts.len()
+    ));
 
     // Log out from each account
     for account in accounts {
@@ -42,12 +48,18 @@ pub async fn handle_logout_command() -> Result<()> {
 
         match auth_service.revoke_token(&account.id).await {
             Ok(()) => {
-                output::success(&format!("Successfully logged out from account '{}'", account.id));
-            },
+                output::success(&format!(
+                    "Successfully logged out from account '{}'",
+                    account.id
+                ));
+            }
             Err(e) => {
-                output::error(&format!("Failed to log out from account '{}': {}", account.id, e));
+                output::error(&format!(
+                    "Failed to log out from account '{}': {}",
+                    account.id, e
+                ));
                 // Continue with other accounts even if one fails
-            },
+            }
         }
     }
 

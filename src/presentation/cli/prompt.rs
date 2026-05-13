@@ -27,7 +27,9 @@ pub fn confirm(message: &str) -> Result<bool> {
 /// Returns an error if not running in a TTY, as interactive input is required.
 pub fn prompt_secret(message: &str) -> Result<String> {
     if !is_tty() {
-        return Err(crate::Error::Internal("Interactive input requires a terminal".to_string()));
+        return Err(crate::Error::Internal(
+            "Interactive input requires a terminal".to_string(),
+        ));
     }
 
     Password::new(message)
@@ -41,7 +43,9 @@ pub fn prompt_secret(message: &str) -> Result<String> {
 /// Returns an error if not running in a TTY.
 pub fn prompt_text(message: &str) -> Result<String> {
     if !is_tty() {
-        return Err(crate::Error::Internal("Interactive input requires a terminal".to_string()));
+        return Err(crate::Error::Internal(
+            "Interactive input requires a terminal".to_string(),
+        ));
     }
 
     inquire::Text::new(message)

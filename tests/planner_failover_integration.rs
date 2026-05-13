@@ -159,10 +159,18 @@ async fn test_concurrent_multi_provider_planning() {
     mock_repo
         .expect_find_active_by_provider()
         .with(eq("anthropic"))
-        .returning(|_| Ok(vec![Account::new("anthropic-1", "anthropic", "sk-anthropic-key")]));
+        .returning(|_| {
+            Ok(vec![Account::new(
+                "anthropic-1",
+                "anthropic",
+                "sk-anthropic-key",
+            )])
+        });
 
-    let planner =
-        Arc::new(ExecutionPlanner::new(Arc::new(mock_repo), ExecutionPlannerConfig::default()));
+    let planner = Arc::new(ExecutionPlanner::new(
+        Arc::new(mock_repo),
+        ExecutionPlannerConfig::default(),
+    ));
 
     // Concurrent planning for different providers
     let mut handles = vec![];

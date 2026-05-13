@@ -19,7 +19,10 @@ pub async fn handle_login_command(provider_id: String) -> Result<()> {
         return Ok(());
     }
 
-    output::info(&format!("Starting authentication process for provider '{}'...", provider_id));
+    output::info(&format!(
+        "Starting authentication process for provider '{}'...",
+        provider_id
+    ));
 
     // Initialize repositories as trait objects
     let account_repo: Arc<dyn AccountRepository + Send + Sync> =
@@ -59,7 +62,10 @@ pub async fn handle_login_command(provider_id: String) -> Result<()> {
         Ok(verifier_or_instructions) => {
             if verifier_or_instructions.is_empty() {
                 // API key authentication - ask for API key
-                output::info(&format!("Please enter your API key for provider '{}':", provider_id));
+                output::info(&format!(
+                    "Please enter your API key for provider '{}':",
+                    provider_id
+                ));
 
                 let mut api_key = String::new();
                 std::io::stdin()
@@ -85,10 +91,10 @@ pub async fn handle_login_command(provider_id: String) -> Result<()> {
                         ));
                         output::info(&format!("  Account ID: {}", account.id));
                         output::dim(&format!("  Auth type: {}", account.auth_type()));
-                    },
+                    }
                     Err(e) => {
                         output::error(&format!("Authentication failed: {}", e));
-                    },
+                    }
                 }
             } else {
                 // OAuth authentication - show instructions
@@ -100,10 +106,10 @@ pub async fn handle_login_command(provider_id: String) -> Result<()> {
                 output::dim("Note: In this implementation, you would need to complete the OAuth flow manually.");
                 output::dim("For testing purposes, you can simulate completion with a test code.");
             }
-        },
+        }
         Err(e) => {
             output::error(&format!("Failed to initiate authentication: {}", e));
-        },
+        }
     }
 
     Ok(())

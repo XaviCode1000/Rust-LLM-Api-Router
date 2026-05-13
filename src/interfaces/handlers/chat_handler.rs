@@ -68,9 +68,12 @@ async fn stream_chat_request(
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "provider_error",
-                format!("Failed to get accounts for provider '{}': {}", provider_id, e),
+                format!(
+                    "Failed to get accounts for provider '{}': {}",
+                    provider_id, e
+                ),
             );
-        },
+        }
     };
 
     if accounts.is_empty() {
@@ -107,9 +110,10 @@ async fn stream_chat_request(
             let mut response = Sse::new(sse_stream).into_response();
 
             // Set SSE-appropriate headers
-            response
-                .headers_mut()
-                .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/event-stream"));
+            response.headers_mut().insert(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("text/event-stream"),
+            );
             response
                 .headers_mut()
                 .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
@@ -118,7 +122,7 @@ async fn stream_chat_request(
                 .insert(header::CONNECTION, HeaderValue::from_static("keep-alive"));
 
             response
-        },
+        }
         Err(e) => error_response(
             StatusCode::BAD_GATEWAY,
             "provider_error",
@@ -157,15 +161,18 @@ async fn process_chat_request(
     {
         Ok(provider_response) => {
             // Convert provider response to OpenAI format
-            Ok(convert_to_openai_response(provider_response, &openai_request.model))
-        },
+            Ok(convert_to_openai_response(
+                provider_response,
+                &openai_request.model,
+            ))
+        }
         Err(e) => {
             tracing::error!("LlmRouter request failed: {}", e);
             Err(OpenAIErrorResponse::new(
                 "provider_error",
                 format!("Request to provider failed: {}", e),
             ))
-        },
+        }
     }
 }
 
@@ -282,7 +289,10 @@ async fn make_provider_request(
 
     // Make HTTP POST request
     let access_token = account.get_access_token().ok_or_else(|| {
-        format!("No authentication credentials available for account '{}'", account.id)
+        format!(
+            "No authentication credentials available for account '{}'",
+            account.id
+        )
     })?;
 
     let response = http_client
@@ -343,7 +353,10 @@ async fn make_streaming_provider_request(
 
     // Make HTTP POST request with streaming
     let access_token = account.get_access_token().ok_or_else(|| {
-        format!("No authentication credentials available for account '{}'", account.id)
+        format!(
+            "No authentication credentials available for account '{}'",
+            account.id
+        )
     })?;
 
     let response = http_client
@@ -394,7 +407,7 @@ fn stream_to_sse_events(
                         } else {
                             Ok(Event::default().data(data))
                         }
-                    },
+                    }
                     Err(_) => {
                         // Binary data or invalid UTF-8 - convert to hex representation
                         let hex = bytes
@@ -402,13 +415,13 @@ fn stream_to_sse_events(
                             .map(|b| format!("{:02x}", b))
                             .collect::<String>();
                         Ok(Event::default().data(format!("[binary: {}]", hex)))
-                    },
+                    }
                 }
-            },
+            }
             Err(e) => {
                 // On error, send an error message as SSE data
                 Ok(Event::default().data(format!("[error: {}]", e)))
-            },
+            }
         }
     })
 }
@@ -440,7 +453,12 @@ pub fn convert_to_openai_response(
         chat_response.usage.total_tokens,
     );
 
-    OpenAIChatResponse::new(format!("chatcmpl-{}", chat_response.id), model, choices, usage)
+    OpenAIChatResponse::new(
+        format!("chatcmpl-{}", chat_response.id),
+        model,
+        choices,
+        usage,
+    )
 }
 
 /// Handler for GET /v1/models
@@ -458,7 +476,7 @@ pub async fn list_models(
                     "No API keys configured for any provider".to_string(),
                 )),
             ));
-        },
+        }
     };
 
     match state.llm_gateway.list_models(&api_key).await {
@@ -478,7 +496,7 @@ pub async fn list_models(
                 object: "list".to_string(),
                 data,
             }))
-        },
+        }
         Err(e) => {
             tracing::error!("Failed to fetch models: {}", e);
             Err((
@@ -488,7 +506,7 @@ pub async fn list_models(
                     format!("Failed to fetch models: {}", e),
                 )),
             ))
-        },
+        }
     }
 }
 
@@ -499,7 +517,7 @@ pub async fn get_api_key_for_models(state: &AppState) -> Option<String> {
         Err(e) => {
             tracing::warn!("Failed to fetch accounts for models endpoint: {}", e);
             None
-        },
+        }
     }
 }
 

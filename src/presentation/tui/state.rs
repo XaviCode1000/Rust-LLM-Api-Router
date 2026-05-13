@@ -389,7 +389,10 @@ mod tests {
         let json = serde_json::to_string(&state).unwrap();
         let restored: TuiState = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(restored.provider_status.get("test"), Some(&ProviderMetrics::default()));
+        assert_eq!(
+            restored.provider_status.get("test"),
+            Some(&ProviderMetrics::default())
+        );
         assert_eq!(restored.global_stats.requests_total, 100);
         assert_eq!(restored.latency_history.len(), 1);
     }
