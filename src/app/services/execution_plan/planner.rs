@@ -592,7 +592,7 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
             },
             RotationStrategyType::Priority => {
                 // Sort by priority (lowest = highest priority)
-                accounts.sort_by(|a, b| a.0.priority.cmp(&b.0.priority));
+                accounts.sort_by_key(|a| a.0.priority);
                 accounts
             },
             RotationStrategyType::LeastRecentlyUsed => {

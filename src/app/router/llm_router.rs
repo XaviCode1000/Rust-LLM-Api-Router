@@ -362,16 +362,17 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
         // Get request_id for logging before context is moved
         let request_id_for_log = context.request_id.clone();
 
-        // Step 1.5: Pre-flight token validation
-        match TokenValidator::validate(&request) {
-            Ok(token_count) => {
+        // Step 1.5: Pre-flight token validation (async — offloads BPE to blocking pool)
+        let (_token_count, request) = match TokenValidator::validate_async(request).await {
+            Ok((count, req)) => {
                 tracing::debug!(
                     target: "token_validation",
-                    model = %request.model,
-                    token_count = token_count,
+                    model = %req.model,
+                    token_count = count,
                     "Token count within limits"
                 );
-            },
+                (count, req)
+            }
             Err(DomainError::TokenLimitExceeded {
                 model,
                 tokens,
@@ -387,19 +388,23 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
                 return Err(Error::InvalidRequest(format!(
                     "Token limit exceeded: {tokens} tokens exceed {limit} token context window for model '{model}'"
                 )));
-            },
+            }
             Err(e) => {
                 tracing::warn!(error = %e, "Token validation error");
-            },
-        }
+                return Err(Error::Internal(format!("Token validation failed: {e}")));
+            }
+        };
 
         // Step 2: Create execution plan using the planner
         let mut plan = match self.planner.create_plan(context).await {
             Ok(plan) => plan,
             Err(e) => {
                 tracing::error!("Failed to create execution plan: {}", e);
-                return Err(Error::Internal(format!("Failed to create execution plan: {}", e)));
-            },
+                return Err(Error::Internal(format!(
+                    "Failed to create execution plan: {}",
+                    e
+                )));
+            }
         };
 
         // Log routing information with strategy details
@@ -476,7 +481,9 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
     ) -> Result<ChatResponse> {
         // If no accounts available, return error
         if !plan.has_accounts() {
-            return Err(Error::Internal("No accounts available for execution".to_string()));
+            return Err(Error::Internal(
+                "No accounts available for execution".to_string(),
+            ));
         }
 
         // Get planned accounts from the plan
@@ -544,7 +551,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
                     }
 
                     return Ok(response);
-                },
+                }
                 Err(e) => {
                     // Account failed, try next if failover is enabled
 
@@ -579,12 +586,14 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
 
                         return Err(e);
                     }
-                },
+                }
             }
         }
 
         // Should not reach here, but handle it gracefully
-        Err(Error::Internal("Execution failed with no accounts available".to_string()))
+        Err(Error::Internal(
+            "Execution failed with no accounts available".to_string(),
+        ))
     }
 
     /// Forwards a request to a specific provider using the account.
@@ -655,7 +664,10 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             .post(&url)
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", api_key))
-            .header("HTTP-Referer", "https://github.com/XaviCode1000/Rust-LLM-Api-Router")
+            .header(
+                "HTTP-Referer",
+                "https://github.com/XaviCode1000/Rust-LLM-Api-Router",
+            )
             .header("X-Title", "Rust LLM API Router")
             .json(&body)
             .send()
@@ -761,17 +773,38 @@ mod tests {
     fn test_infer_provider_from_model() {
         // Test OpenAI models
         assert_eq!(infer_provider_static("gpt-4"), Some("openai".to_string()));
-        assert_eq!(infer_provider_static("o1-preview"), Some("openai".to_string()));
-        assert_eq!(infer_provider_static("gpt-3.5-turbo"), Some("openai".to_string()));
+        assert_eq!(
+            infer_provider_static("o1-preview"),
+            Some("openai".to_string())
+        );
+        assert_eq!(
+            infer_provider_static("gpt-3.5-turbo"),
+            Some("openai".to_string())
+        );
 
         // Test Anthropic models
-        assert_eq!(infer_provider_static("claude-3-opus"), Some("anthropic".to_string()));
-        assert_eq!(infer_provider_static("claude-3-sonnet"), Some("anthropic".to_string()));
-        assert_eq!(infer_provider_static("haiku"), Some("anthropic".to_string()));
+        assert_eq!(
+            infer_provider_static("claude-3-opus"),
+            Some("anthropic".to_string())
+        );
+        assert_eq!(
+            infer_provider_static("claude-3-sonnet"),
+            Some("anthropic".to_string())
+        );
+        assert_eq!(
+            infer_provider_static("haiku"),
+            Some("anthropic".to_string())
+        );
 
         // Test Groq models
-        assert_eq!(infer_provider_static("llama-3-70b"), Some("groq".to_string()));
-        assert_eq!(infer_provider_static("mixtral-8x7b"), Some("groq".to_string()));
+        assert_eq!(
+            infer_provider_static("llama-3-70b"),
+            Some("groq".to_string())
+        );
+        assert_eq!(
+            infer_provider_static("mixtral-8x7b"),
+            Some("groq".to_string())
+        );
 
         // Unknown model
         assert_eq!(infer_provider_static("unknown-model"), None);

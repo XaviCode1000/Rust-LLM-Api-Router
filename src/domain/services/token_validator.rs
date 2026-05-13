@@ -63,6 +63,37 @@ impl TokenValidator {
 
         Ok(token_count)
     }
+
+    /// Async wrapper around token validation that runs on a blocking thread pool.
+    ///
+    /// Takes ownership of the `ChatRequest` to avoid cloning, and returns it
+    /// alongside the token count on success. This prevents CPU-bound BPE encoding
+    /// from starving the Tokio I/O reactor.
+    pub async fn validate_async(request: ChatRequest) -> Result<(u32, ChatRequest), DomainError> {
+        tokio::task::spawn_blocking(move || {
+            let model = extract_model_name(&request.model);
+            let token_count = Self::count_tokens(&request);
+
+            if let Some(limit) = get_context_limit(model) {
+                let max_output = request.max_tokens.unwrap_or(0);
+                let total_estimated = token_count.saturating_add(max_output);
+
+                if total_estimated > limit {
+                    return Err(DomainError::TokenLimitExceeded {
+                        model: model.to_string(),
+                        tokens: total_estimated,
+                        limit,
+                    });
+                }
+            }
+
+            Ok((token_count, request))
+        })
+        .await
+        .map_err(|join_err| {
+            DomainError::Internal(format!("Token validation task panicked: {join_err}"))
+        })?
+    }
 }
 
 /// Extracts the model name from a potentially prefixed format.
@@ -116,7 +147,10 @@ mod tests {
         let request = ChatRequest::new("gpt-4", vec![Message::user(&long_content)]);
         let result = TokenValidator::validate(&request);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), DomainError::TokenLimitExceeded { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            DomainError::TokenLimitExceeded { .. }
+        ));
     }
 
     #[test]
@@ -138,6 +172,38 @@ mod tests {
     fn test_extract_model_name() {
         assert_eq!(extract_model_name("gpt-4"), "gpt-4");
         assert_eq!(extract_model_name("openai:gpt-4"), "gpt-4");
-        assert_eq!(extract_model_name("groq:llama-3.1-8b-instant"), "llama-3.1-8b-instant");
+        assert_eq!(
+            extract_model_name("groq:llama-3.1-8b-instant"),
+            "llama-3.1-8b-instant"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_validate_async_within_limit() {
+        let request = ChatRequest::new("gpt-4", vec![Message::user("Hello")]);
+        let result = TokenValidator::validate_async(request).await;
+        assert!(result.is_ok());
+        let (count, returned_request) = result.unwrap();
+        assert!(count > 0);
+        assert_eq!(returned_request.model, "gpt-4");
+    }
+
+    #[tokio::test]
+    async fn test_validate_async_exceeds_limit() {
+        let long_content = "word ".repeat(10_000);
+        let request = ChatRequest::new("gpt-4", vec![Message::user(&long_content)]);
+        let result = TokenValidator::validate_async(request).await;
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            DomainError::TokenLimitExceeded { .. }
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_validate_async_unknown_model() {
+        let request = ChatRequest::new("unknown-model", vec![Message::user("Hello")]);
+        let result = TokenValidator::validate_async(request).await;
+        assert!(result.is_ok());
     }
 }
