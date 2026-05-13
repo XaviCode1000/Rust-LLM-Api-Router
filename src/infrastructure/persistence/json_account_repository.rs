@@ -8,6 +8,7 @@ use fs4::FileExt;
 use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tokio::fs;
 
 use crate::domain::traits::AccountRepository;
@@ -97,14 +98,14 @@ impl From<AccountData> for Account {
 /// API keys are stored in the system keyring or encrypted file storage.
 pub struct JsonAccountRepository {
     file_path: PathBuf,
-    secure_storage: Box<dyn SecureStorage>,
+    secure_storage: Arc<dyn SecureStorage>,
 }
 
 impl Clone for JsonAccountRepository {
     fn clone(&self) -> Self {
         Self {
             file_path: self.file_path.clone(),
-            secure_storage: create_secure_storage(),
+            secure_storage: self.secure_storage.clone(),
         }
     }
 }
@@ -166,7 +167,7 @@ impl JsonAccountRepository {
         let file_path = config_dir.join("accounts.json");
         // Use in-memory storage for custom config dirs (tests use isolated temp dirs)
         let secure_storage =
-            Box::new(crate::infrastructure::secure_storage::InsecureStorage::new());
+            Arc::new(crate::infrastructure::secure_storage::InsecureStorage::new());
         let repo = Self {
             file_path,
             secure_storage,
@@ -199,9 +200,13 @@ impl JsonAccountRepository {
         for account in &accounts {
             if let Some(ref api_key) = account.api_key {
                 if !api_key.is_empty() {
-                    // Store in secure storage
-                    self.secure_storage
-                        .store(&account.id, api_key)
+                    // Store in secure storage — spawn_blocking because storage does blocking I/O + Argon2
+                    let id = account.id.clone();
+                    let key = api_key.clone();
+                    let storage = self.secure_storage.clone();
+                    tokio::task::spawn_blocking(move || storage.store(&id, &key))
+                        .await
+                        .map_err(|e| DomainError::Internal(e.to_string()))?
                         .map_err(|e| DomainError::Internal(e.to_string()))?;
                     migrated += 1;
                 }
@@ -249,11 +254,16 @@ impl JsonAccountRepository {
 
     /// Convert AccountData to Account, retrieving API key from secure storage.
     /// Falls back to plaintext api_key from JSON if secure storage has no entry.
-    fn account_data_to_account(&self, data: AccountData) -> DomainResult<Account> {
+    ///
+    /// Uses `spawn_blocking` because `SecureStorage::retrieve` performs blocking I/O
+    /// and (for encrypted file storage) Argon2 key derivation.
+    async fn account_data_to_account(&self, data: AccountData) -> DomainResult<Account> {
         // Try to retrieve API key from secure storage, fall back to JSON field
-        let api_key = self
-            .secure_storage
-            .retrieve(&data.id)
+        let storage = self.secure_storage.clone();
+        let account_id = data.id.clone();
+        let api_key = tokio::task::spawn_blocking(move || storage.retrieve(&account_id))
+            .await
+            .map_err(|e| DomainError::Internal(e.to_string()))?
             .map_err(|e| DomainError::Internal(e.to_string()))?
             .map(|s| s.expose_secret().to_string())
             .or(data.api_key);
@@ -332,10 +342,14 @@ impl Default for JsonAccountRepository {
 #[async_trait]
 impl AccountRepository for JsonAccountRepository {
     async fn save(&self, account: Account) -> DomainResult<Account> {
-        // Store API key in secure storage
+        // Store API key in secure storage — spawn_blocking because storage does blocking I/O + Argon2
         if let Some(ref api_key) = account.api_key {
-            self.secure_storage
-                .store(&account.id, api_key)
+            let id = account.id.clone();
+            let key = api_key.clone();
+            let storage = self.secure_storage.clone();
+            tokio::task::spawn_blocking(move || storage.store(&id, &key))
+                .await
+                .map_err(|e| DomainError::Internal(e.to_string()))?
                 .map_err(|e| DomainError::Internal(e.to_string()))?;
         }
 
@@ -361,7 +375,7 @@ impl AccountRepository for JsonAccountRepository {
         let mut accounts = Vec::with_capacity(accounts_data.len());
 
         for account_data in accounts_data {
-            let account = self.account_data_to_account(account_data)?;
+            let account = self.account_data_to_account(account_data).await?;
             accounts.push(account);
         }
 
@@ -375,7 +389,7 @@ impl AccountRepository for JsonAccountRepository {
             .find(|a| a.id == id)
             .ok_or_else(|| crate::domain::DomainError::AccountNotFound(id.to_string()))?;
 
-        self.account_data_to_account(account_data)
+        self.account_data_to_account(account_data).await
     }
 
     async fn find_active(&self) -> DomainResult<Vec<Account>> {
@@ -383,7 +397,7 @@ impl AccountRepository for JsonAccountRepository {
         let mut accounts: Vec<Account> = Vec::with_capacity(accounts_data.len());
 
         for account_data in accounts_data {
-            let account = self.account_data_to_account(account_data)?;
+            let account = self.account_data_to_account(account_data).await?;
             if account.is_active {
                 accounts.push(account);
             }
@@ -399,7 +413,7 @@ impl AccountRepository for JsonAccountRepository {
         let mut accounts: Vec<Account> = Vec::with_capacity(accounts_data.len());
 
         for account_data in accounts_data {
-            let account = self.account_data_to_account(account_data)?;
+            let account = self.account_data_to_account(account_data).await?;
             if account.is_active && account.provider_id == provider_id {
                 accounts.push(account);
             }
@@ -419,9 +433,12 @@ impl AccountRepository for JsonAccountRepository {
             return Err(crate::domain::DomainError::AccountNotFound(id.to_string()));
         }
 
-        // Delete API key from secure storage
-        self.secure_storage
-            .delete(id)
+        // Delete API key from secure storage — spawn_blocking because storage does blocking I/O + Argon2
+        let storage = self.secure_storage.clone();
+        let delete_id = id.to_string();
+        tokio::task::spawn_blocking(move || storage.delete(&delete_id))
+            .await
+            .map_err(|e| DomainError::Internal(e.to_string()))?
             .map_err(|e| DomainError::Internal(e.to_string()))?;
 
         // Filter out the account to delete

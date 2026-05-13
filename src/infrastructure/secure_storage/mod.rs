@@ -7,6 +7,7 @@ pub mod encrypted_store;
 pub mod keyring_adapter;
 
 use secrecy::SecretString;
+use std::sync::Arc;
 
 /// Error type for secure storage operations.
 #[derive(Debug, thiserror::Error)]
@@ -47,27 +48,30 @@ pub trait SecureStorage: Send + Sync {
 /// Create the best available secure storage backend.
 ///
 /// Priority: Keyring > Encrypted File > Insecure (warning logged)
-pub fn create_secure_storage() -> Box<dyn SecureStorage> {
+///
+/// Returns `Arc<dyn SecureStorage>` so callers can clone the handle
+/// for use in `spawn_blocking` (requires `'static`).
+pub fn create_secure_storage() -> Arc<dyn SecureStorage> {
     // Check if secure storage is disabled
     if std::env::var("SECURE_STORAGE").as_deref() == Ok("disabled") {
         tracing::warn!("Secure storage disabled — API keys stored in plaintext");
-        return Box::new(InsecureStorage::new());
+        return Arc::new(InsecureStorage::new());
     }
 
     // Try keyring first
     let keyring = keyring_adapter::KeyringStorage::new();
     if keyring.is_available() {
         tracing::info!("Using system keyring for secure credential storage");
-        return Box::new(keyring);
+        return Arc::new(keyring);
     }
 
     // Fallback to encrypted file
     tracing::warn!("Keyring not available, using encrypted file storage");
     match encrypted_store::EncryptedFileStorage::new() {
-        Ok(storage) => Box::new(storage),
+        Ok(storage) => Arc::new(storage),
         Err(e) => {
             tracing::error!("Failed to create encrypted storage: {}", e);
-            Box::new(InsecureStorage::new())
+            Arc::new(InsecureStorage::new())
         }
     }
 }

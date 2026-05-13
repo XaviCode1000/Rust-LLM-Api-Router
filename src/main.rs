@@ -290,9 +290,12 @@ async fn run_server() -> Result<()> {
         tracing::info!("TUI enabled - press Ctrl+C to exit");
 
         // Run server with graceful shutdown
-        let server_future = axum::serve(listener, app);
+        let server_future = axum::serve(listener, app).with_graceful_shutdown(async {
+            tokio::signal::ctrl_c().await.ok();
+            tracing::info!("Shutdown signal received (Ctrl+C)");
+        });
 
-        // Wait for server to complete (will complete on error or when listener drops)
+        // Wait for server to complete (will complete on Ctrl+C or when listener drops)
         let _ = server_future.await;
 
         // Signal TUI to quit
@@ -308,7 +311,7 @@ async fn run_server() -> Result<()> {
 
     #[cfg(not(feature = "tui"))]
     {
-        // Start server without TUI
+        // Start server without TUI, with graceful shutdown on Ctrl+C
         let addr = SocketAddr::from(([0, 0, 0, 0], port));
         let listener = tokio::net::TcpListener::bind(addr)
             .await
@@ -316,7 +319,12 @@ async fn run_server() -> Result<()> {
 
         tracing::info!("Server listening on {}", addr);
 
-        axum::serve(listener, app).await?;
+        axum::serve(listener, app)
+            .with_graceful_shutdown(async {
+                tokio::signal::ctrl_c().await.ok();
+                tracing::info!("Shutdown signal received (Ctrl+C)");
+            })
+            .await?;
     }
 
     Ok(())
