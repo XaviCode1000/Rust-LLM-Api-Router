@@ -131,7 +131,10 @@ mod tests {
         assert_eq!(value["model"], "gpt-4");
         assert_eq!(value["messages"].as_array().unwrap().len(), 2);
         assert_eq!(value["messages"][0]["role"], "system");
-        assert_eq!(value["messages"][0]["content"], "You are a helpful assistant.");
+        assert_eq!(
+            value["messages"][0]["content"],
+            "You are a helpful assistant."
+        );
         assert_eq!(value["messages"][1]["role"], "user");
         assert_eq!(value["messages"][1]["content"], "Hello, world!");
         assert!(

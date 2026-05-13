@@ -85,7 +85,10 @@ async fn setup_app_with_provider(
     let state = create_test_app_state_with_mock(&temp_dir, &mock_server.uri(), account).await;
 
     let app = axum::Router::new()
-        .route("/v1/chat/completions", axum::routing::post(chat_completions))
+        .route(
+            "/v1/chat/completions",
+            axum::routing::post(chat_completions),
+        )
         .with_state(state);
 
     (app, temp_dir)
@@ -376,7 +379,10 @@ async fn test_stream_to_sse_events_invalid_utf8() {
     let state = create_test_app_state_with_mock(&temp_dir, &mock_server.uri(), account).await;
 
     let app = axum::Router::new()
-        .route("/v1/chat/completions", axum::routing::post(chat_completions))
+        .route(
+            "/v1/chat/completions",
+            axum::routing::post(chat_completions),
+        )
         .with_state(state);
 
     // Mock that returns binary/invalid UTF-8 data
@@ -428,7 +434,10 @@ async fn test_stream_to_sse_events_empty_chunks() {
     let state = create_test_app_state_with_mock(&temp_dir, &mock_server.uri(), account).await;
 
     let app = axum::Router::new()
-        .route("/v1/chat/completions", axum::routing::post(chat_completions))
+        .route(
+            "/v1/chat/completions",
+            axum::routing::post(chat_completions),
+        )
         .with_state(state);
 
     // Mock that returns empty chunks
@@ -564,7 +573,10 @@ fn test_convert_to_openai_response_multiple_choices() {
     assert_eq!(openai_response.choices.len(), 2);
     assert_eq!(openai_response.choices[0].message.content, "First");
     assert_eq!(openai_response.choices[1].message.content, "Second");
-    assert_eq!(openai_response.choices[1].finish_reason, Some("length".to_string()));
+    assert_eq!(
+        openai_response.choices[1].finish_reason,
+        Some("length".to_string())
+    );
 }
 
 #[test]

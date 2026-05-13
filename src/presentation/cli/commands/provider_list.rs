@@ -28,7 +28,10 @@ use crate::Result;
 pub fn display_known_providers() -> Result<()> {
     let providers = known_providers::all();
 
-    output::info(&format!("\n📋 Known Providers ({})\n", known_providers::count()));
+    output::info(&format!(
+        "\n📋 Known Providers ({})\n",
+        known_providers::count()
+    ));
 
     // Print header
     println!("{:<4} {:<18} {:<20} Base URL", "#", "ID", "Name");

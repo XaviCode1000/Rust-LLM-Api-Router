@@ -114,10 +114,10 @@ pub fn run(
                             );
                             // Send action to core system
                             let _ = action_tx.try_send(act);
-                        },
+                        }
                         _ => {
                             let _ = action_tx.try_send(act);
-                        },
+                        }
                     }
                 }
 
@@ -138,11 +138,11 @@ pub fn run(
                 match input_mode {
                     InputMode::Editing => {
                         render_popup(f, f.area(), &form_state, &input_mode);
-                    },
+                    }
                     InputMode::Processing => {
                         render_spinner(f, f.area(), tick);
-                    },
-                    InputMode::Normal => {},
+                    }
+                    InputMode::Normal => {}
                 }
             })?;
             dirty = false;
@@ -183,30 +183,30 @@ fn handle_input(
                 };
                 form_state.clear();
                 (InputMode::Processing, Some(action))
-            },
+            }
             KeyCode::Esc => {
                 form_state.clear();
                 (InputMode::Normal, None)
-            },
+            }
             KeyCode::Char(c) => {
                 form_state.api_key_buffer.push(c);
                 (InputMode::Editing, None)
-            },
+            }
             KeyCode::Backspace => {
                 form_state.api_key_buffer.pop();
                 (InputMode::Editing, None)
-            },
+            }
             KeyCode::Tab => {
                 // Toggle between provider_id and api_key field
                 // (simplified - toggle focus)
                 (InputMode::Editing, None)
-            },
+            }
             _ => (InputMode::Editing, None),
         },
         InputMode::Processing => {
             // Input blocked during processing
             (InputMode::Processing, None)
-        },
+        }
     }
 }
 

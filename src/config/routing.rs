@@ -174,15 +174,24 @@ mod tests {
     #[test]
     fn test_routing_strategy_display() {
         assert_eq!(format!("{}", RoutingStrategy::Auto), "auto");
-        assert_eq!(format!("{}", RoutingStrategy::CostOptimized), "cost-optimized");
+        assert_eq!(
+            format!("{}", RoutingStrategy::CostOptimized),
+            "cost-optimized"
+        );
         assert_eq!(format!("{}", RoutingStrategy::Cascading), "cascading");
         assert_eq!(format!("{}", RoutingStrategy::Failover), "failover");
-        assert_eq!(format!("{}", RoutingStrategy::LoadBalanced), "load-balanced");
+        assert_eq!(
+            format!("{}", RoutingStrategy::LoadBalanced),
+            "load-balanced"
+        );
     }
 
     #[test]
     fn test_routing_strategy_from_str() {
-        assert_eq!("auto".parse::<RoutingStrategy>().unwrap(), RoutingStrategy::Auto);
+        assert_eq!(
+            "auto".parse::<RoutingStrategy>().unwrap(),
+            RoutingStrategy::Auto
+        );
         assert_eq!(
             "cost-optimized".parse::<RoutingStrategy>().unwrap(),
             RoutingStrategy::CostOptimized
@@ -191,8 +200,14 @@ mod tests {
             "cost_optimized".parse::<RoutingStrategy>().unwrap(),
             RoutingStrategy::CostOptimized
         );
-        assert_eq!("cascading".parse::<RoutingStrategy>().unwrap(), RoutingStrategy::Cascading);
-        assert_eq!("failover".parse::<RoutingStrategy>().unwrap(), RoutingStrategy::Failover);
+        assert_eq!(
+            "cascading".parse::<RoutingStrategy>().unwrap(),
+            RoutingStrategy::Cascading
+        );
+        assert_eq!(
+            "failover".parse::<RoutingStrategy>().unwrap(),
+            RoutingStrategy::Failover
+        );
         assert_eq!(
             "load-balanced".parse::<RoutingStrategy>().unwrap(),
             RoutingStrategy::LoadBalanced

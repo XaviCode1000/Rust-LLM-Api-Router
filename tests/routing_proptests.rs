@@ -116,7 +116,11 @@ fn test_routing_strategy_roundtrip() {
         let display = format!("{}", strategy);
         let normalized = s.replace('_', "-");
         if normalized != "cost_optimized" && normalized != "load_balanced" {
-            assert!(display.parse::<RoutingStrategy>().is_ok(), "Should parse: {}", display);
+            assert!(
+                display.parse::<RoutingStrategy>().is_ok(),
+                "Should parse: {}",
+                display
+            );
         }
     }
 }
@@ -177,7 +181,10 @@ fn test_from_routing_config_cascading_maps_correctly() {
                     "cascading should match input flag"
                 );
                 prop_assert_eq!(pc.default_max_retries, max_retries);
-                prop_assert_eq!(pc.default_timeout_seconds, timeout.min(u32::MAX as u64) as u32);
+                prop_assert_eq!(
+                    pc.default_timeout_seconds,
+                    timeout.min(u32::MAX as u64) as u32
+                );
                 Ok(())
             },
         )
@@ -312,19 +319,22 @@ fn test_quality_config_defaults_are_sensible() {
 fn test_quality_score_calculation() {
     let mut runner = runner();
     runner
-        .run(&(0u32..5, 1u32..5, 0.0f64..1.0), |(passed, total, threshold)| {
-            let passed = passed.min(total);
-            let failed: Vec<String> = (0..(total - passed))
-                .map(|i| format!("check_{}", i))
-                .collect();
-            let score = QualityScore::new(passed, total, failed, threshold);
-            prop_assert!((0.0..=1.0).contains(&score.score));
-            let expected = passed as f64 / total as f64;
-            prop_assert!((score.score - expected).abs() < 1e-10);
-            prop_assert_eq!(score.is_acceptable, score.score >= threshold);
-            prop_assert_eq!(score.checks_failed.len() as u32, total - passed);
-            Ok(())
-        })
+        .run(
+            &(0u32..5, 1u32..5, 0.0f64..1.0),
+            |(passed, total, threshold)| {
+                let passed = passed.min(total);
+                let failed: Vec<String> = (0..(total - passed))
+                    .map(|i| format!("check_{}", i))
+                    .collect();
+                let score = QualityScore::new(passed, total, failed, threshold);
+                prop_assert!((0.0..=1.0).contains(&score.score));
+                let expected = passed as f64 / total as f64;
+                prop_assert!((score.score - expected).abs() < 1e-10);
+                prop_assert_eq!(score.is_acceptable, score.score >= threshold);
+                prop_assert_eq!(score.checks_failed.len() as u32, total - passed);
+                Ok(())
+            },
+        )
         .unwrap();
 }
 
@@ -348,11 +358,18 @@ fn test_routing_config_valid_quality_thresholds() {
     let mut runner = runner();
     runner
         .run(
-            &(0.0f64..1.0, "(auto|cost-optimized|cascading|failover|load-balanced)"),
+            &(
+                0.0f64..1.0,
+                "(auto|cost-optimized|cascading|failover|load-balanced)",
+            ),
             |(quality, strategy)| {
                 let result =
                     RoutingConfig::from_cli_and_env(&strategy, false, quality, false, 3, 60);
-                prop_assert!(result.is_ok(), "Valid quality {} should produce config", quality);
+                prop_assert!(
+                    result.is_ok(),
+                    "Valid quality {} should produce config",
+                    quality
+                );
                 let config = result.unwrap();
                 prop_assert!((0.0..=1.0).contains(&config.cascading_min_quality));
                 Ok(())
@@ -365,10 +382,13 @@ fn test_routing_config_valid_quality_thresholds() {
 fn test_routing_config_invalid_quality_thresholds() {
     let mut runner = runner();
     runner
-        .run(&prop_oneof![(-10.0f64..-0.001f64), (1.001f64..100.0f64)], |quality| {
-            let result = RoutingConfig::from_cli_and_env("auto", false, quality, false, 3, 60);
-            prop_assert!(result.is_err(), "Quality {} should be rejected", quality);
-            Ok(())
-        })
+        .run(
+            &prop_oneof![(-10.0f64..-0.001f64), (1.001f64..100.0f64)],
+            |quality| {
+                let result = RoutingConfig::from_cli_and_env("auto", false, quality, false, 3, 60);
+                prop_assert!(result.is_err(), "Quality {} should be rejected", quality);
+                Ok(())
+            },
+        )
         .unwrap();
 }

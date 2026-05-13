@@ -105,12 +105,12 @@ pub async fn handle_command(command: CliCommands) -> crate::error::Result<()> {
             let account_repo =
                 JsonAccountRepository::new().map_err(|e| crate::Error::Internal(e.to_string()))?;
             commands::provider::handle_provider_command(provider_cmd, &repo, &account_repo).await
-        },
+        }
         CliCommands::Account(account_cmd) => {
             let repo =
                 JsonAccountRepository::new().map_err(|e| crate::Error::Internal(e.to_string()))?;
             commands::account::handle_account_command(account_cmd, &repo).await
-        },
+        }
         CliCommands::Auth(auth_cmd) => commands::auth::handle_auth_command(auth_cmd).await,
         #[cfg(feature = "completions")]
         CliCommands::Completions(cmd) => commands::completions::handle_completions_command(cmd),

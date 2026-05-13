@@ -115,7 +115,7 @@ async fn tui_action_processor(
                     });
                     s.log_buffer = Arc::new(buffer);
                 });
-            },
+            }
             TuiAction::RemoveAccount(account_id) => {
                 // Delete from repository
                 if let Err(e) = account_repo.delete(&account_id).await {
@@ -148,7 +148,7 @@ async fn tui_action_processor(
                     });
                     s.log_buffer = Arc::new(buffer);
                 });
-            },
+            }
             TuiAction::ToggleProvider(provider_id) => {
                 // Toggle provider enabled state
                 // For now, just log the action
@@ -162,11 +162,11 @@ async fn tui_action_processor(
                     });
                     s.log_buffer = Arc::new(buffer);
                 });
-            },
+            }
             TuiAction::Quit => {
                 // Quit signal - break the loop
                 break;
-            },
+            }
         }
     }
 }
@@ -219,7 +219,7 @@ async fn run_server() -> Result<()> {
         Err(e) => {
             eprintln!("Error: {}", e);
             std::process::exit(1);
-        },
+        }
     };
 
     tracing::info!(

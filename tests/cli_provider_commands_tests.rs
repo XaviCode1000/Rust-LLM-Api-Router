@@ -156,9 +156,13 @@ async fn test_cli_list_providers_with_data() {
     repo.save(Provider::new("prov-2", "Provider 2", "https://prov2.com"))
         .await
         .unwrap();
-    repo.save(Provider::disabled("prov-3", "Provider 3", "https://prov3.com"))
-        .await
-        .unwrap();
+    repo.save(Provider::disabled(
+        "prov-3",
+        "Provider 3",
+        "https://prov3.com",
+    ))
+    .await
+    .unwrap();
 
     let result = cmd_list_providers(&repo, &_account_repo).await;
 
@@ -172,12 +176,20 @@ async fn test_cli_list_providers_with_data() {
 async fn test_cli_list_providers_displays_enabled_disabled() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
-    repo.save(Provider::new("enabled-prov", "Enabled", "https://enabled.com"))
-        .await
-        .unwrap();
-    repo.save(Provider::disabled("disabled-prov", "Disabled", "https://disabled.com"))
-        .await
-        .unwrap();
+    repo.save(Provider::new(
+        "enabled-prov",
+        "Enabled",
+        "https://enabled.com",
+    ))
+    .await
+    .unwrap();
+    repo.save(Provider::disabled(
+        "disabled-prov",
+        "Disabled",
+        "https://disabled.com",
+    ))
+    .await
+    .unwrap();
 
     let result = cmd_list_providers(&repo, &_account_repo).await;
 
@@ -192,9 +204,13 @@ async fn test_cli_list_providers_displays_enabled_disabled() {
 async fn test_cli_remove_provider_success() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
-    repo.save(Provider::new("to-remove", "To Remove", "https://remove.com"))
-        .await
-        .unwrap();
+    repo.save(Provider::new(
+        "to-remove",
+        "To Remove",
+        "https://remove.com",
+    ))
+    .await
+    .unwrap();
 
     // Verify exists
     assert!(repo.find_by_id("to-remove").await.is_ok());
@@ -223,7 +239,10 @@ async fn test_cli_remove_provider_not_found() {
     let result = cmd_remove_provider(args, &repo).await;
 
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), rust_llm_api_router::Error::ProviderNotFound(_)));
+    assert!(matches!(
+        result.unwrap_err(),
+        rust_llm_api_router::Error::ProviderNotFound(_)
+    ));
 }
 
 #[tokio::test]
@@ -264,9 +283,13 @@ async fn test_cli_remove_provider_from_multiple() {
 async fn test_cli_enable_provider_success() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
-    repo.save(Provider::disabled("disabled-to-enable", "Disabled", "https://disabled.com"))
-        .await
-        .unwrap();
+    repo.save(Provider::disabled(
+        "disabled-to-enable",
+        "Disabled",
+        "https://disabled.com",
+    ))
+    .await
+    .unwrap();
 
     let args = EnableProviderArgs {
         id: "disabled-to-enable".to_string(),
@@ -283,9 +306,13 @@ async fn test_cli_enable_provider_success() {
 async fn test_cli_enable_provider_already_enabled() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
-    repo.save(Provider::new("already-enabled", "Enabled", "https://enabled.com"))
-        .await
-        .unwrap();
+    repo.save(Provider::new(
+        "already-enabled",
+        "Enabled",
+        "https://enabled.com",
+    ))
+    .await
+    .unwrap();
 
     let args = EnableProviderArgs {
         id: "already-enabled".to_string(),
@@ -308,7 +335,10 @@ async fn test_cli_enable_provider_not_found() {
     let result = cmd_enable_provider(args, &repo).await;
 
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), rust_llm_api_router::Error::ProviderNotFound(_)));
+    assert!(matches!(
+        result.unwrap_err(),
+        rust_llm_api_router::Error::ProviderNotFound(_)
+    ));
 }
 
 // ============================================================================
@@ -319,9 +349,13 @@ async fn test_cli_enable_provider_not_found() {
 async fn test_cli_disable_provider_success() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
-    repo.save(Provider::new("enabled-to-disable", "Enabled", "https://enabled.com"))
-        .await
-        .unwrap();
+    repo.save(Provider::new(
+        "enabled-to-disable",
+        "Enabled",
+        "https://enabled.com",
+    ))
+    .await
+    .unwrap();
 
     let args = DisableProviderArgs {
         id: "enabled-to-disable".to_string(),
@@ -338,9 +372,13 @@ async fn test_cli_disable_provider_success() {
 async fn test_cli_disable_provider_already_disabled() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
-    repo.save(Provider::disabled("already-disabled", "Disabled", "https://disabled.com"))
-        .await
-        .unwrap();
+    repo.save(Provider::disabled(
+        "already-disabled",
+        "Disabled",
+        "https://disabled.com",
+    ))
+    .await
+    .unwrap();
 
     let args = DisableProviderArgs {
         id: "already-disabled".to_string(),
@@ -363,7 +401,10 @@ async fn test_cli_disable_provider_not_found() {
     let result = cmd_disable_provider(args, &repo).await;
 
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), rust_llm_api_router::Error::ProviderNotFound(_)));
+    assert!(matches!(
+        result.unwrap_err(),
+        rust_llm_api_router::Error::ProviderNotFound(_)
+    ));
 }
 
 // ============================================================================
@@ -374,9 +415,13 @@ async fn test_cli_disable_provider_not_found() {
 async fn test_cli_validate_provider_success() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
-    repo.save(Provider::new("validate-prov", "Validate Me", "https://httpbin.org"))
-        .await
-        .unwrap();
+    repo.save(Provider::new(
+        "validate-prov",
+        "Validate Me",
+        "https://httpbin.org",
+    ))
+    .await
+    .unwrap();
 
     let args = ValidateProviderArgs {
         id: "validate-prov".to_string(),
@@ -390,9 +435,13 @@ async fn test_cli_validate_provider_success() {
 async fn test_cli_validate_provider_disabled_warning() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
-    repo.save(Provider::disabled("disabled-validate", "Disabled", "https://disabled.com"))
-        .await
-        .unwrap();
+    repo.save(Provider::disabled(
+        "disabled-validate",
+        "Disabled",
+        "https://disabled.com",
+    ))
+    .await
+    .unwrap();
 
     let args = ValidateProviderArgs {
         id: "disabled-validate".to_string(),
@@ -412,7 +461,10 @@ async fn test_cli_validate_provider_not_found() {
     let result = cmd_validate_provider(args, &repo).await;
 
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), rust_llm_api_router::Error::ProviderNotFound(_)));
+    assert!(matches!(
+        result.unwrap_err(),
+        rust_llm_api_router::Error::ProviderNotFound(_)
+    ));
 }
 
 #[tokio::test]
@@ -420,9 +472,13 @@ async fn test_cli_validate_provider_unreachable_url() {
     let (_temp_dir, repo, _account_repo) = create_test_repo();
 
     // Use a URL that will fail
-    repo.save(Provider::new("unreachable", "Unreachable", "http://localhost:1"))
-        .await
-        .unwrap();
+    repo.save(Provider::new(
+        "unreachable",
+        "Unreachable",
+        "http://localhost:1",
+    ))
+    .await
+    .unwrap();
 
     let args = ValidateProviderArgs {
         id: "unreachable".to_string(),
@@ -452,7 +508,7 @@ fn test_provider_commands_add_variant() {
     match cmd {
         ProviderCommands::Add(args) => {
             assert_eq!(args.id, Some("test".to_string()));
-        },
+        }
         _ => panic!("Expected Add command"),
     }
 }
@@ -462,7 +518,7 @@ fn test_provider_commands_list_variant() {
     let cmd = ProviderCommands::List;
 
     match cmd {
-        ProviderCommands::List => {}, // OK
+        ProviderCommands::List => {} // OK
         _ => panic!("Expected List command"),
     }
 }
@@ -477,7 +533,7 @@ fn test_provider_commands_remove_variant() {
     match cmd {
         ProviderCommands::Remove(args) => {
             assert_eq!(args.id, "to-remove");
-        },
+        }
         _ => panic!("Expected Remove command"),
     }
 }
@@ -491,7 +547,7 @@ fn test_provider_commands_enable_variant() {
     match cmd {
         ProviderCommands::Enable(args) => {
             assert_eq!(args.id, "to-enable");
-        },
+        }
         _ => panic!("Expected Enable command"),
     }
 }
@@ -505,7 +561,7 @@ fn test_provider_commands_disable_variant() {
     match cmd {
         ProviderCommands::Disable(args) => {
             assert_eq!(args.id, "to-disable");
-        },
+        }
         _ => panic!("Expected Disable command"),
     }
 }
@@ -519,7 +575,7 @@ fn test_provider_commands_validate_variant() {
     match cmd {
         ProviderCommands::Validate(args) => {
             assert_eq!(args.id, "to-validate");
-        },
+        }
         _ => panic!("Expected Validate command"),
     }
 }

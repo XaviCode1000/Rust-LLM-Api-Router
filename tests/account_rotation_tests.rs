@@ -109,7 +109,11 @@ fn test_round_robin_fair_distribution() {
 
     // Each account should be selected ~100 times (within 10% tolerance)
     for count in counts.iter() {
-        assert!((90..=110).contains(count), "Account selected {} times, expected ~100", count);
+        assert!(
+            (90..=110).contains(count),
+            "Account selected {} times, expected ~100",
+            count
+        );
     }
 }
 
@@ -217,8 +221,16 @@ fn test_backoff_jitter_applied() {
     // All delays should be within jitter range (0.9x to 1.1x for 0.1 factor)
     // Actually the jitter is 1.0 + (rand % 2000 / 10000 - 0.1) = 0.9 to 1.1
     for delay in &delays_with_jitter {
-        assert!(*delay >= 180, "Delay {} should be >= 180 (200 * 0.9)", delay);
-        assert!(*delay <= 220, "Delay {} should be <= 220 (200 * 1.1)", delay);
+        assert!(
+            *delay >= 180,
+            "Delay {} should be >= 180 (200 * 0.9)",
+            delay
+        );
+        assert!(
+            *delay <= 220,
+            "Delay {} should be <= 220 (200 * 1.1)",
+            delay
+        );
     }
 }
 
@@ -427,7 +439,10 @@ fn test_selection_always_terminates() {
         let _ = strategy.select(&accounts);
     }
 
-    assert!(start.elapsed() < timeout, "Selection took too long - possible infinite loop");
+    assert!(
+        start.elapsed() < timeout,
+        "Selection took too long - possible infinite loop"
+    );
 }
 
 // ============================================================================
@@ -448,7 +463,10 @@ fn test_large_account_list() {
     let elapsed = start.elapsed();
 
     assert!(selected.is_some());
-    assert!(elapsed < std::time::Duration::from_millis(10), "Selection should be O(1)");
+    assert!(
+        elapsed < std::time::Duration::from_millis(10),
+        "Selection should be O(1)"
+    );
 }
 
 /// Test: Account with special characters in ID

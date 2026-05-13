@@ -469,7 +469,10 @@ mod tests {
         let result = repo.delete("non-existent").await;
 
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), crate::domain::DomainError::AccountNotFound(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            crate::domain::DomainError::AccountNotFound(_)
+        ));
     }
 
     #[tokio::test]

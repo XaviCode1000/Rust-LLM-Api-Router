@@ -68,7 +68,7 @@ pub fn create_secure_storage() -> Box<dyn SecureStorage> {
         Err(e) => {
             tracing::error!("Failed to create encrypted storage: {}", e);
             Box::new(InsecureStorage::new())
-        },
+        }
     }
 }
 

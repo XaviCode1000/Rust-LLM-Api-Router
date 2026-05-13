@@ -294,7 +294,11 @@ mod tests {
         let health = AccountHealth::new("acc-1");
         let planned = PlannedAccount::new("acc-1", &provider, health);
 
-        ExecutionPlanImpl::new(ExecutionPlanType::Standard, create_test_context(), vec![planned])
+        ExecutionPlanImpl::new(
+            ExecutionPlanType::Standard,
+            create_test_context(),
+            vec![planned],
+        )
     }
 
     #[test]

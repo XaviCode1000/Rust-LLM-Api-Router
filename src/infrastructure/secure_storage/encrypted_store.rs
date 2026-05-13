@@ -87,7 +87,9 @@ impl EncryptedFileStorage {
 
         // Format: [12-byte nonce][encrypted data]
         if encrypted_data.len() <= 12 {
-            return Err(SecureStorageError::DecryptionFailed("Data too short".to_string()));
+            return Err(SecureStorageError::DecryptionFailed(
+                "Data too short".to_string(),
+            ));
         }
 
         let (nonce_bytes, ciphertext) = encrypted_data.split_at(12);

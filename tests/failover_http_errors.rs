@@ -61,10 +61,9 @@ async fn test_failover_on_429_rate_limit() {
 
     // All succeed: verify basic flow works
     let result: Result<String, TestError> = manager
-        .execute_with_failover(
-            "openai",
-            |_account| async move { Ok(("success".to_string(), vec![])) },
-        )
+        .execute_with_failover("openai", |_account| async move {
+            Ok(("success".to_string(), vec![]))
+        })
         .await;
 
     assert!(result.is_ok());
@@ -89,10 +88,9 @@ async fn test_failover_on_502_bad_gateway() {
 
     // All succeed
     let result: Result<String, TestError> = manager
-        .execute_with_failover(
-            "openai",
-            |_account| async move { Ok(("success".to_string(), vec![])) },
-        )
+        .execute_with_failover("openai", |_account| async move {
+            Ok(("success".to_string(), vec![]))
+        })
         .await;
 
     assert!(result.is_ok());
@@ -118,10 +116,9 @@ async fn test_failover_on_503_service_unavailable() {
 
     // All succeed
     let result: Result<String, TestError> = manager
-        .execute_with_failover(
-            "openai",
-            |_account| async move { Ok(("success".to_string(), vec![])) },
-        )
+        .execute_with_failover("openai", |_account| async move {
+            Ok(("success".to_string(), vec![]))
+        })
         .await;
 
     assert!(result.is_ok());
@@ -145,10 +142,9 @@ async fn test_failover_on_504_gateway_timeout() {
     let manager = FailoverManager::with_round_robin(Arc::new(mock_repo));
 
     let result: Result<String, TestError> = manager
-        .execute_with_failover(
-            "openai",
-            |_account| async move { Ok(("success".to_string(), vec![])) },
-        )
+        .execute_with_failover("openai", |_account| async move {
+            Ok(("success".to_string(), vec![]))
+        })
         .await;
 
     assert!(result.is_ok());
@@ -173,10 +169,9 @@ async fn test_all_accounts_exhausted() {
 
     // ALL accounts fail with service unavailable
     let result: Result<String, TestError> = manager
-        .execute_with_failover(
-            "openai",
-            |_account| async move { Err(TestError::service_unavailable()) },
-        )
+        .execute_with_failover("openai", |_account| async move {
+            Err(TestError::service_unavailable())
+        })
         .await;
 
     // Should fail when all accounts exhausted

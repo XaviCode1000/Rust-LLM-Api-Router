@@ -74,7 +74,7 @@ async fn handle_provider_command_with_dir(
                 .map_err(|e| rust_llm_api_router::Error::Internal(e.to_string()))?;
             println!("✓ Provider '{}' added successfully", id);
             Ok(())
-        },
+        }
         ProviderCommands::List => {
             let providers = repo
                 .find_all()
@@ -102,7 +102,7 @@ async fn handle_provider_command_with_dir(
             }
 
             Ok(())
-        },
+        }
         ProviderCommands::Remove(args) => {
             // First check if provider exists
             repo.find_by_id(&args.id)
@@ -126,11 +126,11 @@ async fn handle_provider_command_with_dir(
 
             println!("✓ Provider '{}' removed successfully", args.id);
             Ok(())
-        },
+        }
         ProviderCommands::Models(_args) => {
             println!("Models command not implemented in test");
             Ok(())
-        },
+        }
         ProviderCommands::Enable(args) => {
             let mut provider = repo
                 .find_by_id(&args.id)
@@ -145,7 +145,7 @@ async fn handle_provider_command_with_dir(
 
             println!("✓ Provider '{}' enabled", args.id);
             Ok(())
-        },
+        }
         ProviderCommands::Disable(args) => {
             let mut provider = repo
                 .find_by_id(&args.id)
@@ -160,17 +160,17 @@ async fn handle_provider_command_with_dir(
 
             println!("✓ Provider '{}' disabled", args.id);
             Ok(())
-        },
+        }
         ProviderCommands::Validate(args) => {
             let provider = match repo.find_enabled_by_id(&args.id).await {
                 Ok(p) => p,
                 Err(rust_llm_api_router::domain::DomainError::ProviderNotFound(id)) => {
                     return Err(rust_llm_api_router::Error::ProviderNotFound(id));
-                },
+                }
                 Err(rust_llm_api_router::domain::DomainError::ProviderDisabled(id)) => {
                     eprintln!("Warning: Provider '{}' is disabled. Enable it first.", id);
                     return Ok(());
-                },
+                }
                 Err(e) => return Err(rust_llm_api_router::Error::Internal(e.to_string())),
             };
 
@@ -194,14 +194,14 @@ async fn handle_provider_command_with_dir(
                             response.status()
                         );
                     }
-                },
+                }
                 Err(e) => {
                     println!("✗ Provider '{}' is not reachable: {}", provider.id, e);
-                },
+                }
             }
 
             Ok(())
-        },
+        }
     }
 }
 

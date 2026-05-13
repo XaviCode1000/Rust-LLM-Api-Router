@@ -38,7 +38,7 @@ fn require_env_var(key: &str) -> Option<String> {
 /// Skip the test unless `LIVE_TEST=1` is set.
 fn require_live_test() {
     match std::env::var("LIVE_TEST").as_deref() {
-        Ok("1") | Ok("true") => {},
+        Ok("1") | Ok("true") => {}
         _ => panic!("Skipping: set LIVE_TEST=1 to run live contract tests"),
     }
 }
@@ -89,8 +89,14 @@ async fn test_openai_contract() {
         .expect("failed to parse OpenAI response");
 
     // ── Schema assertions ──────────────────────────────────────────────
-    assert!(body.get("id").and_then(Value::as_str).is_some(), "missing 'id' (string)");
-    assert!(body.get("model").and_then(Value::as_str).is_some(), "missing 'model' (string)");
+    assert!(
+        body.get("id").and_then(Value::as_str).is_some(),
+        "missing 'id' (string)"
+    );
+    assert!(
+        body.get("model").and_then(Value::as_str).is_some(),
+        "missing 'model' (string)"
+    );
     assert!(
         body.get("object").and_then(Value::as_str).is_some(),
         "missing 'object' (string)"
@@ -104,7 +110,10 @@ async fn test_openai_contract() {
         .get("choices")
         .and_then(Value::as_array)
         .expect("missing 'choices' (array)");
-    assert!(!choices.is_empty(), "'choices' array must have at least 1 element");
+    assert!(
+        !choices.is_empty(),
+        "'choices' array must have at least 1 element"
+    );
 
     let first = &choices[0];
     assert!(first.get("index").is_some(), "missing 'choices[0].index'");
@@ -185,7 +194,10 @@ async fn test_anthropic_contract() {
         .expect("failed to parse Anthropic response");
 
     // ── Schema assertions ──────────────────────────────────────────────
-    assert!(body.get("id").and_then(Value::as_str).is_some(), "missing 'id' (string)");
+    assert!(
+        body.get("id").and_then(Value::as_str).is_some(),
+        "missing 'id' (string)"
+    );
 
     let r#type = body
         .get("type")
@@ -199,17 +211,29 @@ async fn test_anthropic_contract() {
         .expect("missing 'role' (string)");
     assert_eq!(role, "assistant", "'role' should be 'assistant'");
 
-    assert!(body.get("model").and_then(Value::as_str).is_some(), "missing 'model' (string)");
+    assert!(
+        body.get("model").and_then(Value::as_str).is_some(),
+        "missing 'model' (string)"
+    );
 
     let content = body
         .get("content")
         .and_then(Value::as_array)
         .expect("missing 'content' (array)");
-    assert!(!content.is_empty(), "'content' array must have at least 1 element");
+    assert!(
+        !content.is_empty(),
+        "'content' array must have at least 1 element"
+    );
 
     let first = &content[0];
-    assert!(first.get("type").and_then(Value::as_str).is_some(), "missing 'content[0].type'");
-    assert!(first.get("text").and_then(Value::as_str).is_some(), "missing 'content[0].text'");
+    assert!(
+        first.get("type").and_then(Value::as_str).is_some(),
+        "missing 'content[0].type'"
+    );
+    assert!(
+        first.get("text").and_then(Value::as_str).is_some(),
+        "missing 'content[0].text'"
+    );
 
     let usage = body.get("usage").expect("missing 'usage'");
     assert!(
@@ -273,8 +297,14 @@ async fn test_groq_contract() {
         .expect("failed to parse Groq response");
 
     // ── Schema assertions (OpenAI-compatible format) ───────────────────
-    assert!(body.get("id").and_then(Value::as_str).is_some(), "missing 'id' (string)");
-    assert!(body.get("model").and_then(Value::as_str).is_some(), "missing 'model' (string)");
+    assert!(
+        body.get("id").and_then(Value::as_str).is_some(),
+        "missing 'id' (string)"
+    );
+    assert!(
+        body.get("model").and_then(Value::as_str).is_some(),
+        "missing 'model' (string)"
+    );
     assert!(
         body.get("object").and_then(Value::as_str).is_some(),
         "missing 'object' (string)"
@@ -288,7 +318,10 @@ async fn test_groq_contract() {
         .get("choices")
         .and_then(Value::as_array)
         .expect("missing 'choices' (array)");
-    assert!(!choices.is_empty(), "'choices' array must have at least 1 element");
+    assert!(
+        !choices.is_empty(),
+        "'choices' array must have at least 1 element"
+    );
 
     let first = &choices[0];
     assert!(first.get("index").is_some(), "missing 'choices[0].index'");
@@ -372,8 +405,14 @@ async fn test_mistral_contract() {
         .expect("failed to parse Mistral response");
 
     // ── Schema assertions (OpenAI-compatible format) ─────────────────────
-    assert!(body.get("id").and_then(Value::as_str).is_some(), "missing 'id' (string)");
-    assert!(body.get("model").and_then(Value::as_str).is_some(), "missing 'model' (string)");
+    assert!(
+        body.get("id").and_then(Value::as_str).is_some(),
+        "missing 'id' (string)"
+    );
+    assert!(
+        body.get("model").and_then(Value::as_str).is_some(),
+        "missing 'model' (string)"
+    );
     assert!(
         body.get("object").and_then(Value::as_str).is_some(),
         "missing 'object' (string)"
@@ -387,7 +426,10 @@ async fn test_mistral_contract() {
         .get("choices")
         .and_then(Value::as_array)
         .expect("missing 'choices' (array)");
-    assert!(!choices.is_empty(), "'choices' array must have at least 1 element");
+    assert!(
+        !choices.is_empty(),
+        "'choices' array must have at least 1 element"
+    );
 
     let first = &choices[0];
     assert!(first.get("index").is_some(), "missing 'choices[0].index'");
@@ -466,8 +508,14 @@ async fn test_deepseek_contract() {
         .expect("failed to parse DeepSeek response");
 
     // ── Schema assertions (OpenAI-compatible format) ─────────────────────
-    assert!(body.get("id").and_then(Value::as_str).is_some(), "missing 'id' (string)");
-    assert!(body.get("model").and_then(Value::as_str).is_some(), "missing 'model' (string)");
+    assert!(
+        body.get("id").and_then(Value::as_str).is_some(),
+        "missing 'id' (string)"
+    );
+    assert!(
+        body.get("model").and_then(Value::as_str).is_some(),
+        "missing 'model' (string)"
+    );
     assert!(
         body.get("object").and_then(Value::as_str).is_some(),
         "missing 'object' (string)"
@@ -481,7 +529,10 @@ async fn test_deepseek_contract() {
         .get("choices")
         .and_then(Value::as_array)
         .expect("missing 'choices' (array)");
-    assert!(!choices.is_empty(), "'choices' array must have at least 1 element");
+    assert!(
+        !choices.is_empty(),
+        "'choices' array must have at least 1 element"
+    );
 
     let first = &choices[0];
     assert!(first.get("index").is_some(), "missing 'choices[0].index'");
@@ -560,8 +611,14 @@ async fn test_google_contract() {
         .expect("failed to parse Google response");
 
     // ── Schema assertions (OpenAI-compatible format) ─────────────────────
-    assert!(body.get("id").and_then(Value::as_str).is_some(), "missing 'id' (string)");
-    assert!(body.get("model").and_then(Value::as_str).is_some(), "missing 'model' (string)");
+    assert!(
+        body.get("id").and_then(Value::as_str).is_some(),
+        "missing 'id' (string)"
+    );
+    assert!(
+        body.get("model").and_then(Value::as_str).is_some(),
+        "missing 'model' (string)"
+    );
     assert!(
         body.get("object").and_then(Value::as_str).is_some(),
         "missing 'object' (string)"
@@ -575,7 +632,10 @@ async fn test_google_contract() {
         .get("choices")
         .and_then(Value::as_array)
         .expect("missing 'choices' (array)");
-    assert!(!choices.is_empty(), "'choices' array must have at least 1 element");
+    assert!(
+        !choices.is_empty(),
+        "'choices' array must have at least 1 element"
+    );
 
     let first = &choices[0];
     assert!(first.get("index").is_some(), "missing 'choices[0].index'");
@@ -663,7 +723,10 @@ async fn test_cohere_contract() {
 
     let chat_history = body.get("chat_history");
     if let Some(history) = chat_history.and_then(Value::as_array) {
-        assert!(!history.is_empty(), "'chat_history' array must have at least 1 element");
+        assert!(
+            !history.is_empty(),
+            "'chat_history' array must have at least 1 element"
+        );
     }
 
     // ── Snapshot with redactions ───────────────────────────────────────

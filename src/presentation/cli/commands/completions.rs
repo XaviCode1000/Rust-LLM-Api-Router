@@ -30,6 +30,6 @@ pub fn handle_completions_command(cmd: CompletionsCommands) -> Result<()> {
             let bin_name = cmd.get_name().to_string();
             clap_complete::generate(args.shell, &mut cmd, bin_name, &mut std::io::stdout());
             Ok(())
-        },
+        }
     }
 }
