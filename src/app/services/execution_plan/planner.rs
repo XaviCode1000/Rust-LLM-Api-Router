@@ -299,6 +299,18 @@ pub enum RotationStrategyType {
     LeastRecentlyUsed,
 }
 
+impl RotationStrategyType {
+    /// Returns the display name of the strategy as a static string.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::RoundRobin => "RoundRobin",
+            Self::HealthWeighted => "HealthWeighted",
+            Self::Priority => "Priority",
+            Self::LeastRecentlyUsed => "LeastRecentlyUsed",
+        }
+    }
+}
+
 impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
     /// Creates a new ExecutionPlanner with the given account repository and config.
     pub fn new(account_repo: Arc<R>, config: ExecutionPlannerConfig) -> Self {
@@ -390,7 +402,7 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
         let rotated_accounts = self.apply_rotation_strategy(accounts);
         logging::log_rotation_strategy(
             &context.request_id,
-            format!("{:?}", self.rotation_strategy).as_str(),
+            self.rotation_strategy.name(),
             rotated_accounts.len(),
         );
 
@@ -405,8 +417,8 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
             final_count,
         );
 
-        // Build the execution plan based on type
-        let plan = self.build_plan(plan_type, context.clone(), filtered_accounts)?;
+        // Build the execution plan based on type (context moved — not used after this point)
+        let plan = self.build_plan(plan_type, context, filtered_accounts)?;
 
         // Record metrics
         let duration = start_time.elapsed().as_secs_f64();
@@ -500,7 +512,15 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
             return context
                 .preferred_providers
                 .iter()
-                .map(|id| Provider::new(id.clone(), id.clone(), Self::provider_url(id)))
+                .map(|id| {
+                    let url = Self::provider_url(id);
+                    let base_url = if url.is_empty() {
+                        format!("https://api.{}.com", id)
+                    } else {
+                        url.to_string()
+                    };
+                    Provider::new(id.clone(), id.clone(), base_url)
+                })
                 .collect();
         }
 
@@ -513,44 +533,48 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
     }
 
     /// Gets the correct base URL for a provider.
-    fn provider_url(provider_id: &str) -> String {
+    ///
+    /// Returns `&'static str` for known providers. The default case
+    /// falls back to a dynamic URL in `get_providers`.
+    fn provider_url(provider_id: &str) -> &'static str {
         match provider_id {
             // Major providers
-            "openai" => "https://api.openai.com/v1".to_string(),
-            "anthropic" => "https://api.anthropic.com/v1".to_string(),
-            "groq" => "https://api.groq.com/openai/v1".to_string(),
+            "openai" => "https://api.openai.com/v1",
+            "anthropic" => "https://api.anthropic.com/v1",
+            "groq" => "https://api.groq.com/openai/v1",
             // OpenAI-compatible cloud providers
-            "deepseek" => "https://api.deepseek.com/v1".to_string(),
-            "together" => "https://api.together.xyz/v1".to_string(),
-            "fireworks" => "https://api.fireworks.ai/inference/v1".to_string(),
-            "xai" => "https://api.x.ai/v1".to_string(),
-            "perplexity" => "https://api.perplexity.ai/v1".to_string(),
-            "openrouter" => "https://openrouter.ai/api/v1".to_string(),
-            "mistral" => "https://api.mistral.ai/v1".to_string(),
-            "cerebras" => "https://api.cerebras.ai/v1".to_string(),
-            "cloudflare" => "https://gateway.ai.cloudflare.com/v1".to_string(),
+            "deepseek" => "https://api.deepseek.com/v1",
+            "together" => "https://api.together.xyz/v1",
+            "fireworks" => "https://api.fireworks.ai/inference/v1",
+            "xai" => "https://api.x.ai/v1",
+            "perplexity" => "https://api.perplexity.ai/v1",
+            "openrouter" => "https://openrouter.ai/api/v1",
+            "mistral" => "https://api.mistral.ai/v1",
+            "cerebras" => "https://api.cerebras.ai/v1",
+            "cloudflare" => "https://gateway.ai.cloudflare.com/v1",
             // Local inference servers
-            "ollama" => "http://localhost:11434/v1".to_string(),
-            "lmstudio" => "http://localhost:1234/v1".to_string(),
-            "vllm" => "http://localhost:8000/v1".to_string(),
+            "ollama" => "http://localhost:11434/v1",
+            "lmstudio" => "http://localhost:1234/v1",
+            "vllm" => "http://localhost:8000/v1",
             // Platform / specialized providers
-            "replicate" => "https://api.replicate.com/v1".to_string(),
-            "huggingface" => "https://api-inference.huggingface.co".to_string(),
-            "anyscale" => "https://api.endpoints.anyscale.com/v1".to_string(),
-            "deepinfra" => "https://api.deepinfra.com/v1".to_string(),
-            "novita" => "https://api.novita.ai/v1".to_string(),
-            "sambanova" => "https://api.sambanova.ai/v1".to_string(),
+            "replicate" => "https://api.replicate.com/v1",
+            "huggingface" => "https://api-inference.huggingface.co",
+            "anyscale" => "https://api.endpoints.anyscale.com/v1",
+            "deepinfra" => "https://api.deepinfra.com/v1",
+            "novita" => "https://api.novita.ai/v1",
+            "sambanova" => "https://api.sambanova.ai/v1",
             // Cloud hyperscaler services
-            "azure" => "https://{resource}.openai.azure.com/v1".to_string(),
-            "bedrock" => "https://bedrock-runtime.{region}.amazonaws.com".to_string(),
-            "vertexai" => "https://{region}-aiplatform.googleapis.com/v1".to_string(),
+            "azure" => "https://{resource}.openai.azure.com/v1",
+            "bedrock" => "https://bedrock-runtime.{region}.amazonaws.com",
+            "vertexai" => "https://{region}-aiplatform.googleapis.com/v1",
             // Additional model providers
-            "cohere" => "https://api.cohere.ai/v1".to_string(),
-            "ai21" => "https://api.ai21.com/v1".to_string(),
-            "aleph_alpha" => "https://api.aleph-alpha.com/v1".to_string(),
-            "nvidia" => "https://integrate.api.nvidia.com/v1".to_string(),
-            "google" => "https://generativelanguage.googleapis.com/v1".to_string(),
-            _ => format!("https://api.{}.com", provider_id),
+            "cohere" => "https://api.cohere.ai/v1",
+            "ai21" => "https://api.ai21.com/v1",
+            "aleph_alpha" => "https://api.aleph-alpha.com/v1",
+            "nvidia" => "https://integrate.api.nvidia.com/v1",
+            "google" => "https://generativelanguage.googleapis.com/v1",
+            // Dynamic fallback handled at call site
+            _ => "",
         }
     }
 
