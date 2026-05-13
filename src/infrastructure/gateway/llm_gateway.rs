@@ -7,7 +7,7 @@
 //!
 //! Supports dependency injection via `ProviderConfig` for testability:
 //!
-//! ```no_run
+//! ```text
 //! // Production usage (backward compatible)
 //! // let gateway = LlmGatewayImpl::new(http_client, account_repo, 3600);
 //!
