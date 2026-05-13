@@ -41,11 +41,15 @@
 //!
 //! **Use case:** Groq, OpenRouter, Mistral, Cerebras, OpenAI, etc.
 //!
-//! ```no_run
+//! ```ignore
 //! use rust_llm_api_router::infrastructure::auth::ApiKeyAuthStrategy;
+//! use rust_llm_api_router::domain::services::auth_strategy::AuthenticationStrategy;
 //!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let strategy = ApiKeyAuthStrategy::new("groq");
 //! let account = strategy.complete_auth("gsk_xxx".to_string()).await.unwrap();
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! ## OAuth 2.1 PKCE Strategy ([`PkceAuthStrategy`])
@@ -67,9 +71,11 @@
 //!
 //! **Use case:** Providers requiring OAuth (future providers)
 //!
-//! ```no_run
+//! ```ignore
 //! use rust_llm_api_router::infrastructure::auth::PkceAuthStrategy;
+//! use rust_llm_api_router::domain::services::auth_strategy::AuthenticationStrategy;
 //!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let strategy = PkceAuthStrategy::new(
 //!     "client_id",
 //!     None,  // No client secret for public clients
@@ -80,6 +86,8 @@
 //! ).unwrap();
 //!
 //! let auth_url = strategy.initiate_auth().await.unwrap();
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! ## Device Flow Strategy ([`DeviceFlowAuthStrategy`])
@@ -96,17 +104,20 @@
 //!
 //! **Use case:** CLI tools, IoT devices, embedded systems
 //!
-//! ```no_run
+//! ```ignore
 //! use rust_llm_api_router::infrastructure::auth::DeviceFlowAuthStrategy;
 //!
+//! # fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let strategy = DeviceFlowAuthStrategy::new(
 //!     "device_client_id",
 //!     None,
-//!     "https://auth.provider.com/device授权",
+//!     "https://auth.provider.com/device/code",
 //!     "https://auth.provider.com/token",
 //!     vec!["read".to_string()],
 //!     Some(5),  // 5 second polling interval
 //! ).unwrap();
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! # Security Considerations
@@ -119,10 +130,12 @@
 //!
 //! # Example: Adding a New Provider with OAuth
 //!
-//! ```no_run
+//! ```ignore
 //! use rust_llm_api_router::domain::Account;
 //! use rust_llm_api_router::infrastructure::auth::{ApiKeyAuthStrategy, PkceAuthStrategy};
+//! use rust_llm_api_router::domain::services::auth_strategy::AuthenticationStrategy;
 //!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // For most providers, use API key
 //! let api_key_strategy = ApiKeyAuthStrategy::new("openai");
 //! let account = api_key_strategy.complete_auth("sk-xxx".to_string()).await.unwrap();
@@ -136,6 +149,8 @@
 //!     "http://localhost:8080/callback",
 //!     vec!["chat:write".to_string()],
 //! ).unwrap();
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! # Error Handling

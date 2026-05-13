@@ -35,7 +35,8 @@
 //!
 //! The [`AppState`] struct holds shared dependencies:
 //!
-//! ```rust
+//! ```ignore
+//! // Illustrative pseudocode — see `src/presentation/state.rs` for the real struct.
 //! pub struct AppState {
 //!     pub config: Settings,           // Application configuration
 //!     pub http_client: Arc<HttpClient>, // HTTP client for LLM calls

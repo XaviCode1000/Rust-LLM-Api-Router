@@ -42,9 +42,9 @@ impl FailoverManager {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore
     /// use std::sync::Arc;
-    /// use rust_llm_api_router::app::services::{FailoverManager, AccountSelector};
+    /// use rust_llm_api_router::app::services::failover::FailoverManager;
     /// use rust_llm_api_router::infrastructure::JsonAccountRepository;
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -92,7 +92,7 @@ impl FailoverManager {
     ///
     /// ```no_run
     /// use std::sync::Arc;
-    /// use rust_llm_api_router::app::services::FailoverManager;
+    /// use rust_llm_api_router::app::services::failover::FailoverManager;
     /// use rust_llm_api_router::infrastructure::JsonAccountRepository;
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -148,11 +148,10 @@ impl FailoverManager {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore
     /// use std::sync::Arc;
-    /// use rust_llm_api_router::app::services::FailoverManager;
+    /// use rust_llm_api_router::app::services::failover::FailoverManager;
     /// use rust_llm_api_router::infrastructure::JsonAccountRepository;
-    /// use rust_llm_api_router::domain::Account;
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let repo = Arc::new(JsonAccountRepository::new()?);

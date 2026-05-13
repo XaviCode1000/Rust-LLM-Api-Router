@@ -248,13 +248,15 @@ impl JsonAccountRepository {
     }
 
     /// Convert AccountData to Account, retrieving API key from secure storage.
+    /// Falls back to plaintext api_key from JSON if secure storage has no entry.
     fn account_data_to_account(&self, data: AccountData) -> DomainResult<Account> {
-        // Try to retrieve API key from secure storage
+        // Try to retrieve API key from secure storage, fall back to JSON field
         let api_key = self
             .secure_storage
             .retrieve(&data.id)
             .map_err(|e| DomainError::Internal(e.to_string()))?
-            .map(|s| s.expose_secret().to_string());
+            .map(|s| s.expose_secret().to_string())
+            .or(data.api_key);
 
         Ok(Account {
             id: data.id,
@@ -332,11 +334,9 @@ impl AccountRepository for JsonAccountRepository {
     async fn save(&self, account: Account) -> DomainResult<Account> {
         // Store API key in secure storage
         if let Some(ref api_key) = account.api_key {
-            if !api_key.is_empty() {
-                self.secure_storage
-                    .store(&account.id, api_key)
-                    .map_err(|e| DomainError::Internal(e.to_string()))?;
-            }
+            self.secure_storage
+                .store(&account.id, api_key)
+                .map_err(|e| DomainError::Internal(e.to_string()))?;
         }
 
         let mut accounts = self.read_accounts().await?;

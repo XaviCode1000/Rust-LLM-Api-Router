@@ -535,7 +535,8 @@ async fn test_empty_api_key_handling() {
     assert!(result.is_ok());
 
     let retrieved = repo.find_by_id("test-account").await.expect("Should find");
-    assert_eq!(retrieved.api_key, Some("".to_string()));
+    // Empty API key is treated as None (no key) by storage
+    assert_eq!(retrieved.api_key, None);
 
     // Note: API key validation should happen at use time, not storage
 }

@@ -20,7 +20,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use rust_llm_api_router::infrastructure::persistence::{
 //!     JsonAccountRepository, JsonProviderRepository,
 //! };

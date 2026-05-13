@@ -72,11 +72,14 @@ async fn test_cli_add_provider_url_validation() {
         "Should add provider even with invalid URL format"
     );
 
-    // Empty URL - should add (no validation)
+    // Empty URL - rejected by validation (base_url required)
     let args2 = create_add_args("empty-url", "Empty URL Provider", "", Some("sk-key"));
 
     let result2 = cmd_add_provider(args2, &repo).await;
-    assert!(result2.is_ok());
+    assert!(
+        result2.is_err(),
+        "Empty URL should be rejected by validation"
+    );
 }
 
 #[tokio::test]

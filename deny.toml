@@ -4,10 +4,6 @@
 
 [advisories]
 ignore = [
-    "RUSTSEC-2026-0066",  # astral-tokio-tar - transitive dep, low severity
-    "RUSTSEC-2026-0099",  # rustls-webpki name constraints - transitive dep
-    "RUSTSEC-2026-0049",  # rustls-webpki CRL matching - transitive dep
-    "RUSTSEC-2026-0098",  # rustls-webpki URI names - transitive dep
     "RUSTSEC-2024-0388",  # derivative - unmaintained, transitive dep
     "RUSTSEC-2024-0384",  # instant - unmaintained, transitive dep
 ]

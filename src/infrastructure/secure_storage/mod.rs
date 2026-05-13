@@ -77,19 +77,29 @@ pub fn create_secure_storage() -> Box<dyn SecureStorage> {
 ///
 /// # Why `std::sync::Mutex` and not `tokio::sync::Mutex`?
 ///
-/// The `SecureStorage` trait has synchronous methods (not async). There are
-/// no `.await` points inside lock scopes, so `std::sync::Mutex` is correct
-/// per async-no-lock-await rule. Using `tokio::sync::Mutex` here would
-/// require `.block_on()` in sync methods, which is an anti-pattern.
+/// Shared in-memory store for `InsecureStorage` (all instances share the same map).
+/// Uses `std::sync::Mutex` because `SecureStorage` methods are synchronous and
+/// there are no `.await` points inside lock scopes.
 pub struct InsecureStorage {
-    store: std::sync::Mutex<std::collections::HashMap<String, String>>,
+    _private: (),
+}
+
+thread_local! {
+    // Thread-local store for `InsecureStorage` — each test thread gets its own map,
+    // preventing state leakage between tests.
+    static INSECURE_STORE: std::cell::RefCell<std::collections::HashMap<String, String>>
+        = std::cell::RefCell::new(std::collections::HashMap::new());
 }
 
 impl InsecureStorage {
     pub fn new() -> Self {
-        Self {
-            store: std::sync::Mutex::new(std::collections::HashMap::new()),
-        }
+        Self { _private: () }
+    }
+
+    /// Clear the thread-local store. Use in test teardown to prevent state leakage.
+    #[cfg(test)]
+    pub fn clear() {
+        INSECURE_STORE.with(|store| store.borrow_mut().clear());
     }
 }
 
@@ -104,28 +114,28 @@ impl SecureStorage for InsecureStorage {
         tracing::warn!(
             "Storing API key in memory (insecure — use keyring or encrypted file in production)"
         );
-        let mut store = self
-            .store
-            .lock()
-            .map_err(|e| SecureStorageError::StorageUnavailable(format!("Lock poisoned: {e}")))?;
-        store.insert(account_id.to_string(), key.to_string());
+        INSECURE_STORE.with(|store| {
+            store
+                .borrow_mut()
+                .insert(account_id.to_string(), key.to_string());
+        });
         Ok(())
     }
 
     fn retrieve(&self, account_id: &str) -> Result<Option<SecretString>, SecureStorageError> {
-        let store = self
-            .store
-            .lock()
-            .map_err(|e| SecureStorageError::StorageUnavailable(format!("Lock poisoned: {e}")))?;
-        Ok(store.get(account_id).map(|k| SecretString::new(k.clone())))
+        INSECURE_STORE.with(|store| {
+            let store = store.borrow();
+            match store.get(account_id) {
+                Some(key) if !key.is_empty() => Ok(Some(SecretString::new(key.clone()))),
+                _ => Ok(None),
+            }
+        })
     }
 
     fn delete(&self, account_id: &str) -> Result<(), SecureStorageError> {
-        let mut store = self
-            .store
-            .lock()
-            .map_err(|e| SecureStorageError::StorageUnavailable(format!("Lock poisoned: {e}")))?;
-        store.remove(account_id);
+        INSECURE_STORE.with(|store| {
+            store.borrow_mut().remove(account_id);
+        });
         Ok(())
     }
 
