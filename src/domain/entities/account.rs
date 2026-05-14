@@ -156,7 +156,7 @@ impl Account {
         }
 
         // Check OAuth token expiration
-        self.token_expires_at.map_or(true, |expires| {
+        self.token_expires_at.is_none_or(|expires| {
             let now = now();
             // Consider token expired if it's already expired or will expire in < 60 seconds
             now >= expires.saturating_sub(60)
@@ -164,14 +164,14 @@ impl Account {
     }
 
     /// Gets the current access token, preferring OAuth over API key.
-    pub fn get_access_token(&self) -> Option<String> {
+    pub fn get_access_token(&self) -> Option<&str> {
         // Prefer OAuth access token if available
         if let Some(token) = &self.access_token {
-            return Some(token.clone());
+            return Some(token.as_str());
         }
 
         // Fall back to API key
-        self.api_key.clone()
+        self.api_key.as_deref()
     }
 
     /// Gets the authentication type for this account.
@@ -279,13 +279,13 @@ mod tests {
             None::<String>,
             Some(3600),
         );
-        assert_eq!(account.get_access_token(), Some("oauth-token".to_string()));
+        assert_eq!(account.get_access_token(), Some("oauth-token"));
     }
 
     #[test]
     fn test_account_get_access_token_falls_back_to_api_key() {
         let account = Account::new_api_key("acc5", "prov5", "api-key");
-        assert_eq!(account.get_access_token(), Some("api-key".to_string()));
+        assert_eq!(account.get_access_token(), Some("api-key"));
     }
 
     #[test]
