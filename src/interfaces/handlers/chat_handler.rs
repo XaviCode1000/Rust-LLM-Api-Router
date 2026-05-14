@@ -515,7 +515,10 @@ pub async fn list_models(
 /// Helper to get an API key from the first active account
 pub async fn get_api_key_for_models(state: &AppState) -> Option<String> {
     match state.account_repo.find_active().await {
-        Ok(accounts) => accounts.into_iter().next().and_then(|a| a.api_key.clone()),
+        Ok(accounts) => accounts
+            .into_iter()
+            .next()
+            .and_then(|a| a.auth_method.api_key().map(|s| s.to_string())),
         Err(e) => {
             tracing::warn!("Failed to fetch accounts for models endpoint: {}", e);
             None

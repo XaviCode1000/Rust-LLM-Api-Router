@@ -54,9 +54,9 @@ pub mod traits;
 
 // Re-export entities and errors explicitly to avoid ambiguity
 pub use entities::{
-    Account, AccountHealth, AccountId, ChatRequest, ChatResponse, Choice, LlmRequest, LlmResponse,
-    Message, Model, ModelPricing, OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice, OpenAIError,
-    OpenAIErrorResponse, OpenAIMessage, OpenAIUsage, Provider, Usage,
+    Account, AccountHealth, AccountId, AuthMethod, ChatRequest, ChatResponse, Choice, LlmRequest,
+    LlmResponse, Message, Model, ModelPricing, OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice,
+    OpenAIError, OpenAIErrorResponse, OpenAIMessage, OpenAIUsage, Provider, Usage,
 };
 
 // Re-export providers module

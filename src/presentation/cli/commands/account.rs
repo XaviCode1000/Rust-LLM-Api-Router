@@ -232,7 +232,7 @@ pub async fn cmd_validate_account(
         account.id, account.provider_id
     ));
 
-    let api_key = match &account.api_key {
+    let api_key = match account.auth_method.api_key() {
         Some(key) => key,
         None => {
             output::warning("Account has no API key set");

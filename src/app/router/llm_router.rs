@@ -613,7 +613,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
             })?;
 
         // Get API key from account
-        let api_key = account.api_key.as_ref().ok_or_else(|| {
+        let api_key = account.auth_method.api_key().ok_or_else(|| {
             Error::Internal(format!("No API key found for account '{}'", account_id))
         })?;
 

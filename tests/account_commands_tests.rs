@@ -56,9 +56,17 @@ async fn handle_account_command_with_dir(
             }
 
             let account = if args.inactive {
-                rust_llm_api_router::domain::Account::inactive(args.id.as_str(), args.provider.as_str(), &api_key)
+                rust_llm_api_router::domain::Account::inactive(
+                    args.id.as_str(),
+                    args.provider.as_str(),
+                    &api_key,
+                )
             } else {
-                rust_llm_api_router::domain::Account::new(args.id.as_str(), args.provider.as_str(), &api_key)
+                rust_llm_api_router::domain::Account::new(
+                    args.id.as_str(),
+                    args.provider.as_str(),
+                    &api_key,
+                )
             }
             .with_priority(args.priority);
 
@@ -94,7 +102,7 @@ async fn handle_account_command_with_dir(
                 } else {
                     "✗ Inactive"
                 };
-                let api_key_display = if let Some(ref key) = account.api_key {
+                let api_key_display = if let Some(key) = account.auth_method.api_key() {
                     if key.len() > 8 {
                         format!("{}...", &key[..8])
                     } else {
@@ -161,7 +169,7 @@ async fn handle_account_command_with_dir(
                 account.id, account.provider_id
             );
 
-            match &account.api_key {
+            match account.auth_method.api_key() {
                 None => {
                     println!("⚠ Account has no API key set");
                     Ok(())

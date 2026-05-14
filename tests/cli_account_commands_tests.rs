@@ -51,7 +51,7 @@ async fn test_cli_add_account_success_active() {
     let account = repo.find_by_id("test-acc-1").await.unwrap();
     assert_eq!(account.id, "test-acc-1");
     assert_eq!(account.provider_id, "openai");
-    assert_eq!(account.api_key, Some("sk-test-key-123".to_string()));
+    assert_eq!(account.auth_method.api_key(), Some("sk-test-key-123"));
     assert!(account.is_active);
     assert_eq!(account.priority, 0);
 }
@@ -120,8 +120,8 @@ async fn test_cli_add_account_empty_api_key_warning() {
 
     let account = repo.find_by_id("test-acc-4").await.unwrap();
 
-    // Empty keys are not stored in secure storage - by design
-    assert_eq!(account.api_key, None);
+    // Empty key stored as AuthMethod::ApiKey with empty string
+    assert_eq!(account.auth_method.api_key(), Some(""));
 }
 
 #[tokio::test]
@@ -154,7 +154,7 @@ async fn test_cli_add_account_duplicate_id() {
 
     // Verify updated
     let account = repo.find_by_id("test-acc-dup").await.unwrap();
-    assert_eq!(account.api_key, Some("sk-key-2".to_string()));
+    assert_eq!(account.auth_method.api_key(), Some("sk-key-2"));
 }
 
 // ============================================================================

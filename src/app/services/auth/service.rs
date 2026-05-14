@@ -502,8 +502,8 @@ mod tests {
 
         let account = result.unwrap();
         assert_eq!(account.provider_id, "test-provider");
-        assert_eq!(account.api_key, Some("test-api-key".to_string()));
-        assert_eq!(account.auth_strategy_type, "api_key");
+        assert_eq!(account.auth_method.api_key(), Some("test-api-key"));
+        assert_eq!(account.auth_type(), "api_key");
     }
 
     #[tokio::test]

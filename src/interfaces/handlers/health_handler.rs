@@ -125,8 +125,8 @@ pub async fn list_accounts(
             is_active: a.is_active,
             priority: a.priority,
             api_key_prefix: a
-                .api_key
-                .clone()
+                .auth_method
+                .api_key()
                 .map(|k| k.chars().take(8).collect())
                 .unwrap_or_default(),
         })

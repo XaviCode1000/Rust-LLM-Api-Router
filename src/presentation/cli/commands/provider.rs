@@ -320,8 +320,8 @@ pub async fn cmd_list_models(
         }
     };
 
-    let api_key = match &account.api_key {
-        Some(key) if !key.is_empty() => key.clone(),
+    let api_key = match account.auth_method.api_key() {
+        Some(key) if !key.is_empty() => key.to_string(),
         _ => {
             output::error(&format!(
                 "No API key configured for provider '{}'",

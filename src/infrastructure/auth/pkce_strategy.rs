@@ -70,7 +70,7 @@ impl AuthenticationStrategy for PkceAuthStrategy {
     /// Refreshes the access token using the refresh token.
     async fn refresh_token(&self, account: &Account) -> DomainResult<Account> {
         // Check if we have a refresh token
-        if account.refresh_token.is_none() {
+        if account.get_refresh_token().is_none() {
             return Err(crate::domain::DomainError::InvalidCredentials);
         }
         // Stub implementation - returns the same account
@@ -80,10 +80,12 @@ impl AuthenticationStrategy for PkceAuthStrategy {
     /// Revokes tokens and clears credentials.
     async fn revoke_token(&self, account: &Account) -> DomainResult<Account> {
         let mut account = account.clone();
-        account.access_token = None;
-        account.refresh_token = None;
-        account.id_token = None;
-        account.token_expires_at = None;
+        account.auth_method = crate::domain::entities::AuthMethod::OAuth {
+            access_token: String::new(),
+            refresh_token: None,
+            id_token: None,
+            token_expires_at: None,
+        };
         Ok(account)
     }
 

@@ -4,8 +4,11 @@ assertion_line: 30
 expression: json
 ---
 {
-  "api_key": "sk-test-key-12345",
-  "auth_strategy_type": "api_key",
+  "auth_method": {
+    "ApiKey": {
+      "api_key": "sk-test-key-12345"
+    }
+  },
   "created_at": "[timestamp]",
   "id": "acc-001",
   "is_active": true,

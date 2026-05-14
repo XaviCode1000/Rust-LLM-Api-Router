@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use mockall::predicate::*;
 use rust_llm_api_router::app::services::account_rotation::AccountSelector;
 use rust_llm_api_router::app::services::failover::FailoverManager;
-use rust_llm_api_router::domain::entities::{AccountId, AccountHealth};
+use rust_llm_api_router::domain::entities::{AccountHealth, AccountId};
 use rust_llm_api_router::domain::traits::AccountRepository;
 use rust_llm_api_router::domain::{Account, DomainError};
 use rust_llm_api_router::infrastructure::persistence::JsonAccountRepository;
@@ -535,8 +535,8 @@ async fn test_empty_api_key_handling() {
     assert!(result.is_ok());
 
     let retrieved = repo.find_by_id("test-account").await.expect("Should find");
-    // Empty API key is treated as None (no key) by storage
-    assert_eq!(retrieved.api_key, None);
+    // Empty API key is treated as empty string in AuthMethod::ApiKey
+    assert_eq!(retrieved.auth_method.api_key(), Some(""));
 
     // Note: API key validation should happen at use time, not storage
 }
@@ -555,7 +555,7 @@ async fn test_null_byte_in_api_key() {
     assert!(result.is_ok(), "Should handle null byte safely");
 
     let retrieved = repo.find_by_id("test-account").await.expect("Should find");
-    assert_eq!(retrieved.api_key, Some(api_key_with_null.to_string()));
+    assert_eq!(retrieved.auth_method.api_key(), Some(api_key_with_null));
 
     // JSON handles null bytes correctly
 }

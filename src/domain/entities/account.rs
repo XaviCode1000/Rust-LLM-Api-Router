@@ -5,6 +5,63 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::domain::providers::ProviderId;
 
+/// Authentication method for an account.
+///
+/// Each variant owns its credentials exclusively — no Option sprawl.
+/// The compiler enforces that ApiKey accounts don't have OAuth tokens
+/// and vice versa.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Zeroize)]
+pub enum AuthMethod {
+    /// API key authentication (legacy).
+    ApiKey { api_key: String },
+    /// OAuth 2.0 authentication (PKCE, Device Flow, etc.).
+    OAuth {
+        access_token: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        refresh_token: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        id_token: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        token_expires_at: Option<u64>,
+    },
+}
+
+impl AuthMethod {
+    /// Returns the API key if this is an ApiKey variant.
+    pub fn api_key(&self) -> Option<&str> {
+        match self {
+            AuthMethod::ApiKey { api_key } => Some(api_key),
+            _ => None,
+        }
+    }
+
+    /// Returns the access token if this is an OAuth variant.
+    pub fn access_token(&self) -> Option<&str> {
+        match self {
+            AuthMethod::OAuth { access_token, .. } => Some(access_token),
+            _ => None,
+        }
+    }
+
+    /// Returns true if this is an ApiKey variant.
+    pub fn is_api_key(&self) -> bool {
+        matches!(self, AuthMethod::ApiKey { .. })
+    }
+
+    /// Returns true if this is an OAuth variant.
+    pub fn is_oauth(&self) -> bool {
+        matches!(self, AuthMethod::OAuth { .. })
+    }
+
+    /// Returns the auth strategy type string for serialization compatibility.
+    pub fn strategy_type(&self) -> &'static str {
+        match self {
+            AuthMethod::ApiKey { .. } => "api_key",
+            AuthMethod::OAuth { .. } => "oauth",
+        }
+    }
+}
+
 /// Newtype wrapper for account identifiers.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Zeroize, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -91,21 +148,8 @@ impl std::str::FromStr for AccountId {
 pub struct Account {
     pub id: AccountId,
     pub provider_id: ProviderId,
-    /// Legacy API key for authentication (kept for backward compatibility)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub api_key: Option<String>,
-    /// OAuth 2.0 access token (never serialized to disk for security)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub access_token: Option<String>,
-    /// OAuth 2.0 refresh token for obtaining new access tokens
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub refresh_token: Option<String>,
-    /// OpenID Connect ID token (if applicable)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id_token: Option<String>,
-    /// Token expiration timestamp (seconds since UNIX epoch)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub token_expires_at: Option<u64>,
+    /// Authentication method — owns credentials exclusively (no Option sprawl).
+    pub auth_method: AuthMethod,
     /// Whether the account is active and can be used
     pub is_active: bool,
     /// Priority for load balancing (lower = higher priority)
@@ -116,9 +160,6 @@ pub struct Account {
     /// Timestamp when the account was last used
     #[serde(default)]
     pub last_used_at: Option<u64>,
-    /// Type of authentication strategy used for this account
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub auth_strategy_type: String,
 }
 
 impl Account {
@@ -142,16 +183,13 @@ impl Account {
         Self {
             id: id.into(),
             provider_id: provider_id.into(),
-            api_key: Some(api_key.into()),
-            access_token: None,
-            refresh_token: None,
-            id_token: None,
-            token_expires_at: None,
+            auth_method: AuthMethod::ApiKey {
+                api_key: api_key.into(),
+            },
             is_active: true,
             priority: 0,
             created_at: Some(now()),
             last_used_at: None,
-            auth_strategy_type: "api_key".to_string(),
         }
     }
 
@@ -164,27 +202,21 @@ impl Account {
         id_token: Option<impl Into<String>>,
         expires_in_seconds: Option<u64>,
     ) -> Self {
-        let mut account = Self {
+        let token_expires_at = expires_in_seconds.map(|expires| now() + expires);
+        Self {
             id: id.into(),
             provider_id: provider_id.into(),
-            api_key: None,
-            access_token: Some(access_token.into()),
-            refresh_token: refresh_token.map(|t| t.into()),
-            id_token: id_token.map(|t| t.into()),
-            token_expires_at: expires_in_seconds.map(|expires| now() + expires),
+            auth_method: AuthMethod::OAuth {
+                access_token: access_token.into(),
+                refresh_token: refresh_token.map(|t| t.into()),
+                id_token: id_token.map(|t| t.into()),
+                token_expires_at,
+            },
             is_active: true,
             priority: 0,
             created_at: Some(now()),
             last_used_at: None,
-            auth_strategy_type: "oauth".to_string(),
-        };
-
-        // Set expiration time if provided
-        if let Some(expires_in) = expires_in_seconds {
-            account.token_expires_at = Some(now() + expires_in);
         }
-
-        account
     }
 
     /// Creates an inactive account.
@@ -196,16 +228,13 @@ impl Account {
         Self {
             id: id.into(),
             provider_id: provider_id.into(),
-            api_key: Some(api_key.into()),
-            access_token: None,
-            refresh_token: None,
-            id_token: None,
-            token_expires_at: None,
+            auth_method: AuthMethod::ApiKey {
+                api_key: api_key.into(),
+            },
             is_active: false,
             priority: 0,
             created_at: Some(now()),
             last_used_at: None,
-            auth_strategy_type: "api_key".to_string(),
         }
     }
 
@@ -227,43 +256,44 @@ impl Account {
     }
 
     /// Checks if the account's token is expired or about to expire.
-    ///
-    /// Returns true if no expiration is set (for API keys) or if the token
-    /// has expired or will expire within 60 seconds.
     pub fn is_token_expired(&self) -> bool {
-        // API keys don't expire
-        if self.api_key.is_some() && self.access_token.is_none() {
-            return false;
+        match &self.auth_method {
+            // API keys don't expire
+            AuthMethod::ApiKey { .. } => false,
+            // Check OAuth token expiration
+            AuthMethod::OAuth {
+                token_expires_at, ..
+            } => token_expires_at.is_none_or(|expires| {
+                let now = now();
+                now >= expires.saturating_sub(60)
+            }),
         }
-
-        // Check OAuth token expiration
-        self.token_expires_at.is_none_or(|expires| {
-            let now = now();
-            // Consider token expired if it's already expired or will expire in < 60 seconds
-            now >= expires.saturating_sub(60)
-        })
     }
 
     /// Gets the current access token, preferring OAuth over API key.
     pub fn get_access_token(&self) -> Option<&str> {
-        // Prefer OAuth access token if available
-        if let Some(token) = &self.access_token {
-            return Some(token.as_str());
+        match &self.auth_method {
+            AuthMethod::OAuth { access_token, .. } => Some(access_token),
+            AuthMethod::ApiKey { api_key } => Some(api_key),
         }
+    }
 
-        // Fall back to API key
-        self.api_key.as_deref()
+    /// Gets the API key if this account uses API key auth.
+    pub fn get_api_key(&self) -> Option<&str> {
+        self.auth_method.api_key()
+    }
+
+    /// Gets the refresh token if this account uses OAuth.
+    pub fn get_refresh_token(&self) -> Option<&str> {
+        match &self.auth_method {
+            AuthMethod::OAuth { refresh_token, .. } => refresh_token.as_deref(),
+            _ => None,
+        }
     }
 
     /// Gets the authentication type for this account.
     pub fn auth_type(&self) -> &'static str {
-        match self.auth_strategy_type.as_str() {
-            "api_key" => "api_key",
-            "pkce" => "pkce",
-            "device_flow" => "device_flow",
-            "oauth" => "oauth",
-            _ => "unknown",
-        }
+        self.auth_method.strategy_type()
     }
 }
 
@@ -284,14 +314,12 @@ mod tests {
         let account = Account::new_api_key("acc1", "prov1", "sk-test-key");
         assert_eq!(account.id, "acc1");
         assert_eq!(account.provider_id, "prov1");
-        assert_eq!(account.api_key, Some("sk-test-key".to_string()));
-        assert!(account.access_token.is_none());
-        assert!(account.refresh_token.is_none());
-        assert!(account.id_token.is_none());
-        assert!(account.token_expires_at.is_none());
+        assert_eq!(account.auth_method.api_key(), Some("sk-test-key"));
+        assert!(account.auth_method.is_api_key());
+        assert!(!account.auth_method.is_oauth());
         assert!(account.is_active);
         assert_eq!(account.priority, 0);
-        assert_eq!(account.auth_strategy_type, "api_key");
+        assert_eq!(account.auth_type(), "api_key");
         assert!(account.created_at.is_some());
     }
 
@@ -307,14 +335,12 @@ mod tests {
         );
         assert_eq!(account.id, "acc2");
         assert_eq!(account.provider_id, "prov2");
-        assert!(account.api_key.is_none());
-        assert_eq!(account.access_token, Some("access-token".to_string()));
-        assert_eq!(account.refresh_token, Some("refresh-token".to_string()));
-        assert_eq!(account.id_token, Some("id-token".to_string()));
-        assert!(account.token_expires_at.is_some());
+        assert!(account.auth_method.is_oauth());
+        assert_eq!(account.auth_method.access_token(), Some("access-token"));
+        assert_eq!(account.get_refresh_token(), Some("refresh-token"));
         assert!(account.is_active);
         assert_eq!(account.priority, 0);
-        assert_eq!(account.auth_strategy_type, "oauth");
+        assert_eq!(account.auth_type(), "oauth");
         assert!(account.created_at.is_some());
     }
 
@@ -371,10 +397,16 @@ mod tests {
 
     #[test]
     fn test_account_get_access_token_none_when_no_credentials() {
-        let mut account = Account::new_api_key("acc6", "prov6", "api-key");
-        account.api_key = None;
-        account.access_token = None;
-        assert!(account.get_access_token().is_none());
+        // OAuth account with empty access token
+        let account = Account::new_oauth(
+            "acc6",
+            "prov6",
+            "", // empty access token
+            None::<String>,
+            None::<String>,
+            None,
+        );
+        assert_eq!(account.get_access_token(), Some(""));
     }
 
     #[test]

@@ -56,38 +56,69 @@ struct AccountData {
 
 impl From<&Account> for AccountData {
     fn from(account: &Account) -> Self {
+        let (api_key, auth_strategy_type, access_token, refresh_token, id_token, token_expires_at) =
+            match &account.auth_method {
+                crate::domain::entities::AuthMethod::ApiKey { api_key } => (
+                    Some(api_key.clone()),
+                    "api_key".to_string(),
+                    None,
+                    None,
+                    None,
+                    None,
+                ),
+                crate::domain::entities::AuthMethod::OAuth {
+                    access_token,
+                    refresh_token,
+                    id_token,
+                    token_expires_at,
+                } => (
+                    None,
+                    "oauth".to_string(),
+                    Some(access_token.clone()),
+                    refresh_token.clone(),
+                    id_token.clone(),
+                    *token_expires_at,
+                ),
+            };
         Self {
             id: account.id.to_string(),
             provider_id: account.provider_id.to_string(),
-            api_key: account.api_key.clone(),
-            access_token: account.access_token.clone(),
-            refresh_token: account.refresh_token.clone(),
-            id_token: account.id_token.clone(),
-            token_expires_at: account.token_expires_at,
+            api_key,
+            access_token,
+            refresh_token,
+            id_token,
+            token_expires_at,
             is_active: account.is_active,
             priority: account.priority,
             created_at: account.created_at,
             last_used_at: account.last_used_at,
-            auth_strategy_type: account.auth_strategy_type.clone(),
+            auth_strategy_type,
         }
     }
 }
 
 impl From<AccountData> for Account {
     fn from(data: AccountData) -> Self {
+        let auth_method = if data.auth_strategy_type == "api_key" || data.api_key.is_some() {
+            crate::domain::entities::AuthMethod::ApiKey {
+                api_key: data.api_key.unwrap_or_default(),
+            }
+        } else {
+            crate::domain::entities::AuthMethod::OAuth {
+                access_token: data.access_token.unwrap_or_default(),
+                refresh_token: data.refresh_token,
+                id_token: data.id_token,
+                token_expires_at: data.token_expires_at,
+            }
+        };
         Self {
             id: data.id.into(),
             provider_id: data.provider_id.into(),
-            api_key: data.api_key,
-            access_token: data.access_token,
-            refresh_token: data.refresh_token,
-            id_token: data.id_token,
-            token_expires_at: data.token_expires_at,
+            auth_method,
             is_active: data.is_active,
             priority: data.priority,
             created_at: data.created_at,
             last_used_at: data.last_used_at,
-            auth_strategy_type: data.auth_strategy_type,
         }
     }
 }
@@ -198,11 +229,11 @@ impl JsonAccountRepository {
         let mut migrated = 0;
 
         for account in &accounts {
-            if let Some(ref api_key) = account.api_key {
+            if let Some(api_key) = account.auth_method.api_key() {
                 if !api_key.is_empty() {
                     // Store in secure storage — spawn_blocking because storage does blocking I/O + Argon2
                     let id = account.id.clone();
-                    let key = api_key.clone();
+                    let key = api_key.to_string();
                     let storage = self.secure_storage.clone();
                     tokio::task::spawn_blocking(move || storage.store(id.as_str(), &key))
                         .await
@@ -268,19 +299,29 @@ impl JsonAccountRepository {
             .map(|s| s.expose_secret().to_string())
             .or(data.api_key);
 
+        let auth_method = if data.auth_strategy_type == "api_key"
+            || (api_key.is_some() && data.access_token.is_none())
+        {
+            crate::domain::entities::AuthMethod::ApiKey {
+                api_key: api_key.unwrap_or_default(),
+            }
+        } else {
+            crate::domain::entities::AuthMethod::OAuth {
+                access_token: data.access_token.unwrap_or_default(),
+                refresh_token: data.refresh_token,
+                id_token: data.id_token,
+                token_expires_at: data.token_expires_at,
+            }
+        };
+
         Ok(Account {
             id: data.id.into(),
             provider_id: data.provider_id.into(),
-            api_key,
-            access_token: data.access_token,
-            refresh_token: data.refresh_token,
-            id_token: data.id_token,
-            token_expires_at: data.token_expires_at,
+            auth_method,
             is_active: data.is_active,
             priority: data.priority,
             created_at: data.created_at,
             last_used_at: data.last_used_at,
-            auth_strategy_type: data.auth_strategy_type,
         })
     }
 
@@ -343,9 +384,9 @@ impl Default for JsonAccountRepository {
 impl AccountRepository for JsonAccountRepository {
     async fn save(&self, account: Account) -> DomainResult<Account> {
         // Store API key in secure storage — spawn_blocking because storage does blocking I/O + Argon2
-        if let Some(ref api_key) = account.api_key {
+        if let Some(api_key) = account.auth_method.api_key() {
             let id = account.id.clone();
-            let key = api_key.clone();
+            let key = api_key.to_string();
             let storage = self.secure_storage.clone();
             tokio::task::spawn_blocking(move || storage.store(id.as_str(), &key))
                 .await

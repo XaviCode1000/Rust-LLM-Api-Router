@@ -35,7 +35,7 @@ async fn test_cmd_add_account_basic() {
     let account = repo.find_by_id("test-basic").await.unwrap();
     assert_eq!(account.id, "test-basic");
     assert_eq!(account.provider_id, "openai");
-    assert_eq!(account.api_key, Some("sk-test-key-123".to_string()));
+    assert_eq!(account.auth_method.api_key(), Some("sk-test-key-123"));
     assert!(account.is_active);
     assert_eq!(account.priority, 0);
 }
@@ -98,10 +98,9 @@ async fn test_cmd_add_account_empty_api_key() {
     let result = cmd_add_account(args, &repo).await;
     assert!(result.is_ok());
 
-    // Account should be created - empty keys are not stored in secure storage
-    // so find_by_id returns None for empty keys (by design)
+    // Account should be created - empty key stored as AuthMethod::ApiKey with empty string
     let account = repo.find_by_id("test-empty-key").await.unwrap();
-    assert_eq!(account.api_key, None); // Empty key not stored in secure storage
+    assert_eq!(account.auth_method.api_key(), Some("")); // Empty key stored as empty string in enum
 }
 
 #[tokio::test]
@@ -134,7 +133,7 @@ async fn test_cmd_add_account_duplicate_id() {
     // Should update existing account
     let account = repo.find_by_id("test-dup").await.unwrap();
     assert_eq!(account.provider_id, "groq");
-    assert_eq!(account.api_key, Some("sk-key-2".to_string()));
+    assert_eq!(account.auth_method.api_key(), Some("sk-key-2"));
     assert_eq!(account.priority, 5);
 }
 

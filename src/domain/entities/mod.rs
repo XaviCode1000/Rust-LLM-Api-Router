@@ -10,7 +10,7 @@ pub mod account_health;
 pub mod openai_types;
 pub mod provider;
 
-pub use account::{Account, AccountId};
+pub use account::{Account, AccountId, AuthMethod};
 pub use account_health::{AccountHealth, CircuitBreakerState};
 pub use openai_types::{
     OpenAIChatRequest, OpenAIChatResponse, OpenAIChoice, OpenAIError, OpenAIErrorResponse,

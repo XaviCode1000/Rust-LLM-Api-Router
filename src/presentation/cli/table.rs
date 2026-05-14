@@ -60,7 +60,7 @@ pub fn account_table(accounts: &[Account]) -> String {
         } else {
             "✗ Inactive"
         };
-        let api_key = mask_api_key(a.api_key.as_deref().unwrap_or(""));
+        let api_key = mask_api_key(a.auth_method.api_key().unwrap_or(""));
         table.add_row(vec![
             Cell::new(&a.id),
             Cell::new(&a.provider_id),

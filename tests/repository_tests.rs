@@ -228,7 +228,7 @@ async fn test_account_repository_persistence_across_instances() {
     // Should find the saved account
     let found = repo2.find_by_id("persist-test").await.unwrap();
     assert_eq!(found.id, "persist-test");
-    assert_eq!(found.api_key, Some("sk-persist-key".to_string()));
+    assert_eq!(found.auth_method.api_key(), Some("sk-persist-key"));
 }
 
 #[tokio::test]
@@ -243,7 +243,7 @@ async fn test_account_repository_find_by_id_preserves_data() {
     let found = repo.find_by_id("data-test").await.unwrap();
     assert_eq!(found.id, "data-test");
     assert_eq!(found.provider_id, "mistral");
-    assert_eq!(found.api_key, Some("mi-test-key-123".to_string()));
+    assert_eq!(found.auth_method.api_key(), Some("mi-test-key-123"));
     assert!(found.is_active);
     assert_eq!(found.priority, 0); // default priority
 }
