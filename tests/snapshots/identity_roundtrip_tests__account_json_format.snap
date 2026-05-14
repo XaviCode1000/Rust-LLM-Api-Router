@@ -1,0 +1,15 @@
+---
+source: tests/identity_roundtrip_tests.rs
+assertion_line: 30
+expression: json
+---
+{
+  "api_key": "sk-test-key-12345",
+  "auth_strategy_type": "api_key",
+  "created_at": "[timestamp]",
+  "id": "acc-001",
+  "is_active": true,
+  "last_used_at": "[timestamp]",
+  "priority": 10,
+  "provider_id": "openai"
+}

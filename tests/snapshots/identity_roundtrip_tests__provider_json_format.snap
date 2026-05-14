@@ -1,0 +1,11 @@
+---
+source: tests/identity_roundtrip_tests.rs
+assertion_line: 44
+expression: json
+---
+{
+  "base_url": "https://api.openai.com/v1",
+  "enabled": true,
+  "id": "openai",
+  "name": "OpenAI"
+}

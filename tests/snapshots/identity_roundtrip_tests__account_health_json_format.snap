@@ -1,0 +1,20 @@
+---
+source: tests/identity_roundtrip_tests.rs
+assertion_line: 54
+expression: json
+---
+{
+  "account_id": "acc-001",
+  "avg_latency_ms": 0.0,
+  "circuit_breaker_opened_at": null,
+  "circuit_breaker_state": "Closed",
+  "consecutive_failures": 0,
+  "degraded_success_count": 0,
+  "failed_requests": 0,
+  "last_failure_at": "[timestamp]",
+  "last_success_at": "[timestamp]",
+  "quota_limit": null,
+  "quota_remaining": null,
+  "successful_requests": 0,
+  "total_requests": 0
+}
