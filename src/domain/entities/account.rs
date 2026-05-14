@@ -1,6 +1,55 @@
 use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
 use std::time::{SystemTime, UNIX_EPOCH};
 use zeroize::{Zeroize, ZeroizeOnDrop};
+
+/// Newtype wrapper for account identifiers.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct AccountId(String);
+
+impl AccountId {
+    pub fn new(id: impl Into<String>) -> Self {
+        Self(id.into())
+    }
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+impl AsRef<str> for AccountId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+impl Borrow<str> for AccountId {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+impl From<String> for AccountId {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+impl From<&str> for AccountId {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+impl std::fmt::Display for AccountId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl std::str::FromStr for AccountId {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            return Err("account ID cannot be empty");
+        }
+        Ok(Self(s.to_string()))
+    }
+}
 
 /// Account credentials for an LLM provider supporting multiple authentication strategies.
 ///

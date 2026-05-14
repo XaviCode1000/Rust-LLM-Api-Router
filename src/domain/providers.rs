@@ -13,13 +13,16 @@
 //! - `&'static str` to avoid heap allocation
 //! - Following api-newtype-safety, type-newum-ids patterns
 
+use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
 use std::str::FromStr;
 
 /// Type-safe provider ID wrapper
 ///
 /// Use this to prevent stringly-typed errors and provide better type safety.
 /// Follows: api-newtype-safety, type-newtype-ids from rust-skills
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ProviderId(String);
 
 impl ProviderId {
@@ -52,6 +55,24 @@ impl ProviderId {
 impl AsRef<str> for ProviderId {
     fn as_ref(&self) -> &str {
         &self.0
+    }
+}
+
+impl Borrow<str> for ProviderId {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<String> for ProviderId {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl From<&str> for ProviderId {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
     }
 }
 
