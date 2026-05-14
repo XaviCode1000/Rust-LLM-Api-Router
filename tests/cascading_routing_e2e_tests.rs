@@ -23,17 +23,17 @@ use std::sync::Arc;
 fn create_test_provider_pricing() -> Vec<ProviderPricing> {
     vec![
         ProviderPricing {
-            provider_id: "openai".to_string(),
+            provider_id: "openai".into(),
             input_price_per_1m: 10.0,
             output_price_per_1m: 30.0,
         },
         ProviderPricing {
-            provider_id: "anthropic".to_string(),
+            provider_id: "anthropic".into(),
             input_price_per_1m: 15.0,
             output_price_per_1m: 75.0,
         },
         ProviderPricing {
-            provider_id: "groq".to_string(),
+            provider_id: "groq".into(),
             input_price_per_1m: 1.0,
             output_price_per_1m: 2.0,
         },

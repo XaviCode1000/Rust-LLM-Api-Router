@@ -57,8 +57,8 @@ struct AccountData {
 impl From<&Account> for AccountData {
     fn from(account: &Account) -> Self {
         Self {
-            id: account.id.clone(),
-            provider_id: account.provider_id.clone(),
+            id: account.id.to_string(),
+            provider_id: account.provider_id.to_string(),
             api_key: account.api_key.clone(),
             access_token: account.access_token.clone(),
             refresh_token: account.refresh_token.clone(),
@@ -76,8 +76,8 @@ impl From<&Account> for AccountData {
 impl From<AccountData> for Account {
     fn from(data: AccountData) -> Self {
         Self {
-            id: data.id,
-            provider_id: data.provider_id,
+            id: data.id.into(),
+            provider_id: data.provider_id.into(),
             api_key: data.api_key,
             access_token: data.access_token,
             refresh_token: data.refresh_token,
@@ -204,7 +204,7 @@ impl JsonAccountRepository {
                     let id = account.id.clone();
                     let key = api_key.clone();
                     let storage = self.secure_storage.clone();
-                    tokio::task::spawn_blocking(move || storage.store(&id, &key))
+                    tokio::task::spawn_blocking(move || storage.store(id.as_str(), &key))
                         .await
                         .map_err(|e| DomainError::Internal(e.to_string()))?
                         .map_err(|e| DomainError::Internal(e.to_string()))?;
@@ -269,8 +269,8 @@ impl JsonAccountRepository {
             .or(data.api_key);
 
         Ok(Account {
-            id: data.id,
-            provider_id: data.provider_id,
+            id: data.id.into(),
+            provider_id: data.provider_id.into(),
             api_key,
             access_token: data.access_token,
             refresh_token: data.refresh_token,
@@ -347,7 +347,7 @@ impl AccountRepository for JsonAccountRepository {
             let id = account.id.clone();
             let key = api_key.clone();
             let storage = self.secure_storage.clone();
-            tokio::task::spawn_blocking(move || storage.store(&id, &key))
+            tokio::task::spawn_blocking(move || storage.store(id.as_str(), &key))
                 .await
                 .map_err(|e| DomainError::Internal(e.to_string()))?
                 .map_err(|e| DomainError::Internal(e.to_string()))?;
@@ -360,7 +360,7 @@ impl AccountRepository for JsonAccountRepository {
         account_data.api_key = None; // Don't store API key in JSON file
 
         // Check if account exists, update or insert
-        if let Some(existing) = accounts.iter_mut().find(|a| a.id == account.id) {
+        if let Some(existing) = accounts.iter_mut().find(|a| account.id == a.id) {
             *existing = account_data;
         } else {
             accounts.push(account_data);

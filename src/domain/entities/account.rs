@@ -3,10 +3,42 @@ use std::borrow::Borrow;
 use std::time::{SystemTime, UNIX_EPOCH};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
+use crate::domain::providers::ProviderId;
+
 /// Newtype wrapper for account identifiers.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Zeroize, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct AccountId(String);
+
+impl PartialEq<str> for AccountId {
+    fn eq(&self, other: &str) -> bool {
+        self.0 == other
+    }
+}
+
+impl PartialEq<&str> for AccountId {
+    fn eq(&self, other: &&str) -> bool {
+        self.0 == *other
+    }
+}
+
+impl PartialEq<String> for AccountId {
+    fn eq(&self, other: &String) -> bool {
+        self.0 == *other
+    }
+}
+
+impl PartialEq<AccountId> for str {
+    fn eq(&self, other: &AccountId) -> bool {
+        self == other.0
+    }
+}
+
+impl PartialEq<AccountId> for &str {
+    fn eq(&self, other: &AccountId) -> bool {
+        *self == other.0
+    }
+}
 
 impl AccountId {
     pub fn new(id: impl Into<String>) -> Self {
@@ -57,8 +89,8 @@ impl std::str::FromStr for AccountId {
 /// (including PKCE and Device Flow) with secure storage of tokens.
 #[derive(Debug, Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop, PartialEq)]
 pub struct Account {
-    pub id: String,
-    pub provider_id: String,
+    pub id: AccountId,
+    pub provider_id: ProviderId,
     /// Legacy API key for authentication (kept for backward compatibility)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
@@ -94,8 +126,8 @@ impl Account {
     ///
     /// This is an alias for `new_api_key` for backward compatibility.
     pub fn new(
-        id: impl Into<String>,
-        provider_id: impl Into<String>,
+        id: impl Into<AccountId>,
+        provider_id: impl Into<ProviderId>,
         api_key: impl Into<String>,
     ) -> Self {
         Self::new_api_key(id, provider_id, api_key)
@@ -103,8 +135,8 @@ impl Account {
 
     /// Creates a new `Account` with API key authentication.
     pub fn new_api_key(
-        id: impl Into<String>,
-        provider_id: impl Into<String>,
+        id: impl Into<AccountId>,
+        provider_id: impl Into<ProviderId>,
         api_key: impl Into<String>,
     ) -> Self {
         Self {
@@ -125,8 +157,8 @@ impl Account {
 
     /// Creates a new `Account` with OAuth 2.0 authentication.
     pub fn new_oauth(
-        id: impl Into<String>,
-        provider_id: impl Into<String>,
+        id: impl Into<AccountId>,
+        provider_id: impl Into<ProviderId>,
         access_token: impl Into<String>,
         refresh_token: Option<impl Into<String>>,
         id_token: Option<impl Into<String>>,
@@ -157,8 +189,8 @@ impl Account {
 
     /// Creates an inactive account.
     pub fn inactive(
-        id: impl Into<String>,
-        provider_id: impl Into<String>,
+        id: impl Into<AccountId>,
+        provider_id: impl Into<ProviderId>,
         api_key: impl Into<String>,
     ) -> Self {
         Self {
@@ -343,6 +375,39 @@ mod tests {
         account.api_key = None;
         account.access_token = None;
         assert!(account.get_access_token().is_none());
+    }
+
+    #[test]
+    fn test_account_id_partialeq_str() {
+        let id = AccountId::from("test-123");
+        assert_eq!(id, "test-123");
+        assert_ne!(id, "other");
+    }
+
+    #[test]
+    fn test_account_id_partialeq_ref_str() {
+        let s = "test-123";
+        let id = AccountId::from("test-123");
+        assert_eq!(id, s);
+    }
+
+    #[test]
+    fn test_account_id_partialeq_string() {
+        let id = AccountId::from("test-123");
+        assert_eq!(id, String::from("test-123"));
+    }
+
+    #[test]
+    fn test_account_id_partialeq_reverse() {
+        let id = AccountId::from("test-123");
+        assert!("test-123" == id);
+    }
+
+    #[test]
+    fn test_account_id_zeroize_clears_inner() {
+        let mut id = AccountId::from("secret-id");
+        id.zeroize();
+        assert_eq!(id.as_str(), "");
     }
 
     #[test]

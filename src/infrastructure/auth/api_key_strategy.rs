@@ -54,7 +54,7 @@ impl AuthenticationStrategy for ApiKeyAuthStrategy {
 
         let account = Account::new_api_key(
             format!("api_key_{}", uuid::Uuid::new_v4()),
-            &self.provider_id,
+            self.provider_id.as_str(),
             api_key.trim(),
         );
 

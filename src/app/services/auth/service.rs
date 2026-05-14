@@ -127,7 +127,7 @@ impl AuthService {
         let mut account = strategy.complete_auth(response).await?;
 
         // Set the correct provider ID in the account (strategies might use a placeholder)
-        account.provider_id = provider_id.to_string();
+        account.provider_id = provider_id.into();
 
         // Save the account
         self.account_repo.save(account).await
@@ -147,7 +147,7 @@ impl AuthService {
         // Get the provider to determine auth strategy
         let provider = self
             .provider_repo
-            .find_enabled_by_id(&account.provider_id)
+            .find_enabled_by_id(account.provider_id.as_str())
             .await?;
 
         // Determine which authentication strategy to use
@@ -198,7 +198,7 @@ impl AuthService {
             // Fallback to API Key strategy
             Box::new(
                 crate::infrastructure::auth::api_key_strategy::ApiKeyAuthStrategy::new(
-                    &account.provider_id,
+                    account.provider_id.as_str(),
                 ),
             )
         };
@@ -224,7 +224,7 @@ impl AuthService {
         // Get the provider to determine auth strategy
         let provider = self
             .provider_repo
-            .find_enabled_by_id(&account.provider_id)
+            .find_enabled_by_id(account.provider_id.as_str())
             .await?;
 
         // Determine which authentication strategy to use
@@ -275,7 +275,7 @@ impl AuthService {
             // Fallback to API Key strategy
             Box::new(
                 crate::infrastructure::auth::api_key_strategy::ApiKeyAuthStrategy::new(
-                    &account.provider_id,
+                    account.provider_id.as_str(),
                 ),
             )
         };

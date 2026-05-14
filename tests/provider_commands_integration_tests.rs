@@ -175,10 +175,10 @@ async fn test_cli_list_providers_formatting() {
     let providers = repo.find_all().await.unwrap();
     assert_eq!(providers.len(), 3);
 
-    let provider_ids: Vec<&String> = providers.iter().map(|p| &p.id).collect();
-    assert!(provider_ids.contains(&&"prov-1".to_string()));
-    assert!(provider_ids.contains(&&"prov-2".to_string()));
-    assert!(provider_ids.contains(&&"prov-3".to_string()));
+    let provider_ids: Vec<&str> = providers.iter().map(|p| p.id.as_str()).collect();
+    assert!(provider_ids.contains(&"prov-1"));
+    assert!(provider_ids.contains(&"prov-2"));
+    assert!(provider_ids.contains(&"prov-3"));
 }
 
 #[tokio::test]

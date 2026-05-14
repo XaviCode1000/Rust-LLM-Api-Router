@@ -10,7 +10,7 @@ use mockall::predicate::*;
 use rust_llm_api_router::app::services::account_rotation::AccountSelector;
 use rust_llm_api_router::app::services::failover::FailoverManager;
 use rust_llm_api_router::domain::traits::AccountRepository;
-use rust_llm_api_router::domain::{Account, DomainError};
+use rust_llm_api_router::domain::{Account, AccountId, DomainError};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -123,9 +123,9 @@ async fn test_failover_cascades_through_accounts() {
 
     // Should try all 3 accounts
     assert_eq!(attempted.len(), 3);
-    assert!(attempted.contains(&"account-1".to_string()));
-    assert!(attempted.contains(&"account-2".to_string()));
-    assert!(attempted.contains(&"account-3".to_string()));
+    assert!(attempted.contains(&AccountId::from("account-1")));
+    assert!(attempted.contains(&AccountId::from("account-2")));
+    assert!(attempted.contains(&AccountId::from("account-3")));
 }
 
 /// Test: Circuit breaker integration with failover

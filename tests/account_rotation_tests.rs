@@ -7,7 +7,7 @@ use rust_llm_api_router::app::services::account_rotation::{
     AccountSelector, BackoffConfig, LatencyStrategy, RateLimitInfo, RotationStrategy,
     RoundRobinStrategy, WeightedStrategy,
 };
-use rust_llm_api_router::domain::Account;
+use rust_llm_api_router::domain::{Account, AccountId};
 use std::sync::Arc;
 
 // ============================================================================
@@ -78,9 +78,9 @@ fn test_round_robin_atomic_increment() {
         handles.push(handle);
     }
 
-    let results: Vec<String> = handles
+    let results: Vec<AccountId> = handles
         .into_iter()
-        .map(|h: std::thread::JoinHandle<String>| h.join().unwrap())
+        .map(|h: std::thread::JoinHandle<AccountId>| h.join().unwrap())
         .collect();
 
     // All should succeed without panic (no race condition)
@@ -99,6 +99,7 @@ fn test_round_robin_fair_distribution() {
         let account = strategy.select(&accounts).unwrap();
         let index = account
             .id
+            .as_str()
             .split('-')
             .next_back()
             .unwrap()
@@ -411,14 +412,14 @@ fn test_round_robin_high_concurrency() {
         handles.push(handle);
     }
 
-    let results: Vec<Option<String>> = handles
+    let results: Vec<Option<AccountId>> = handles
         .into_iter()
-        .map(|h: std::thread::JoinHandle<Option<String>>| h.join().unwrap())
+        .map(|h: std::thread::JoinHandle<Option<AccountId>>| h.join().unwrap())
         .collect();
 
     // All should succeed
     assert_eq!(results.len(), 1000);
-    assert!(results.iter().all(|r: &Option<String>| r.is_some()));
+    assert!(results.iter().all(|r: &Option<AccountId>| r.is_some()));
 }
 
 // ============================================================================

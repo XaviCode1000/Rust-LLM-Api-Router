@@ -64,9 +64,9 @@ async fn handle_provider_command_with_dir(
             let base_url = args.base_url.unwrap_or_default();
 
             let provider = if args.disabled {
-                Provider::disabled(&id, &name, &base_url)
+                Provider::disabled(id.as_str(), &name, &base_url)
             } else {
-                Provider::new(&id, &name, &base_url)
+                Provider::new(id.as_str(), &name, &base_url)
             };
 
             repo.save(provider)

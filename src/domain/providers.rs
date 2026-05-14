@@ -16,14 +16,45 @@
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 use std::str::FromStr;
+use zeroize::Zeroize;
 
 /// Type-safe provider ID wrapper
 ///
 /// Use this to prevent stringly-typed errors and provide better type safety.
 /// Follows: api-newtype-safety, type-newtype-ids from rust-skills
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Zeroize, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ProviderId(String);
+
+impl PartialEq<str> for ProviderId {
+    fn eq(&self, other: &str) -> bool {
+        self.0 == other
+    }
+}
+
+impl PartialEq<&str> for ProviderId {
+    fn eq(&self, other: &&str) -> bool {
+        self.0 == *other
+    }
+}
+
+impl PartialEq<String> for ProviderId {
+    fn eq(&self, other: &String) -> bool {
+        self.0 == *other
+    }
+}
+
+impl PartialEq<ProviderId> for str {
+    fn eq(&self, other: &ProviderId) -> bool {
+        self == other.0
+    }
+}
+
+impl PartialEq<ProviderId> for &str {
+    fn eq(&self, other: &ProviderId) -> bool {
+        *self == other.0
+    }
+}
 
 impl ProviderId {
     /// Creates a new provider ID from a string.
@@ -554,6 +585,39 @@ mod tests {
         assert!("groq-1".parse::<ProviderId>().is_ok());
         assert!("Invalid ID".parse::<ProviderId>().is_err());
         assert!("".parse::<ProviderId>().is_err());
+    }
+
+    #[test]
+    fn test_provider_id_partialeq_str() {
+        let id = ProviderId::from("openai");
+        assert_eq!(id, "openai");
+        assert_ne!(id, "anthropic");
+    }
+
+    #[test]
+    fn test_provider_id_partialeq_ref_str() {
+        let s = "openai";
+        let id = ProviderId::from("openai");
+        assert_eq!(id, s);
+    }
+
+    #[test]
+    fn test_provider_id_partialeq_string() {
+        let id = ProviderId::from("openai");
+        assert_eq!(id, String::from("openai"));
+    }
+
+    #[test]
+    fn test_provider_id_partialeq_reverse() {
+        let id = ProviderId::from("groq");
+        assert!("groq" == id);
+    }
+
+    #[test]
+    fn test_provider_id_zeroize_clears_inner() {
+        let mut id = ProviderId::from("secret-provider");
+        id.zeroize();
+        assert_eq!(id.as_str(), "");
     }
 
     #[test]

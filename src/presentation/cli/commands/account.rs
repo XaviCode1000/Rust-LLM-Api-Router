@@ -122,9 +122,17 @@ pub async fn cmd_add_account(args: AddAccountArgs, repo: &impl AccountRepository
     }
 
     let account = if args.inactive {
-        Account::inactive(&args.id, &args.provider, api_key.unwrap_or_default())
+        Account::inactive(
+            args.id.as_str(),
+            args.provider.as_str(),
+            api_key.unwrap_or_default(),
+        )
     } else {
-        Account::new_api_key(&args.id, &args.provider, api_key.unwrap_or_default())
+        Account::new_api_key(
+            args.id.as_str(),
+            args.provider.as_str(),
+            api_key.unwrap_or_default(),
+        )
     }
     .with_priority(args.priority);
 

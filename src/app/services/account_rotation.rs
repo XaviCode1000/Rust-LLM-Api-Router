@@ -379,7 +379,7 @@ impl LatencyStrategy {
         let mut candidates: Vec<(&'a Account, f64)> = Vec::new();
 
         for account in accounts {
-            if let Some(health) = health_map.get(&account.id) {
+            if let Some(health) = health_map.get(&account.id.to_string()) {
                 if health.circuit_breaker_open() {
                     continue;
                 }
@@ -470,7 +470,7 @@ impl UserAffinityStrategy {
         if let Some(account) = accounts.first() {
             // Update last selection
             let mut selection = self.last_selection.lock().await;
-            selection.insert(user_id.to_string(), account.id.clone());
+            selection.insert(user_id.to_string(), account.id.to_string());
             return Some(account);
         }
         None

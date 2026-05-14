@@ -155,9 +155,10 @@ impl CascadingExecutionPlan {
             .enumerate()
             .map(
                 |(idx, (account, provider, health, model_id, cost_per_request, _))| {
-                    let mut planned = PlannedAccount::new(account.id.clone(), &provider, health)
-                        .with_execution_order(idx as u32)
-                        .with_priority(account.priority);
+                    let mut planned =
+                        PlannedAccount::new(account.id.to_string(), &provider, health)
+                            .with_execution_order(idx as u32)
+                            .with_priority(account.priority);
 
                     // Mark only the first tier as primary initially
                     if idx == 0 {
@@ -495,17 +496,17 @@ mod tests {
     fn create_test_provider_pricing() -> Vec<ProviderPricing> {
         vec![
             ProviderPricing {
-                provider_id: "openai".to_string(),
+                provider_id: "openai".into(),
                 input_price_per_1m: 10.0,
                 output_price_per_1m: 30.0,
             },
             ProviderPricing {
-                provider_id: "anthropic".to_string(),
+                provider_id: "anthropic".into(),
                 input_price_per_1m: 15.0,
                 output_price_per_1m: 75.0,
             },
             ProviderPricing {
-                provider_id: "groq".to_string(),
+                provider_id: "groq".into(),
                 input_price_per_1m: 1.0,
                 output_price_per_1m: 2.0,
             },

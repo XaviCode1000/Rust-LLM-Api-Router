@@ -1,12 +1,14 @@
 use serde::{Deserialize, Serialize};
 
+use crate::domain::providers::ProviderId;
+
 /// LLM Provider configuration supporting both legacy and OAuth authentication.
 ///
 /// This entity now includes fields for OAuth 2.0 client credentials and redirect URIs
 /// to support modern authentication flows like PKCE and Device Flow.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Provider {
-    pub id: String,
+    pub id: ProviderId,
     pub name: String,
     pub base_url: String,
     /// Whether the provider is enabled for use
@@ -34,7 +36,7 @@ pub struct Provider {
 impl Provider {
     /// Creates a new `Provider` with basic configuration.
     pub fn new(
-        id: impl Into<String>,
+        id: impl Into<ProviderId>,
         name: impl Into<String>,
         base_url: impl Into<String>,
     ) -> Self {
@@ -54,7 +56,7 @@ impl Provider {
 
     /// Creates a disabled provider.
     pub fn disabled(
-        id: impl Into<String>,
+        id: impl Into<ProviderId>,
         name: impl Into<String>,
         base_url: impl Into<String>,
     ) -> Self {

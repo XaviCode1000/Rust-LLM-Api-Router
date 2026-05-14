@@ -74,7 +74,7 @@ pub async fn health_detail(
         std::collections::HashMap::new();
     for account in &accounts {
         let entry = provider_map
-            .entry(account.provider_id.clone())
+            .entry(account.provider_id.to_string())
             .or_insert((0, 0));
         entry.0 += 1; // total accounts for provider
         if account.is_active {
@@ -120,8 +120,8 @@ pub async fn list_accounts(
     let account_infos: Vec<AccountInfo> = accounts
         .into_iter()
         .map(|a| AccountInfo {
-            id: a.id.clone(),
-            provider_id: a.provider_id.clone(),
+            id: a.id.to_string(),
+            provider_id: a.provider_id.to_string(),
             is_active: a.is_active,
             priority: a.priority,
             api_key_prefix: a

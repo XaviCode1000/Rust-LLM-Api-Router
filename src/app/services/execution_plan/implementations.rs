@@ -5,6 +5,7 @@
 use std::sync::Arc;
 
 use crate::domain::entities::{Account, AccountHealth, Provider};
+use crate::domain::providers::ProviderId;
 use crate::domain::traits::AccountRepository;
 use crate::domain::{DomainError, DomainResult};
 
@@ -19,7 +20,7 @@ use crate::app::services::quality::{HeuristicQualityEvaluator, QualityConfig, Qu
 #[derive(Debug, Clone)]
 pub struct ProviderPricing {
     /// Provider ID
-    pub provider_id: String,
+    pub provider_id: ProviderId,
     /// Price per 1M input tokens
     pub input_price_per_1m: f64,
     /// Price per 1M output tokens
@@ -55,7 +56,7 @@ impl StandardExecutionPlan {
             .into_iter()
             .enumerate()
             .map(|(idx, (account, provider, health))| {
-                PlannedAccount::new(account.id.clone(), &provider, health)
+                PlannedAccount::new(account.id.to_string(), &provider, health)
                     .with_execution_order(idx as u32)
                     .with_priority(account.priority)
                     .as_primary()
@@ -153,7 +154,7 @@ impl FailoverExecutionPlan {
             .enumerate()
             .map(|(idx, (account, provider, health))| {
                 let is_primary = idx == 0;
-                let mut planned = PlannedAccount::new(account.id.clone(), &provider, health)
+                let mut planned = PlannedAccount::new(account.id.to_string(), &provider, health)
                     .with_execution_order(idx as u32)
                     .with_priority(account.priority);
 
@@ -265,7 +266,7 @@ impl LoadBalancedExecutionPlan {
             .iter()
             .enumerate()
             .map(|(idx, (account, provider, health))| {
-                PlannedAccount::new(account.id.clone(), provider, health.clone())
+                PlannedAccount::new(account.id.to_string(), provider, health.clone())
                     .with_execution_order(idx as u32)
                     .with_priority(account.priority)
             })
@@ -435,7 +436,7 @@ impl CostOptimizedExecutionPlan {
             .iter()
             .enumerate()
             .map(|(idx, (account, provider, health, _))| {
-                PlannedAccount::new(account.id.clone(), provider, health.clone())
+                PlannedAccount::new(account.id.to_string(), provider, health.clone())
                     .with_execution_order(idx as u32)
                     .with_priority(account.priority)
             })
@@ -669,12 +670,12 @@ impl<R: AccountRepository> ExecutionPlanBuilder<R> {
         for provider in &providers {
             let accounts = self
                 .account_repo
-                .find_active_by_provider(&provider.id)
+                .find_active_by_provider(provider.id.as_str())
                 .await?;
 
             for account in accounts {
                 // Get or create health (simplified - in real impl would get from health service)
-                let health = AccountHealth::new(&account.id);
+                let health = AccountHealth::new(account.id.clone());
 
                 results.push((account, provider.clone(), health));
             }
@@ -784,12 +785,12 @@ mod tests {
         let accounts = create_test_accounts();
         let pricing = vec![
             ProviderPricing {
-                provider_id: "openai".to_string(),
+                provider_id: "openai".into(),
                 input_price_per_1m: 10.0,
                 output_price_per_1m: 30.0,
             },
             ProviderPricing {
-                provider_id: "anthropic".to_string(),
+                provider_id: "anthropic".into(),
                 input_price_per_1m: 15.0,
                 output_price_per_1m: 75.0,
             },
@@ -807,12 +808,12 @@ mod tests {
         let accounts = create_test_accounts();
         let pricing = vec![
             ProviderPricing {
-                provider_id: "openai".to_string(),
+                provider_id: "openai".into(),
                 input_price_per_1m: 10.0,
                 output_price_per_1m: 30.0,
             },
             ProviderPricing {
-                provider_id: "anthropic".to_string(),
+                provider_id: "anthropic".into(),
                 input_price_per_1m: 15.0,
                 output_price_per_1m: 75.0,
             },
@@ -827,7 +828,7 @@ mod tests {
     #[test]
     fn test_provider_pricing_estimate() {
         let pricing = ProviderPricing {
-            provider_id: "test".to_string(),
+            provider_id: "test".into(),
             input_price_per_1m: 10.0,
             output_price_per_1m: 30.0,
         };

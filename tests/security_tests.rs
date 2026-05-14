@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use mockall::predicate::*;
 use rust_llm_api_router::app::services::account_rotation::AccountSelector;
 use rust_llm_api_router::app::services::failover::FailoverManager;
-use rust_llm_api_router::domain::entities::AccountHealth;
+use rust_llm_api_router::domain::entities::{AccountId, AccountHealth};
 use rust_llm_api_router::domain::traits::AccountRepository;
 use rust_llm_api_router::domain::{Account, DomainError};
 use rust_llm_api_router::infrastructure::persistence::JsonAccountRepository;
@@ -304,14 +304,14 @@ fn test_atomic_counter_correctness() {
         handles.push(handle);
     }
 
-    let results: Vec<Option<String>> = handles
+    let results: Vec<Option<AccountId>> = handles
         .into_iter()
-        .map(|h: std::thread::JoinHandle<Option<String>>| h.join().unwrap())
+        .map(|h: std::thread::JoinHandle<Option<AccountId>>| h.join().unwrap())
         .collect();
 
     // All should succeed without panic
     assert_eq!(results.len(), 1000);
-    assert!(results.iter().all(|r: &Option<String>| r.is_some()));
+    assert!(results.iter().all(|r: &Option<AccountId>| r.is_some()));
 }
 
 /// Security Test: Mutex poisoning detection
@@ -335,7 +335,7 @@ async fn test_mutex_poisoning_recovery() {
     for i in 0..50 {
         let strategy = strategy.clone();
         let accounts = accounts.clone();
-        let handle: tokio::task::JoinHandle<Option<String>> = tokio::spawn(async move {
+        let handle: tokio::task::JoinHandle<Option<AccountId>> = tokio::spawn(async move {
             strategy
                 .select_for_user(&accounts, &format!("user-{}", i))
                 .await
@@ -344,7 +344,7 @@ async fn test_mutex_poisoning_recovery() {
         handles.push(handle);
     }
 
-    let results: Vec<Result<Option<String>, _>> = futures::future::join_all(handles).await;
+    let results: Vec<Result<Option<AccountId>, _>> = futures::future::join_all(handles).await;
 
     // All should succeed (no poisoning)
     assert!(results.iter().all(|r| r.as_ref().unwrap().is_some()));

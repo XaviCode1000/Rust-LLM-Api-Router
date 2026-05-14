@@ -484,16 +484,16 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
             // Get accounts for this provider
             let accounts = self
                 .account_repo
-                .find_active_by_provider(&provider.id)
+                .find_active_by_provider(provider.id.as_str())
                 .await?;
 
             for account in accounts {
                 // Create health snapshot (in real implementation, would fetch from health service)
-                let health = AccountHealth::new(&account.id);
+                let health = AccountHealth::new(account.id.clone());
 
                 // Filter by preferred accounts if specified
                 if !context.preferred_accounts.is_empty()
-                    && !context.is_account_preferred(&account.id)
+                    && !context.is_account_preferred(account.id.as_str())
                 {
                     continue;
                 }
@@ -701,7 +701,7 @@ impl<R: AccountRepository + ?Sized> ExecutionPlanner<R> {
             .enumerate()
             .map(|(idx, (account, provider, health))| {
                 let _is_primary = idx == 0;
-                PlannedAccount::new(account.id.clone(), &provider, health)
+                PlannedAccount::new(account.id.to_string(), &provider, health)
                     .with_execution_order(idx as u32)
                     .with_priority(account.priority)
                     .as_primary()

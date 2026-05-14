@@ -56,9 +56,9 @@ async fn handle_account_command_with_dir(
             }
 
             let account = if args.inactive {
-                rust_llm_api_router::domain::Account::inactive(&args.id, &args.provider, &api_key)
+                rust_llm_api_router::domain::Account::inactive(args.id.as_str(), args.provider.as_str(), &api_key)
             } else {
-                rust_llm_api_router::domain::Account::new(&args.id, &args.provider, &api_key)
+                rust_llm_api_router::domain::Account::new(args.id.as_str(), args.provider.as_str(), &api_key)
             }
             .with_priority(args.priority);
 

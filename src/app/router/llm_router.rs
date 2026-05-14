@@ -243,7 +243,7 @@ impl<R: AccountRepository + ?Sized> LlmRouter<R> {
         let mut provider_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
         for account in &accounts {
             if account.is_active {
-                provider_ids.insert(account.provider_id.clone());
+                provider_ids.insert(account.provider_id.to_string());
             }
         }
 

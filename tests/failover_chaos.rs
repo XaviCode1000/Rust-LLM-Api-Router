@@ -70,7 +70,7 @@ async fn test_rapid_failover_between_accounts() {
             .execute_with_failover("openai", |account| {
                 let account_id = account.id.clone();
                 async move {
-                    if account_id.contains("1") || account_id.contains("3") {
+                    if account_id.as_str().contains("1") || account_id.as_str().contains("3") {
                         Err(TestError::new(&format!("fail-{}", i)))
                     } else {
                         Ok((format!("success-{}", account_id), vec![]))
@@ -322,7 +322,7 @@ async fn test_account_rotation() {
         let result: Result<String, TestError> = manager
             .execute_with_failover("openai", |account| {
                 let account_id = account.id.clone();
-                async move { Ok((account_id, vec![])) }
+                async move { Ok((account_id.to_string(), vec![])) }
             })
             .await;
 

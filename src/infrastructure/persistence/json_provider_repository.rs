@@ -42,7 +42,7 @@ struct ProviderData {
 impl From<&Provider> for ProviderData {
     fn from(provider: &Provider) -> Self {
         Self {
-            id: provider.id.clone(),
+            id: provider.id.to_string(),
             name: provider.name.clone(),
             base_url: provider.base_url.clone(),
             enabled: provider.enabled,
@@ -59,7 +59,7 @@ impl From<&Provider> for ProviderData {
 impl From<ProviderData> for Provider {
     fn from(data: ProviderData) -> Self {
         Self {
-            id: data.id,
+            id: data.id.into(),
             name: data.name,
             base_url: data.base_url,
             enabled: data.enabled,
@@ -182,7 +182,7 @@ impl ProviderRepository for JsonProviderRepository {
         let mut providers = self.read_providers().await?;
 
         // Check if provider exists, update or insert
-        if let Some(existing) = providers.iter_mut().find(|p| p.id == provider.id) {
+        if let Some(existing) = providers.iter_mut().find(|p| provider.id == p.id) {
             *existing = ProviderData::from(&provider);
         } else {
             providers.push(ProviderData::from(&provider));

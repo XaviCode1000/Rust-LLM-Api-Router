@@ -107,7 +107,7 @@ impl PlannedAccount {
     pub fn new(account_id: impl Into<String>, provider: &Provider, health: AccountHealth) -> Self {
         Self {
             account_id: account_id.into(),
-            provider_id: provider.id.clone(),
+            provider_id: provider.id.to_string(),
             provider_name: provider.name.clone(),
             provider_base_url: provider.base_url.clone(),
             health_snapshot: health,

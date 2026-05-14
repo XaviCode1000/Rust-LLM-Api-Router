@@ -272,7 +272,8 @@ async fn make_provider_request(
     chat_request: &DomainChatRequest,
 ) -> Result<DomainChatResponse, String> {
     // Build provider URL using ProviderConfig
-    let base_url = get_provider_base_url(http_client, provider_config, &account.provider_id);
+    let base_url =
+        get_provider_base_url(http_client, provider_config, account.provider_id.as_str());
     let url = format!("{}/chat/completions", base_url);
 
     // Build request body in OpenAI format (what providers expect)
@@ -336,7 +337,8 @@ async fn make_streaming_provider_request(
     chat_request: &DomainChatRequest,
 ) -> Result<impl Stream<Item = Result<Bytes, String>>, String> {
     // Build provider URL using ProviderConfig
-    let base_url = get_provider_base_url(http_client, provider_config, &account.provider_id);
+    let base_url =
+        get_provider_base_url(http_client, provider_config, account.provider_id.as_str());
     let url = format!("{}/chat/completions", base_url);
 
     // Build request body in OpenAI format (what providers expect)

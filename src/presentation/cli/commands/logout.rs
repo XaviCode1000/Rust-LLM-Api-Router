@@ -46,7 +46,7 @@ pub async fn handle_logout_command() -> Result<()> {
             account.id, account.provider_id
         ));
 
-        match auth_service.revoke_token(&account.id).await {
+        match auth_service.revoke_token(account.id.as_str()).await {
             Ok(()) => {
                 output::success(&format!(
                     "Successfully logged out from account '{}'",

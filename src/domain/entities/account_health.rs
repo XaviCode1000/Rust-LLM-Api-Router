@@ -5,6 +5,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
+use crate::domain::entities::account::AccountId;
+
 /// Circuit breaker states.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum CircuitBreakerState {
@@ -30,7 +32,7 @@ impl CircuitBreakerState {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AccountHealth {
     /// Account ID this health belongs to
-    pub account_id: String,
+    pub account_id: AccountId,
 
     /// Total requests made
     pub total_requests: u64,
@@ -75,7 +77,7 @@ pub struct AccountHealth {
 
 impl AccountHealth {
     /// Creates a new AccountHealth with default values.
-    pub fn new(account_id: impl Into<String>) -> Self {
+    pub fn new(account_id: impl Into<AccountId>) -> Self {
         Self {
             account_id: account_id.into(),
             total_requests: 0,
@@ -157,7 +159,7 @@ impl AccountHealth {
         if !self.circuit_breaker_state.is_open() {
             // In degraded state, allow 10% of requests through
             if self.circuit_breaker_state.is_degraded() {
-                return rand_simple() % 10 == 0;
+                return rand_simple().is_multiple_of(10);
             }
             return true;
         }

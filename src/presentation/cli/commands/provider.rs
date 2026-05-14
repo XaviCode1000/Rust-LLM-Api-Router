@@ -235,9 +235,9 @@ pub async fn cmd_add_provider(args: AddProviderArgs, repo: &impl ProviderReposit
 
     // Create provider
     let provider = if args.disabled {
-        Provider::disabled(&provider_id, &provider_name, &provider_base_url)
+        Provider::disabled(provider_id.as_str(), &provider_name, &provider_base_url)
     } else {
-        Provider::new(&provider_id, &provider_name, &provider_base_url)
+        Provider::new(provider_id.as_str(), &provider_name, &provider_base_url)
     };
 
     repo.save(provider)
@@ -267,9 +267,12 @@ pub async fn cmd_list_providers(
     let mut provider_ids_with_accounts: std::collections::HashSet<String> =
         std::collections::HashSet::new();
     for provider in &providers {
-        if let Ok(accounts) = account_repo.find_active_by_provider(&provider.id).await {
+        if let Ok(accounts) = account_repo
+            .find_active_by_provider(provider.id.as_str())
+            .await
+        {
             if !accounts.is_empty() {
-                provider_ids_with_accounts.insert(provider.id.clone());
+                provider_ids_with_accounts.insert(provider.id.to_string());
             }
         }
     }
@@ -278,7 +281,7 @@ pub async fn cmd_list_providers(
 
     // Print additional info about accounts
     for provider in &providers {
-        if provider_ids_with_accounts.contains(&provider.id) {
+        if provider_ids_with_accounts.contains(provider.id.as_str()) {
             output::dim(&format!("  {}: has active account(s)", provider.id));
         } else {
             output::dim(&format!("  {}: no account configured", provider.id));

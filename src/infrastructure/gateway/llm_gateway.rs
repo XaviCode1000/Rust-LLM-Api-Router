@@ -477,7 +477,7 @@ impl LlmGateway for LlmGatewayImpl {
         // Fetch models from all providers in parallel
         let futures: Vec<_> = enabled_providers
             .iter()
-            .map(|provider_id| self.fetch_provider_models(provider_id, api_key))
+            .map(|provider_id| self.fetch_provider_models(provider_id.as_str(), api_key))
             .collect();
 
         let results = join_all(futures).await;

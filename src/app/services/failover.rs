@@ -201,15 +201,15 @@ impl FailoverManager {
 
             if let Some(account) = account {
                 // Check if we've already tried this account
-                if tried_accounts.contains(&account.id) {
+                if tried_accounts.contains(&account.id.to_string()) {
                     // Try to get a different account
                     continue;
                 }
 
-                tried_accounts.push(account.id.clone());
+                tried_accounts.push(account.id.to_string());
 
                 // Check health/circuit breaker
-                if !self.can_use_account(&account.id).await {
+                if !self.can_use_account(account.id.as_str()).await {
                     continue;
                 }
 
@@ -218,16 +218,19 @@ impl FailoverManager {
                 match execute(account).await {
                     Ok((response, headers)) => {
                         // Parse rate limit info from headers and update health
-                        self.update_rate_limits(&account.id, &headers).await;
+                        self.update_rate_limits(account.id.as_str(), &headers).await;
 
                         // Record success with latency
-                        self.record_success(&account.id, start.elapsed().as_millis() as u64)
-                            .await;
+                        self.record_success(
+                            account.id.as_str(),
+                            start.elapsed().as_millis() as u64,
+                        )
+                        .await;
                         return Ok(response);
                     }
                     Err(e) => {
                         // Record failure
-                        self.record_failure(&account.id).await;
+                        self.record_failure(account.id.as_str()).await;
                         last_error = Some(e);
 
                         // Apply backoff delay before next retry (only if we have more accounts to try)
