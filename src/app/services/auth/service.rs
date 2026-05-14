@@ -1,7 +1,9 @@
 use crate::domain::services::auth_strategy::AuthenticationStrategy;
 use crate::domain::traits::{AccountRepository, ProviderRepository};
 use crate::domain::{Account, DomainError, DomainResult};
+use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// Service for managing authentication flows and token operations.
 ///
@@ -11,6 +13,10 @@ use std::sync::Arc;
 pub struct AuthService {
     account_repo: Arc<dyn AccountRepository + Send + Sync>,
     provider_repo: Arc<dyn ProviderRepository + Send + Sync>,
+    /// Per-account refresh concurrency guard.
+    /// Prevents concurrent refreshes for the same account while allowing
+    /// concurrent refreshes for different accounts.
+    refresh_locks: Arc<RwLock<HashMap<String, Arc<tokio::sync::Mutex<()>>>>>,
 }
 
 impl AuthService {
@@ -29,6 +35,7 @@ impl AuthService {
         Self {
             account_repo,
             provider_repo,
+            refresh_locks: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -141,6 +148,23 @@ impl AuthService {
     /// # Returns
     /// A DomainResult containing the updated account with new tokens
     pub async fn refresh_token(&self, account_id: &str) -> DomainResult<Account> {
+        // Acquire per-account refresh lock — concurrent refreshes for DIFFERENT
+        // accounts proceed in parallel, but concurrent refreshes for the SAME
+        // account are serialized to prevent thundering-herd token requests.
+        let lock = {
+            let mut locks = self.refresh_locks.write().await;
+            locks
+                .entry(account_id.to_string())
+                .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(())))
+                .clone()
+        };
+        let _guard = lock.lock().await;
+
+        // TWO-PHASE REFRESH PATTERN (future):
+        // Phase 1: Call provider API to get new tokens (old tokens still valid on disk)
+        // Phase 2: Only if Phase 1 succeeds, persist new tokens atomically
+        // This prevents "logical death" if the refresh is cancelled mid-flight.
+
         // Get the account
         let account = self.account_repo.find_by_id(account_id).await?;
 
@@ -280,8 +304,9 @@ impl AuthService {
             )
         };
 
-        // Revoke the token (discard the returned account as we just need success/failure)
-        let _ = strategy.revoke_token(&account).await;
+        // Revoke the token and persist the zeroed account state
+        let revoked_account = strategy.revoke_token(&account).await?;
+        self.account_repo.save(revoked_account).await?;
         Ok(())
     }
 }
@@ -304,6 +329,8 @@ mod tests {
     #[async_trait]
     impl AccountRepository for MockAccountRepository {
         async fn save(&self, account: Account) -> DomainResult<Account> {
+            let id = account.id.to_string();
+            self.accounts.lock().unwrap().insert(id, account.clone());
             Ok(account)
         }
 
@@ -560,9 +587,68 @@ mod tests {
             providers: Mutex::new(providers),
         });
 
-        let service = AuthService::new(account_repo, provider_repo);
+        let service = AuthService::new(account_repo.clone(), provider_repo);
 
         let result = service.revoke_token("test-account").await;
         assert!(result.is_ok());
+
+        // Verify the revoked state was persisted — reload and check tokens are cleared
+        let persisted = account_repo.find_by_id("test-account").await.unwrap();
+        assert_eq!(persisted.auth_type(), "api_key");
+        // API key accounts don't have OAuth tokens to clear, but the save was called
+    }
+
+    #[tokio::test]
+    async fn test_auth_service_revoke_token_persists_oauth_state() {
+        // Setup with OAuth-configured provider
+        let mut providers = std::collections::HashMap::new();
+        let mut provider =
+            Provider::new("oauth-provider", "OAuth Provider", "https://api.test.com");
+        provider.client_id = Some("client-123".to_string());
+        provider.client_secret = Some("secret-456".to_string());
+        provider.auth_url = Some("https://auth.test.com/authorize".to_string());
+        provider.token_url = Some("https://auth.test.com/token".to_string());
+        provider.redirect_uri = Some("https://app.test.com/callback".to_string());
+        providers.insert("oauth-provider".to_string(), provider);
+
+        let mut accounts = std::collections::HashMap::new();
+        accounts.insert(
+            "oauth-account".to_string(),
+            Account::new_oauth(
+                "oauth-account",
+                "oauth-provider",
+                "valid-access-token",
+                Some("valid-refresh-token"),
+                Some("id-token"),
+                Some(3600),
+            ),
+        );
+
+        let account_repo = Arc::new(MockAccountRepository {
+            accounts: Mutex::new(accounts),
+        });
+        let provider_repo = Arc::new(MockProviderRepository {
+            providers: Mutex::new(providers),
+        });
+
+        let service = AuthService::new(account_repo.clone(), provider_repo);
+
+        // Verify account has OAuth tokens before revoke
+        let before = account_repo.find_by_id("oauth-account").await.unwrap();
+        assert!(before.auth_method.is_oauth());
+        assert_eq!(
+            before.auth_method.access_token(),
+            Some("valid-access-token")
+        );
+
+        // Revoke
+        let result = service.revoke_token("oauth-account").await;
+        assert!(result.is_ok());
+
+        // Verify persisted state has zeroed tokens
+        let after = account_repo.find_by_id("oauth-account").await.unwrap();
+        assert!(after.auth_method.is_oauth());
+        assert_eq!(after.auth_method.access_token(), Some(""));
+        assert_eq!(after.get_refresh_token(), None);
     }
 }

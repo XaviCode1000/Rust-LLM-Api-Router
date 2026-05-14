@@ -116,6 +116,7 @@ fn test_legacy_account_json_loads() {
 
     // Deserialize as AccountData (flat format), then convert to Account (enum format)
     #[derive(serde::Deserialize)]
+    #[allow(dead_code)]
     struct AccountData {
         id: String,
         provider_id: String,

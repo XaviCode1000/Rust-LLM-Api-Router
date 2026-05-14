@@ -26,6 +26,7 @@ pub trait AuthenticationStrategy: Send + Sync {
     ///
     /// # Returns
     /// A DomainResult containing the authenticated Account or an error if completion fails.
+    #[must_use = "auth state changes must be persisted — do not discard the returned Account"]
     async fn complete_auth(&self, response: String) -> DomainResult<Account>;
 
     /// Refreshes the access token using the refresh token.
@@ -35,6 +36,7 @@ pub trait AuthenticationStrategy: Send + Sync {
     ///
     /// # Returns
     /// A DomainResult containing the updated account with new tokens or an error if refresh fails.
+    #[must_use = "auth state changes must be persisted — do not discard the returned Account"]
     async fn refresh_token(&self, account: &Account) -> DomainResult<Account>;
 
     /// Revokes tokens and clears credentials.
@@ -44,6 +46,7 @@ pub trait AuthenticationStrategy: Send + Sync {
     ///
     /// # Returns
     /// A DomainResult containing the account with tokens cleared (or an error if revocation fails).
+    #[must_use = "auth state changes must be persisted — do not discard the returned Account"]
     async fn revoke_token(&self, account: &Account) -> DomainResult<Account>;
 
     /// Gets the type of authentication this strategy represents.

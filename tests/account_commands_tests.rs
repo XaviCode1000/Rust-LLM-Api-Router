@@ -174,7 +174,7 @@ async fn handle_account_command_with_dir(
                     println!("⚠ Account has no API key set");
                     Ok(())
                 }
-                Some(key) if key.is_empty() => {
+                Some("") => {
                     println!("⚠ Account has no API key set");
                     Ok(())
                 }
